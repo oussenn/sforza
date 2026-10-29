@@ -121,7 +121,7 @@ export const CLAUDE_PROMPTS: ClaudePrompt[] = [
   {
     name: 'job_hunt',
     title: 'Find jobs and prepare drafts',
-    description: 'Searches the job boards, picks the best matches for my profile and leaves a tailored CV and motivation letter for each in "Draft". Never applies.',
+    description: 'Searches the job boards, picks the best matches for my profile and leaves a tailored CV and motivation letter for each in "Draft".',
     args: [
       {
         name: 'focus',
@@ -176,7 +176,7 @@ export const CLAUDE_PROMPTS: ClaudePrompt[] = [
   {
     name: 'draft_application',
     title: 'Draft one application',
-    description: 'Prepares the tailored CV, motivation letter, AI check and a complete "Draft" card for one job link. Never applies.',
+    description: 'Prepares the tailored CV, motivation letter, AI check and a complete "Draft" card for one job link.',
     args: [{ name: 'url', description: 'link to the job posting', required: true, placeholder: 'Job link' }],
     build: (ctx, args) =>
       lines(
@@ -218,7 +218,7 @@ export const CLAUDE_PROMPTS: ClaudePrompt[] = [
   {
     name: 'follow_up',
     title: 'Plan follow-ups and interviews',
-    description: 'Drafts follow-up e-mails for applications without an answer and interview prep for upcoming interviews, in the card notes. Sends nothing.',
+    description: 'Drafts follow-up e-mails for applications without an answer and interview prep for upcoming interviews, in the card notes.',
     args: [],
     build: () =>
       lines(

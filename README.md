@@ -8,7 +8,7 @@ Score your CV against a job description, then build a tailored CV and cover lett
 
 ## Match score
 
-Every requirement in the posting is checked against your CV, with the line that proves it. Must-haves count three times.
+Every requirement in the posting is checked against your CV, with the line that proves it.
 
 ![Match score with requirements and ATS keywords](.github/readme/match-score.gif)
 
@@ -32,7 +32,7 @@ Eight templates on a live A4 page.
 
 ## English, French and German
 
-Each CV can have all three. The card says which one to send.
+Each CV can have all three.
 
 ![One CV in English, French and German](.github/readme/languages.gif)
 
@@ -55,7 +55,7 @@ Tailored CVs and letters pick from the knowledge base. The MCP prompts are built
 
 ## MCP
 
-Connect Claude Desktop or any MCP client. It finds jobs and prepares drafts in your account, and never applies.
+Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 
 ![MCP prompt for one job link](.github/readme/mcp.gif)
 
@@ -75,7 +75,7 @@ Connect Claude Desktop or any MCP client. It finds jobs and prepares drafts in y
 - Knowledge base of projects, skills and facts
 - Job reader for LinkedIn, Greenhouse, Lever, Ashby, SmartRecruiters, Workday and most career pages
 - Match score with quotes from your CV as evidence
-- Tailored CVs and cover letters built only from your own facts, with common CV rules plus your own
+- Tailored CVs and cover letters built only from your own facts
 - 5 letter templates (DIN 5008, Modern, Classic, Banner, Sidebar) with their own fonts, colours and spacing, or the CV's
 - One-page check: tailored CVs fill one page, letters fit on one
 - Board with your own columns, form answers and AI-text checks
@@ -159,7 +159,7 @@ Each username gets a random password in `logins.txt` and a hash in `auth-users.j
 
 ## API
 
-JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username", "password" }`), which sets a session cookie. Every write, sign-in included, needs the header `X-Requested-With: fetch`. Bodies over 2.5 MB are refused.
+JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username", "password" }`), which sets a session cookie. Every write, sign-in included, needs the header `X-Requested-With: fetch`.
 
 | Area | Routes |
 |---|---|
@@ -209,13 +209,13 @@ Tools:
 | Board | `list_applications`, `get_application`, `save_application`, `save_form_answers`, `delete_application`, `get_download_links` |
 | Site AI | `tailor_cv_with_site_ai`, `translate_cv_with_site_ai`, `write_motivation_letter_with_site_ai` |
 
-Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_knowledge_base`. They are built from the job search profile.
+Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_knowledge_base`.
 
 The job search defaults to Germany. Set a country in the job search profile to search another market.
 
-`edit_cv` can change everything the editor can (template, fonts, colours, spacing, placement, order, items). `fit_cv_to_page` tries font sizes, spacing and column widths on the real print page and keeps the fullest single page, so the one-page fit does not depend on how good the AI client is at layout.
+`edit_cv` can change everything the editor can (template, fonts, colours, spacing, placement, order, items). `fit_cv_to_page` tries font sizes, spacing and column widths on the real print page and keeps the fullest single page.
 
-Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile. AI clients on the connector and the site's own AI follow both.
+Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
 
 ## Deploy
 

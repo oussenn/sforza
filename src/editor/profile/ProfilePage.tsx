@@ -340,7 +340,7 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
         <li>In Claude Desktop, turn on the connector and open the built-in browser (Ctrl+Shift+B). Sign in there once to LinkedIn, Indeed, StepStone, GPTZero and Pangram.</li>
         <li>
           Start a chat with one of these prompts: copy it here, or pick it in Claude under <span className="text-foreground">+ → Sforza</span>.
-          Drafts land in Applications under “Draft”; Claude never applies.
+          Drafts land in Applications under “Draft”.
         </li>
       </ol>
       <p className="bg-muted/60 rounded-lg px-3 py-2 text-xs">
@@ -350,7 +350,7 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
           </>
         ) : (
           <>
-            AI-text checks: Claude checks drafts with GPTZero and the final letter once with Pangram (the most accurate in independent tests) in the browser, on their free plans. For checks without the browser, create a free
+            AI-text checks: Claude checks drafts with GPTZero and the final letter once with Pangram in the browser, on their free plans. For checks without the browser, create a free
             API key at aiornot.com and set it with <code className="font-mono">wrangler secret put AIORNOT_API_KEY</code>.
           </>
         )}
