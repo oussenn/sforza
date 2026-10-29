@@ -1,5 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { checkPrintToken, checkShare, connectorToken, connectorUser, primaryUser, signPrintToken, signShare, verifyLogin } from '../worker/auth'
+import { ensureDb } from '../worker/db'
+import { memoryD1 } from './d1'
 
 const b64url = (bytes: Uint8Array) => Buffer.from(bytes).toString('base64url')
 
@@ -13,6 +15,7 @@ let env: Env
 
 beforeAll(async () => {
   env = {
+    DB: memoryD1(),
     AUTH_USERS: JSON.stringify({
       alice: await hash('correct horse', new Uint8Array(16).fill(1)),
       bob: await hash('battery staple', new Uint8Array(16).fill(2)),
@@ -20,6 +23,7 @@ beforeAll(async () => {
     SESSION_SECRET: 'test-session-secret',
     MCP_TOKEN: 'test-connector-token-0123456789abcdef',
   } as unknown as Env
+  await ensureDb(env)
 })
 
 describe('sign-in', () => {
@@ -76,6 +80,8 @@ describe('primary account', () => {
   it('is the first account unless PRIMARY_USER names another', () => {
     expect(primaryUser(env)).toBe('alice')
     expect(primaryUser({ ...env, PRIMARY_USER: ' Bob ' })).toBe('bob')
+    // Accounts made in the app only: nobody is primary, so no connector shows MCP_TOKEN itself.
+    expect(primaryUser({})).toBe('')
   })
 
   it('owns MCP_TOKEN as its connector token', async () => {

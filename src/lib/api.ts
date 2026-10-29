@@ -1,9 +1,11 @@
 import type {
+  AccountInfo,
   AiEvent,
   AiStatus,
   Application,
   BoardColumn,
   CoverLetter,
+  InviteInfo,
   JobAnalysis,
   JobInfo,
   Lang,
@@ -52,9 +54,20 @@ export type TailorJob = JobInput & { logo?: string; location?: string }
 type Progress = (message: string) => void
 
 export const api = {
-  me: () => request<{ authenticated: boolean; user: string | null; moveTo?: string }>('/api/auth/me'),
+  me: () =>
+    request<{ authenticated: boolean; user: string | null; moveTo?: string; setup?: { needsToken: boolean } }>('/api/auth/me'),
   login: (username: string, password: string) => request<{ ok: true; user: string }>('/api/auth/login', json('POST', { username, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', json('POST', {})),
+  setup: (username: string, password: string, setupToken: string) =>
+    request<{ ok: true; user: string }>('/api/auth/setup', json('POST', { username, password, setupToken })),
+  join: (code: string, username: string, password: string) =>
+    request<{ ok: true; user: string }>('/api/auth/join', json('POST', { code, username, password })),
+  changePassword: (current: string, password: string) => request<{ ok: true }>('/api/auth/password', json('POST', { current, password })),
+  accounts: () => request<{ accounts: AccountInfo[]; invites: InviteInfo[] }>('/api/accounts'),
+  createInvite: () => request<{ url: string; expiresAt: number }>('/api/accounts/invites', json('POST', {})),
+  revokeInvite: (id: string) => request<{ ok: true }>(`/api/accounts/invites/${encodeURIComponent(id)}`, json('DELETE')),
+  setLocked: (username: string, disabled: boolean) =>
+    request<{ ok: true }>(`/api/accounts/${encodeURIComponent(username)}/access`, json('PUT', { disabled })),
   connector: () => request<{ url: string }>('/api/connector'),
 
   printLetter: (id: string, lang: string, token: string) =>
@@ -99,7 +112,7 @@ export const api = {
     streamAi<{ job: ScrapedJob; analysis: JobAnalysis }>('/api/ai/job-from-url', { url }, onProgress),
   match: (body: { resumeId: string; job: JobInput; analysis: JobAnalysis | null }, onProgress: Progress) =>
     streamAi<{ analysis: JobAnalysis; score: MatchScore }>('/api/ai/match', body, onProgress),
-  rescore: (id: string, onProgress: Progress) => streamAi<Resume>('/api/ai/rescore', { id }, onProgress),
+  rescore: (id: string, onProgress: Progress, description?: string) => streamAi<Resume>('/api/ai/rescore', { id, description }, onProgress),
 
   applications: () => request<Application[]>('/api/applications'),
   createApplication: (fields: Partial<Application>) => request<Application>('/api/applications', json('POST', fields)),

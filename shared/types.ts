@@ -293,6 +293,24 @@ export interface Resume {
   updatedAt: string
 }
 
+/** One account as the admin sees it (Account dialog). */
+export interface AccountInfo {
+  username: string
+  /** "secret": from the AUTH_USERS secret; "app": made in the app (first-run setup or an invitation) */
+  source: 'secret' | 'app'
+  disabled: boolean
+  admin: boolean
+}
+
+/** A pending invitation; its code is shown once and never stored, only its hash (the id). */
+export interface InviteInfo {
+  id: string
+  createdBy: string
+  createdAt: string
+  /** Unix seconds */
+  expiresAt: number
+}
+
 export interface ResumeMeta {
   id: string
   name: string

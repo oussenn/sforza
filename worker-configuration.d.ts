@@ -13,12 +13,13 @@ interface __BaseEnv_Env {
 	AI_MONTHLY_BUDGET_USD: "1.00";
 	PRIMARY_USER?: string;
 	CANONICAL_HOST?: string;
+	SETUP_TOKEN?: string;
 	SESSION_SECRET: string;
 	ANTHROPIC_API_KEY: string;
 	OPENAI_API_KEY: string;
 	MCP_TOKEN: string;
 	AIORNOT_API_KEY: string;
-	AUTH_USERS: string;
+	AUTH_USERS?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

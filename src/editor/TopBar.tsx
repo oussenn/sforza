@@ -19,6 +19,7 @@ import {
   Star,
   Sun,
   Trash2,
+  UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LANG_LABELS, LANGS, type Application, type Lang } from '@shared/types'
@@ -42,6 +43,7 @@ import { api } from '@/lib/api'
 import { useTheme, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { downloadLetterPdf } from '@/resume/download'
+import { AccountDialog } from './AccountDialog'
 import { logoFor, openCvIn, useApplications } from './applications/store'
 import { ConfirmDialog, PromptDialog } from './dialogs'
 import { PANELS } from './profile/ProfilePage'
@@ -104,6 +106,7 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
   const { theme, setTheme } = useTheme()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [account, setAccount] = useState(false)
   const download = useDownload()
 
   // Controls for one CV only show while that CV is open.
@@ -259,7 +262,7 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="size-9">
+            <Button variant="outline" size="icon" className="size-9" aria-label="Menu">
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -323,12 +326,17 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             {user && <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Signed in as {user}</DropdownMenuLabel>}
+            <DropdownMenuItem onClick={() => setAccount(true)}>
+              <UserRound /> Account
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => void logout()}>
               <LogOut /> Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {user && <AccountDialog open={account} onOpenChange={setAccount} user={user} />}
 
       <PromptDialog
         open={renaming}

@@ -606,3 +606,24 @@ export function orderLanguages(content: ResumeContent): ResumeContent {
     ),
   }
 }
+
+/* -------------------------------- accounts -------------------------------- */
+
+/** Usernames: 2 to 32 lower-case letters, digits, _ and -. They key every row of the account's data. */
+export const USERNAME_PATTERN = /^[a-z0-9_-]{2,32}$/
+/** Long passwords beat composition rules; 15 is NIST's minimum for a password used on its own (SP 800-63B). */
+export const PASSWORD_MIN = 15
+const PASSWORD_MAX = 256
+
+export function usernameProblem(username: string): string | null {
+  return USERNAME_PATTERN.test(username) ? null : 'A username has 2 to 32 characters: a-z, 0-9, _ and -.'
+}
+
+/** Why a new password is refused, or null. The server checks the same rules. */
+export function passwordProblem(password: string, username = ''): string | null {
+  if (password.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`
+  if (password.length > PASSWORD_MAX) return `Use at most ${PASSWORD_MAX} characters.`
+  if (username && password.toLowerCase().includes(username.toLowerCase())) return 'Leave the username out of the password.'
+  if (new Set(password).size < 5) return 'Use more different characters.'
+  return null
+}

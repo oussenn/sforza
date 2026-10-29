@@ -2049,6 +2049,8 @@ async function dispatch(env: Env, msg: RpcRequest, origin: string): Promise<unkn
 
 export async function handleMcp(c: Ctx, pathToken?: string): Promise<Response> {
   const bearer = c.req.header('authorization')?.match(/^Bearer\s+(.+)$/i)?.[1]
+  // Accounts made in the app live in the database, so the tables must exist before the token is looked up.
+  await db.ensureDb(c.env)
   const user = await connectorUser(c.env, pathToken ?? bearer)
   if (!user) {
     return c.json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } }, 401, { 'X-Robots-Tag': 'noindex' })
@@ -2063,7 +2065,6 @@ export async function handleMcp(c: Ctx, pathToken?: string): Promise<Response> {
     return c.json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400)
   }
   const origin = siteOrigin(c.env, c.req.url)
-  await db.ensureDb(c.env)
   const env = db.forOwner(c.env, user)
   await db.ensureAccount(env)
   const messages = (Array.isArray(payload) ? payload : [payload]) as RpcRequest[]

@@ -61,6 +61,21 @@ const SCHEMA = [
     fails INTEGER NOT NULL,
     locked_until INTEGER NOT NULL
   )`,
+  // Accounts made in the app and passwords changed in it, as PBKDF2 hashes; a row wins over AUTH_USERS (auth.ts)
+  `CREATE TABLE IF NOT EXISTS accounts (
+    username TEXT PRIMARY KEY,
+    hash TEXT NOT NULL,
+    disabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
+  // One-time invitations, by the SHA-256 of their code (the code itself is never stored)
+  `CREATE TABLE IF NOT EXISTS invites (
+    id TEXT PRIMARY KEY,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    expires_at INTEGER NOT NULL
+  )`,
 ]
 
 // Rows from before accounts existed belong to the primary account.

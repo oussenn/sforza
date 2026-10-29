@@ -5,7 +5,21 @@ import { HTTPException } from 'hono/http-exception'
 import type { AiCheck, AiEvent, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Library, Resume, ScrapedJob } from '@shared/types'
 import { LANGS, LETTER_LAYOUTS } from '@shared/types'
 import { formAnswersField } from './forms'
-import { cleanBoardColumns, cleanLetterStyle, cleanSearchProfile, clone, isStage, jobSource, letterLayoutOf, letterStyleOf, newApplication, toMeta, uid } from '@shared/utils'
+import {
+  cleanBoardColumns,
+  cleanLetterStyle,
+  cleanSearchProfile,
+  clone,
+  isStage,
+  jobSource,
+  letterLayoutOf,
+  letterStyleOf,
+  newApplication,
+  passwordProblem,
+  toMeta,
+  uid,
+  usernameProblem,
+} from '@shared/utils'
 import { AiError, aiStatus } from './ai'
 import { analyzeJob } from './match'
 import { findLogo } from './logo'
@@ -13,16 +27,28 @@ import { aiSpend } from './budget'
 import { detectAi, detectorName } from './detect'
 import { decodeEntities, parseJobUrl, readJobPage } from './scrape'
 import {
-  authConfigured,
+  adminUser,
   checkPrintToken,
   checkShare,
   clearLoginFailures,
   clearSession,
   connectorToken,
+  createFirstAccount,
+  createInvite,
+  hasAccounts,
+  isLocalRequest,
   issueSession,
+  joinWithInvite,
+  listAccounts,
+  listInvites,
   loginLocked,
   recordLoginFailure,
+  revokeInvite,
+  sameSecret,
+  secretConfigured,
   sessionUser,
+  setLocked,
+  setPassword,
   siteOrigin,
   verifyLogin,
 } from './auth'
@@ -49,7 +75,15 @@ type Ctx = Context<App>
 const app = new Hono<App>()
 
 // Everything else needs a session. The print and share routes check their own signed token and scope to its account.
-const PUBLIC_API = new Set(['/api/auth/login', '/api/auth/logout', '/api/auth/me', '/api/print-data', '/api/print-letter'])
+const PUBLIC_API = new Set([
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/me',
+  '/api/auth/setup',
+  '/api/auth/join',
+  '/api/print-data',
+  '/api/print-letter',
+])
 
 // The largest legitimate body is a photo upload (1.5 MB); D1 rows stop at 2 MB anyway.
 const limitBody = bodyLimit({ maxSize: 2_500_000, onError: (c) => c.json({ error: 'Request too large' }, 413) })
@@ -79,18 +113,36 @@ app.use('/api/*', async (c, next) => {
 
 /* ---------------------------------- auth --------------------------------- */
 
+const NO_SECRET = 'Set the SESSION_SECRET secret (16+ characters) on the Worker.'
+
+/** The sign-in fields of a request body; anything that is not a string counts as empty. */
+async function credentials(c: Ctx) {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>)
+  const field = (name: string, max: number) => (typeof body[name] === 'string' ? (body[name] as string).slice(0, max) : '')
+  return {
+    username: field('username', 64).trim().toLowerCase(),
+    password: field('password', 257),
+    current: field('current', 257),
+    code: field('code', 128),
+    setupToken: field('setupToken', 256),
+  }
+}
+
+const clientIp = (c: Ctx) => c.req.header('cf-connecting-ip') ?? 'unknown'
+const tooMany = (c: Ctx, wait: number) => c.json({ error: `Too many failed attempts. Try again in ${Math.ceil(wait / 60)} min.` }, 429)
+/** Failed attempts answer a little later, which slows guessing down further. */
+const slowDown = () => new Promise((r) => setTimeout(r, 700))
+
 app.post('/api/auth/login', async (c) => {
-  if (!authConfigured(c.env)) return c.json({ error: 'Set the AUTH_USERS and SESSION_SECRET (16+ characters) secrets on the Worker.' }, 500)
-  const body = await c.req.json<{ username?: unknown; password?: unknown }>().catch(() => ({}) as Record<string, unknown>)
-  const username = typeof body.username === 'string' ? body.username.trim().toLowerCase().slice(0, 64) : ''
-  const password = typeof body.password === 'string' ? body.password.slice(0, 256) : ''
-  const ip = c.req.header('cf-connecting-ip') ?? 'unknown'
+  if (!secretConfigured(c.env)) return c.json({ error: NO_SECRET }, 500)
+  const { username, password } = await credentials(c)
+  const ip = clientIp(c)
   const wait = await loginLocked(c.env.DB, ip, username)
-  if (wait > 0) return c.json({ error: `Too many failed attempts. Try again in ${Math.ceil(wait / 60)} min.` }, 429)
-  const user = await verifyLogin(c.env, username, password)
+  if (wait > 0) return tooMany(c, wait)
+  const user = await verifyLogin(c.env, username, password.slice(0, 256))
   if (!user) {
     await recordLoginFailure(c.env.DB, ip, username)
-    await new Promise((r) => setTimeout(r, 700))
+    await slowDown()
     return c.json({ error: 'Wrong username or password' }, 401)
   }
   await clearLoginFailures(c.env.DB, ip, user)
@@ -114,7 +166,110 @@ app.get('/api/auth/me', async (c) => {
   const user = await sessionUser(c)
   // On an old address of this deployment the app moves the visitor to the main one.
   const site = siteOrigin(c.env, c.req.url)
-  return c.json({ authenticated: !!user, user, ...(site !== new URL(c.req.url).origin && { moveTo: site }) })
+  // A new deployment without any account: the sign-in page offers to create the first one.
+  const setup = !user && !(await hasAccounts(c.env)) ? { setup: { needsToken: !isLocalRequest(c.req.url) } } : {}
+  return c.json({ authenticated: !!user, user, ...setup, ...(site !== new URL(c.req.url).origin && { moveTo: site }) })
+})
+
+/**
+ * First-run setup: the first account of a deployment, made in the app. Locally it needs nothing more; on a public
+ * address it needs the SETUP_TOKEN secret, so nobody else can claim a new deployment before its owner does.
+ */
+app.post('/api/auth/setup', async (c) => {
+  if (!secretConfigured(c.env)) return c.json({ error: NO_SECRET }, 500)
+  const { username, password, setupToken } = await credentials(c)
+  const ip = clientIp(c)
+  const wait = await loginLocked(c.env.DB, ip, 'setup')
+  if (wait > 0) return tooMany(c, wait)
+  if (await hasAccounts(c.env)) return c.json({ error: 'This site has an account already. Sign in instead.' }, 403)
+  if (!isLocalRequest(c.req.url)) {
+    const expected = c.env.SETUP_TOKEN ?? ''
+    if (expected.length < 16) return c.json({ error: 'Set the SETUP_TOKEN secret (16+ characters) on the Worker to create the first account.' }, 403)
+    if (!(await sameSecret(setupToken, expected))) {
+      await recordLoginFailure(c.env.DB, ip, 'setup')
+      await slowDown()
+      return c.json({ error: 'Wrong setup token' }, 403)
+    }
+  }
+  const problem = usernameProblem(username) ?? passwordProblem(password, username)
+  if (problem) return c.json({ error: problem }, 400)
+  if (!(await createFirstAccount(c.env, username, password))) return c.json({ error: 'This site has an account already. Sign in instead.' }, 403)
+  await clearLoginFailures(c.env.DB, ip, 'setup')
+  await issueSession(c, username)
+  return c.json({ ok: true, user: username })
+})
+
+/** A new account from an invitation link (/join#<code>): the person picks their own username and password. */
+app.post('/api/auth/join', async (c) => {
+  if (!secretConfigured(c.env)) return c.json({ error: NO_SECRET }, 500)
+  const { username, password, code } = await credentials(c)
+  const ip = clientIp(c)
+  const wait = await loginLocked(c.env.DB, ip, 'join')
+  if (wait > 0) return tooMany(c, wait)
+  const problem = usernameProblem(username) ?? passwordProblem(password, username)
+  if (problem) return c.json({ error: problem }, 400)
+  const result = code ? await joinWithInvite(c.env, code, username, password) : 'invalid'
+  if (result === 'invalid') {
+    await recordLoginFailure(c.env.DB, ip, 'join')
+    await slowDown()
+    return c.json({ error: 'This invitation is not valid. It may have expired or been used already.' }, 403)
+  }
+  if (result === 'taken') return c.json({ error: 'That username is taken. Pick another one.' }, 409)
+  await issueSession(c, username)
+  return c.json({ ok: true, user: username })
+})
+
+/** A new password for the signed-in account. Every other session and signed link of the account stops working. */
+app.post('/api/auth/password', async (c) => {
+  const user = db.ownerOf(c.env)
+  const { current, password } = await credentials(c)
+  const ip = clientIp(c)
+  const wait = await loginLocked(c.env.DB, ip, user)
+  if (wait > 0) return tooMany(c, wait)
+  if (!(await verifyLogin(c.env, user, current.slice(0, 256)))) {
+    await recordLoginFailure(c.env.DB, ip, user)
+    await slowDown()
+    return c.json({ error: 'The current password is wrong' }, 403)
+  }
+  const problem = passwordProblem(password, user) ?? (password === current ? 'Choose a password you have not used here.' : null)
+  if (problem) return c.json({ error: problem }, 400)
+  await setPassword(c.env, user, password)
+  await clearLoginFailures(c.env.DB, ip, user)
+  // This browser stays signed in with a session for the new password.
+  await issueSession(c, user)
+  return c.json({ ok: true })
+})
+
+/* -------------------------------- accounts -------------------------------- */
+
+const ADMIN_ONLY = 'Only the admin account can manage accounts.'
+const isAdmin = async (c: Ctx) => (await adminUser(c.env)) === db.ownerOf(c.env)
+
+app.get('/api/accounts', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  return c.json({ accounts: await listAccounts(c.env), invites: await listInvites(c.env) })
+})
+
+/** A one-time invitation link, valid for 7 days. The code is in the #fragment, which browsers never send to a server. */
+app.post('/api/accounts/invites', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  const { code, expiresAt } = await createInvite(c.env, db.ownerOf(c.env))
+  return c.json({ url: `${siteOrigin(c.env, c.req.url)}/join#${code}`, expiresAt })
+})
+
+app.delete('/api/accounts/invites/:id', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  return (await revokeInvite(c.env, c.req.param('id'))) ? c.json({ ok: true }) : c.json({ error: 'Not found' }, 404)
+})
+
+/** Locks or unlocks another account. Its data stays, and so does its username. */
+app.put('/api/accounts/:username/access', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  const username = c.req.param('username').toLowerCase()
+  if (username === db.ownerOf(c.env)) return c.json({ error: 'You cannot lock your own account.' }, 400)
+  const body = await c.req.json<{ disabled?: unknown }>().catch(() => ({}) as { disabled?: unknown })
+  if (typeof body.disabled !== 'boolean') return c.json({ error: 'Send { "disabled": true } or false' }, 400)
+  return (await setLocked(c.env, username, body.disabled)) ? c.json({ ok: true }) : c.json({ error: 'Not found' }, 404)
 })
 
 /* ---------------------------------- PDFs --------------------------------- */
@@ -356,9 +511,11 @@ app.post('/api/ai/match', async (c) => {
 
 /** Re-scores a tailored CV (after edits) and saves the result. */
 app.post('/api/ai/rescore', async (c) => {
-  const body = await c.req.json<{ id: string }>()
+  const body = await c.req.json<{ id: string; description?: unknown }>()
   const resume = await db.getResume(c.env, body.id)
   if (!resume?.job) return c.json({ error: 'This CV has no job attached' }, 400)
+  // A CV saved without the posting's text takes it from its board card.
+  if (!resume.job.description?.trim() && typeof body.description === 'string') resume.job.description = body.description.slice(0, 40_000)
   if (!resume.content[resume.sourceLang]) return c.json({ error: 'This CV has no content' }, 400)
   return streamEvents(c, async (emit) => {
     await emit({ type: 'done', resume: await rescore(c.env, resume, (message) => emit({ type: 'progress', message })) })

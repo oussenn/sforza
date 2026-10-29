@@ -81,7 +81,7 @@ Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
-- Several accounts, separate data
+- Accounts made in the app: invitation links, password change, locking, separate data
 
 ![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
 
@@ -103,7 +103,7 @@ worker/    API, auth, AI calls, job readers, PDF rendering, MCP server
 shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
-scripts/   account generator
+scripts/   optional account generator for the AUTH_USERS secret
 ```
 
 ## Run locally
@@ -112,11 +112,10 @@ Requires Node 24.
 
 ```bash
 npm install
-node scripts/new-logins.mjs alice        # writes logins.txt (password) and auth-users.json (hash)
 cp .env.example .env
 ```
 
-In `.env`, set `SESSION_SECRET` to a random string of 32 or more characters and replace the `AUTH_USERS=` line with the one the script printed. To make a secret:
+In `.env`, set `SESSION_SECRET` to a random string of 32 or more characters. To make one:
 
 ```bash
 node -e "console.log(crypto.randomBytes(32).toString('base64url'))"
@@ -128,9 +127,9 @@ Then:
 npm run dev
 ```
 
-Open http://localhost:5173 and sign in with the username and password from `logins.txt`. The local database is created on the first request.
+Open http://localhost:5173 and create your account. The local database is created on the first request.
 
-<p align="center"><img src=".github/readme/sign-in.png" width="420" alt="Sign-in page"></p>
+<p align="center"><img src=".github/readme/create-account.png" width="420" alt="Create your account"></p>
 
 The editor, board and job readers work without any API key. AI features need an Anthropic or OpenAI key in `.env`, or `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
 
@@ -139,8 +138,9 @@ The editor, board and job readers work without any API key. AI features need an 
 | Variable | Required | Purpose |
 |---|---|---|
 | `SESSION_SECRET` | yes | Signs sessions and download links. At least 16 characters, 32 or more recommended |
-| `AUTH_USERS` | yes | Accounts as `{ "username": "pbkdf2-sha256$..." }`, made by `scripts/new-logins.mjs` |
-| `PRIMARY_USER` | no | Account whose connector token is `MCP_TOKEN` itself. Default: first account |
+| `SETUP_TOKEN` | deploy | Asked once to create the first account on a public address, so nobody else can claim a new site. Not needed locally |
+| `AUTH_USERS` | no | Accounts kept in a secret instead: `{ "username": "pbkdf2-sha256$..." }`, made by `scripts/new-logins.mjs` |
+| `PRIMARY_USER` | no | Account whose connector token is `MCP_TOKEN` itself. Default: first account in `AUTH_USERS` |
 | `ANTHROPIC_API_KEY` | no | Claude for tailoring, letters, matching and translation |
 | `OPENAI_API_KEY` | no | OpenAI, used when no Anthropic key is set |
 | `MCP_TOKEN` | no | Enables the MCP server. At least 24 characters |
@@ -151,11 +151,13 @@ Models and the daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODE
 
 ## Accounts
 
-```bash
-node scripts/new-logins.mjs alice bob
-```
+The first account is created on the first visit and is the admin. Under Account in the menu, the admin invites people with one-time links that expire after 7 days, and each person picks their own username and password. Everyone can change their password there, which signs out their other devices. A locked account is signed out everywhere, its connector stops, and its data stays.
 
-Each username gets a random password in `logins.txt` and a hash in `auth-users.json`. Both files are gitignored. Running the script again replaces all accounts and passwords.
+<p align="center"><img src=".github/readme/account.png" width="520" alt="Account: password, people and an invitation link"></p>
+
+Passwords need 15 or more characters and are stored only as salted PBKDF2-SHA256 hashes. Invitation codes are stored as hashes too. Accounts and passwords are not reachable through the MCP connector.
+
+Accounts can also come from the `AUTH_USERS` secret: `node scripts/new-logins.mjs alice bob` makes the hashes. They sign in the same way, and a password changed in the app replaces the one in the secret.
 
 ## API
 
@@ -163,7 +165,8 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 
 | Area | Routes |
 |---|---|
-| Auth | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` |
+| Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `GET /api/auth/me` |
+| Accounts (admin) | `GET /api/accounts`, `POST /api/accounts/invites`, `DELETE /api/accounts/invites/:id`, `PUT /api/accounts/:username/access` |
 | CVs | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id`, `POST /api/resumes/:id/main`, `GET /api/pdf/:id` |
 | Knowledge base | `GET/PUT /api/library` |
 | Job search profile | `GET/PUT /api/search-profile` |
@@ -223,9 +226,11 @@ Every CV follows the same common-sense rules (adapt it to the posting, only fact
 npx wrangler login
 npx wrangler d1 create sforza-db         # put the printed id in wrangler.jsonc
 npx wrangler secret put SESSION_SECRET
-npx wrangler secret put AUTH_USERS < auth-users.json
+npx wrangler secret put SETUP_TOKEN      # any random string, asked once for the first account
 npm run deploy                           # runs the tests, builds and deploys
 ```
+
+Open the site and create your account with the setup token.
 
 Add the optional secrets the same way. The app is served on `workers.dev` unless you add a route in `wrangler.jsonc`.
 

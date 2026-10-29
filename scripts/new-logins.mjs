@@ -1,4 +1,5 @@
-// Creates accounts for the AUTH_USERS secret: a random password per username, hashed like worker/auth.ts expects.
+// Optional: accounts kept in the AUTH_USERS secret instead of being made in the app (first-run setup, invitations).
+// A random password per username, hashed like worker/auth.ts expects.
 //   node scripts/new-logins.mjs alice bob
 // Writes logins.txt (usernames + passwords, for you) and auth-users.json (hashes only, for Cloudflare); both are
 // gitignored. Then: npx wrangler secret put AUTH_USERS < auth-users.json   and delete both files once saved elsewhere.

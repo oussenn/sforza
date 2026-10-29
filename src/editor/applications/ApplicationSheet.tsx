@@ -1,9 +1,9 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { ArrowUpRight, Check, ClipboardList, Copy, Download, FileText, ImageUp, Loader2, Mail, Plus, Search, Send, ShieldCheck, Trash2, WandSparkles, X } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { ArrowUpRight, Check, ClipboardList, Copy, Download, FileText, Gauge, ImageUp, Loader2, Mail, Plus, Search, Send, ShieldCheck, Trash2, WandSparkles, X } from 'lucide-react'
 import { toast } from 'sonner'
-import type { AiCheck, Application, Lang } from '@shared/types'
+import type { AiCheck, Application, Lang, Resume } from '@shared/types'
 import { LANG_LABELS, LANGS } from '@shared/types'
-import { boardStages, pdfFileName } from '@shared/utils'
+import { boardStages, contentHash, pdfFileName } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { ScoreRing } from '@/components/ScoreRing'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import { api } from '@/lib/api'
 import { fitPng } from '@/lib/image'
 import { cn } from '@/lib/utils'
 import { downloadPdf } from '@/resume/download'
-import { Disclosure } from '../ai/ScoreCard'
+import { Disclosure, ScoreCard } from '../ai/ScoreCard'
 import { ConfirmDialog } from '../dialogs'
 import { openCv } from '../router'
 import { useEditor } from '../store'
@@ -343,7 +343,6 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
                   </SelectContent>
                 </Select>
               </Field>
-              {cv?.job?.matchScore != null && <ScoreRing value={cv.job.matchScore} size={36} stroke={3} title="Match score of this CV" />}
             </div>
             {cv ? (
               <div className="flex flex-wrap items-center gap-2">
@@ -379,6 +378,8 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
               </Button>
             )}
           </div>
+
+          {cv?.job && <MatchBlock key={cv.id} resumeId={cv.id} app={app} />}
 
           <LetterSection key={app.id} app={app} />
 
@@ -431,6 +432,80 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
         }}
       />
     </>
+  )
+}
+
+/** The CV's match score against its posting: every requirement with its evidence, the ATS keywords, per dimension. */
+function MatchBlock({ resumeId, app }: { resumeId: string; app: Application }) {
+  const aiOn = useEditor((s) => s.ai?.provider !== 'none')
+  const updatedAt = useEditor((s) => s.list.find((m) => m.id === resumeId)?.updatedAt)
+  const [resume, setResume] = useState<Resume | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    api
+      .get(resumeId)
+      .then((r) => alive && setResume(r))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [resumeId, updatedAt])
+
+  const job = resume?.job
+  if (!resume || !job) return null
+  const scored = job.score ? resume.content[job.score.lang] : undefined
+  const stale = !!job.score && !!scored && job.score.contentHash !== contentHash(scored)
+  // A CV saved without the posting's text is scored against the text kept on this card.
+  const fallback = job.description?.trim() ? undefined : app.description
+  const canScore = aiOn && !!(job.description?.trim() || app.description.trim())
+
+  const compute = async () => {
+    await useEditor.getState().flush()
+    setProgress('Scoring…')
+    try {
+      const updated = await api.rescore(resumeId, setProgress, fallback)
+      setResume(updated)
+      const editor = useEditor.getState()
+      if (editor.resume?.id === updated.id) editor.replace(updated)
+      void editor.refreshList()
+      toast.success(`Match score: ${updated.job?.score?.overall ?? '–'}%`)
+    } catch (err) {
+      toast.error((err as Error).message)
+    } finally {
+      setProgress(null)
+      void useEditor.getState().refreshAi()
+    }
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-muted-foreground text-xs">Match score</Label>
+      {job.title.trim().toLowerCase() !== app.title.trim().toLowerCase() && (
+        <p className="text-muted-foreground text-xs">This CV was tailored to “{job.title}”, so the score is for that posting.</p>
+      )}
+      {job.score && job.analysis ? (
+        <div className="rounded-xl border p-3">
+          <ScoreCard
+            score={job.score}
+            analysis={job.analysis}
+            stale={stale}
+            busy={progress !== null}
+            progress={progress}
+            onRescore={canScore ? () => void compute() : undefined}
+          />
+        </div>
+      ) : (
+        <div className="bg-muted/60 flex items-center justify-between gap-3 rounded-xl p-3">
+          <span className="text-muted-foreground text-sm">Not scored yet. The score checks each requirement of the posting against this CV.</span>
+          <Button size="sm" onClick={() => void compute()} disabled={progress !== null || !canScore}>
+            {progress ? <Loader2 className="animate-spin" /> : <Gauge />}
+            {progress ?? 'Compute score'}
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }
 
