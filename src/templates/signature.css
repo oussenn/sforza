@@ -1,0 +1,196 @@
+/* Template 1 "Signature": metrics taken from the original PDF (Open Sans 9.5pt, 15px leading). */
+
+.tpl-signature {
+  padding: var(--my) var(--mx) calc(var(--my) * 0.85);
+}
+
+.sig-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.sig-id {
+  flex: 1;
+  min-width: 0;
+  padding-bottom: 11px;
+}
+
+.sig-name {
+  font-size: 2.158em;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.sig-headline {
+  margin-top: 6px;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: color-mix(in srgb, currentColor 85%, transparent);
+}
+
+.sig-contacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  column-gap: 25px;
+  row-gap: 9.5px;
+  margin-top: 12.3px;
+}
+
+.sig-contact-wide {
+  grid-column: 1 / -1;
+}
+
+.sig-contact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.sig-contact > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sig-contact-icon {
+  width: 1em;
+  height: 1em;
+}
+
+.sig-photo {
+  width: var(--photo);
+  height: var(--photo);
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 4px 0 11px;
+  flex-shrink: 0;
+}
+
+.sig-body,
+.sig-col,
+.sig-section,
+.sig-entries,
+.sig-entry,
+.sig-entry-head,
+.sig-skills {
+  display: flex;
+  flex-direction: column;
+}
+
+.sig-body,
+.sig-col {
+  gap: var(--sgap);
+}
+
+.sig-cols {
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr);
+}
+
+.sig-col {
+  min-width: 0;
+}
+
+.sig-col-main {
+  padding-right: 13.25px;
+}
+
+.sig-col-side {
+  padding-left: 12.6px;
+}
+
+.sig-heading {
+  display: flex;
+  margin-bottom: 8.64px;
+  font-size: 1.1053em;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sig-heading-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 3.86px;
+  border-bottom: 3px solid var(--accent);
+}
+
+.sig-heading-icon {
+  width: 1.25em;
+  height: 1em;
+}
+
+.sig-entries {
+  gap: var(--igap);
+}
+
+.sig-title {
+  font-weight: 700;
+}
+
+.sig-meta {
+  margin-top: 2.27px;
+  padding-bottom: 2px;
+}
+
+.sig-entry:last-child > .sig-entry-head:last-child .sig-meta {
+  padding-bottom: 0;
+}
+
+.sig-entry-head.has-meta + .rt {
+  margin-top: -1px;
+}
+
+.sig-skills {
+  gap: calc(var(--igap) + 3px);
+}
+
+.sig-skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: calc(var(--igap) + 3px);
+}
+
+.sig-skill-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sig-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px;
+  margin-top: 2.83px;
+}
+
+.sig-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5.5px 10px;
+  border: 1px solid var(--text);
+  border-radius: 4px;
+}
+
+/* Languages: full-size pills, compact only when full size would push the CV onto another page
+   (ResumeDocument sets data-compact). */
+.sig-chips-sm[data-compact] {
+  gap: 4px 5px;
+}
+
+.sig-chips-sm[data-compact] .sig-chip {
+  padding: 2px 5px;
+  font-size: 0.84em;
+}
+
+.sig-chip .link-icon {
+  margin: 0 2.9px 0 2px;
+}

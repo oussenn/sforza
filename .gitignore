@@ -1,0 +1,18 @@
+node_modules
+dist
+.wrangler
+.dev.vars
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+*.tsbuildinfo
+bench/results/
+
+# Claude Desktop connector URL (contains the MCP token)
+claude-connector.txt
+
+# Generated accounts (scripts/new-logins.mjs): passwords and hashes
+logins.txt
+auth-users.json

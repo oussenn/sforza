@@ -1,0 +1,9 @@
+// Local-only benchmark worker (never deployed). Secrets come from bench/.dev.vars.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "sforza-bench",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "ai": { "binding": "AI", "remote": true },
+}

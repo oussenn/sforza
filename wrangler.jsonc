@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sforza",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    // Static SPA; the Worker only runs for /api/*, the MCP endpoint and the OAuth discovery addresses
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/.well-known/oauth-*", "/.well-known/openid-configuration*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sforza-db",
+      // Replace with the id printed by `npx wrangler d1 create sforza-db` before deploying
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  // AI provider: Claude if ANTHROPIC_API_KEY, else OpenAI if OPENAI_API_KEY, else free Workers AI
+  "ai": { "binding": "AI" },
+  // Headless Chrome that renders the downloadable PDF (real text, embedded fonts, clickable links)
+  "browser": { "binding": "BROWSER" },
+  // Deployment id: invalidates cached PDFs whenever new template code ships
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "vars": {
+    "WORKERS_AI_MODEL": "@cf/openai/gpt-oss-120b",
+    "OPENAI_MODEL": "gpt-5.6-luna",
+    "AI_MODEL": "claude-opus-5",
+    // Spending cap for paid models (US$, UTC day / calendar month); AI buttons stop working once reached
+    "AI_DAILY_BUDGET_USD": "0.25",
+    "AI_MONTHLY_BUDGET_USD": "1.00"
+  },
+  // Served on <name>.<account>.workers.dev. For a custom domain add:
+  // "routes": [{ "pattern": "cv.example.com", "custom_domain": true }],
+  "workers_dev": true,
+  // Keep variables added in the dashboard across deploys (secrets are always kept)
+  "keep_vars": true,
+  "preview_urls": false,
+  "observability": { "enabled": true }
+}

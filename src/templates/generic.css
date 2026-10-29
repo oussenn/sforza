@@ -1,0 +1,195 @@
+/* Shared base for the configurable templates (see generic.tsx). */
+
+.g-body,
+.g-section,
+.g-entries,
+.g-entry,
+.g-head,
+.g-headmain,
+.g-rated-name {
+  display: flex;
+  flex-direction: column;
+}
+
+.g-body {
+  gap: var(--sgap);
+}
+
+.g-entries {
+  gap: var(--igap);
+}
+
+.g-title {
+  font-weight: 700;
+}
+
+.g-meta {
+  color: color-mix(in srgb, currentColor 78%, transparent);
+}
+
+.g-desc {
+  margin-top: 2px;
+}
+
+.g-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 14px;
+}
+
+.g-row > :first-child {
+  min-width: 0;
+}
+
+.g-date,
+.g-loc {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.g-railhead {
+  display: grid;
+  grid-template-columns: var(--rail, 24%) minmax(0, 1fr);
+  column-gap: 14px;
+}
+
+.g-rail .g-date,
+.g-rail .g-loc {
+  text-align: left;
+  white-space: normal;
+}
+
+.g-railbody {
+  padding-left: calc(var(--rail, 24%) + 14px);
+}
+
+/* A section without dates or places (projects, usually) drops the empty date column and starts at the left edge. */
+.g-railhead.g-norail {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.g-railbody.g-norail {
+  padding-left: 0;
+}
+
+.g-skills {
+  display: grid;
+  gap: 6px 20px;
+}
+
+.g-skills-grid2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.g-skills-grid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.g-skills-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.g-skill-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.g-rated {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 26px;
+}
+
+.g-rated-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.g-rated-name {
+  min-width: 0;
+}
+
+.g-rated .g-skill-name {
+  font-weight: 400;
+}
+
+.g-rated .g-skill-details {
+  font-size: 0.9em;
+  color: color-mix(in srgb, currentColor 72%, transparent);
+}
+
+.g-langs {
+  display: grid;
+  gap: 4px 26px;
+}
+
+.g-langs-grid,
+.g-langs-dots {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.g-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.g-lang-level {
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.g-certs {
+  display: grid;
+  gap: 3px 22px;
+}
+
+.g-certs-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.g-cert {
+  display: flex;
+  flex-direction: column;
+}
+
+.g-cert-meta {
+  font-size: 0.9em;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+.g-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+/* Centred header (style.headerAlign): name, headline and contact lines centred in every template with a top header. */
+.resume-sheet[data-header='center'] header[data-block] {
+  justify-content: center;
+  text-align: center;
+}
+
+.resume-sheet[data-header='center'] header[data-block] :is(h1, .g-contacts) {
+  justify-content: center;
+  justify-items: center;
+}
+
+.g-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.g-contact .fa {
+  width: 1em;
+  height: 0.95em;
+}

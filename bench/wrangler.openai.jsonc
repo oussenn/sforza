@@ -1,0 +1,8 @@
+// Same benchmark worker without the Workers AI binding: starts instantly, for OpenAI-only runs.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "sforza-bench-openai",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+}

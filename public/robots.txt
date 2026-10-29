@@ -1,0 +1,8 @@
+# Private CV: nothing here should be indexed.
+# Search engines may fetch pages only to read the noindex directive (X-Robots-Tag / meta robots).
+User-agent: Googlebot
+User-agent: Bingbot
+Allow: /
+
+User-agent: *
+Disallow: /
