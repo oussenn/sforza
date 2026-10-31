@@ -13,6 +13,7 @@ import {
   isStage,
   jobSource,
   letterLayoutOf,
+  letterPersonal,
   letterStyleOf,
   newApplication,
   passwordProblem,
@@ -400,6 +401,11 @@ app.post('/api/resumes/:id/main', async (c) => {
   return c.json({ ok: true })
 })
 
+/* --------------------------------- changes ------------------------------- */
+
+/** Stamps of the account's CVs, board and settings; open pages poll them to pick up changes made elsewhere. */
+app.get('/api/changes', async (c) => c.json(await db.changeStamps(c.env)))
+
 /* --------------------------------- library ------------------------------- */
 
 app.get('/api/library', async (c) => c.json(await db.getLibrary(c.env)))
@@ -687,8 +693,8 @@ app.put('/api/applications/:id', async (c) => {
 })
 
 app.delete('/api/applications/:id', async (c) => {
-  await db.deleteApplication(c.env, c.req.param('id'))
-  return c.json({ ok: true })
+  const deletedCv = await db.deleteApplication(c.env, c.req.param('id'))
+  return c.json({ ok: true, deletedCv })
 })
 
 const metaContent = (html: string, property: string) =>
@@ -825,7 +831,8 @@ app.get('/api/print-letter', async (c) => {
   const cv = await letterCv(env, application)
   const content = cv.content[lang] ?? cv.content[cv.sourceLang]!
   const style = letterStyleOf(cv.style, application.letterStyle, letterLayoutOf(letter, lang))
-  return c.json({ letter, lang, personal: content.personal, style, title: application.title })
+  const { letterHideContacts } = await db.getSearchProfile(env)
+  return c.json({ letter, lang, personal: letterPersonal(content.personal, letterHideContacts), style, title: application.title })
 })
 
 /** Signed download links handed to an agent: /api/share/cv/<id>?lang=de&t=… and /api/share/letter/<id>?lang=de&t=… */

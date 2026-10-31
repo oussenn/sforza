@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { FIELDS, type ItemType } from './fields'
 import { RichTextarea } from './RichTextarea'
 
-export function Rating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function Rating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex h-8 items-center gap-1">
       {[1, 2, 3, 4, 5].map((n) => (

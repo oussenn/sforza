@@ -1,3 +1,4 @@
+import puppeteer, { type BrowserWorker } from '@cloudflare/puppeteer'
 import type { FormAnswer } from '@shared/types'
 import { AiError } from './ai'
 import { fetchPublic, guardPage, isPublicUrl, isReadableFrame, readText } from './net'
@@ -9,7 +10,7 @@ import { fetchPublic, guardPage, isPublicUrl, isReadableFrame, readText } from '
 
 type Json = Record<string, unknown>
 
-export interface FormQuestion {
+interface FormQuestion {
   question: string
   required: boolean
   /** text, long text, file, single choice, multiple choice */
@@ -283,8 +284,7 @@ const clickApply = (yes: string, no: string) => `(() => {
 })()`
 
 async function renderedForm(browserBinding: Env['BROWSER'], start: URL): Promise<ApplicationForm | null> {
-  const { default: puppeteer } = await import('@cloudflare/puppeteer')
-  const browser = await puppeteer.launch(browserBinding as unknown as Parameters<typeof puppeteer.launch>[0])
+  const browser = await puppeteer.launch(browserBinding as unknown as BrowserWorker)
   try {
     const page = await browser.newPage()
     await guardPage(page)

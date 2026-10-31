@@ -58,8 +58,8 @@ export default function Login({ mode, onSuccess }: { mode: LoginMode; onSuccess:
   }
 
   return (
-    <div className="grid min-h-dvh place-items-center bg-[var(--preview-canvas)] px-4">
-      <form onSubmit={submit} className="bg-card ring-hairline w-full max-w-sm rounded-2xl p-7 shadow-sm ring-1">
+    <div className="grid min-h-dvh place-items-center px-4">
+      <form onSubmit={submit} className="bg-card ring-hairline w-full max-w-sm rounded-2xl p-7 shadow-2xl ring-1">
         <div className="mb-6 flex items-center gap-3">
           <img src="/logo.png" alt="" className="size-11" />
           <div>

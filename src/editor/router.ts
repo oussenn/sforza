@@ -2,13 +2,15 @@ import { useSyncExternalStore } from 'react'
 
 /**
  * Editor URLs, so the browser's back button moves between editor pages instead of leaving the editor:
- *   /edit                           my CVs
- *   /edit/cv/:id                    a CV (content), /customize, /ai
- *   /edit/applications[/:appId]     job applications board (with one application open)
- *   /edit/letters[/:appId]          motivation letters (of one application)
- *   /edit/job-search                job-search profile (/edit/profile, the old address, lands here)
- *   /edit/knowledge                 knowledge base (library)
- *   /edit/mcp                       MCP prompts and connector help (/edit/claude, the old address, lands here)
+ *   /                          → /applications
+ *   /applications[/:appId]     job applications board (with one application open)
+ *   /letters[/:appId]          motivation letters (of one application)
+ *   /cvs                       my CVs
+ *   /cv/:id                    a CV (content), /customize, /ai
+ *   /job-search                job-search profile
+ *   /knowledge                 knowledge base (library)
+ *   /connector                 MCP prompts and connector help (/mcp itself is the connector endpoint)
+ * Old /edit/... addresses (links in earlier connector answers and card notes) open the same page without /edit.
  */
 
 export type CvTab = 'content' | 'customize' | 'ai'
@@ -16,7 +18,7 @@ export type CvTab = 'content' | 'customize' | 'ai'
 /** The pages about the person rather than one CV: each is its own panel in the top bar. */
 export type PanelPage = 'jobsearch' | 'knowledge' | 'mcp'
 
-export const PANEL_PATHS: Record<PanelPage, string> = { jobsearch: 'job-search', knowledge: 'knowledge', mcp: 'mcp' }
+const PANEL_PATHS: Record<PanelPage, string> = { jobsearch: 'job-search', knowledge: 'knowledge', mcp: 'connector' }
 
 export type Route =
   | { page: 'cvs' }
@@ -27,7 +29,7 @@ export type Route =
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname
-    .replace(/^\/edit\/?/, '')
+    .replace(/^\/edit(?=\/|$)/, '')
     .split('/')
     .filter(Boolean)
     .map((p) => {
@@ -41,39 +43,37 @@ export function parseRoute(pathname: string): Route {
     const tab: CvTab = parts[2] === 'customize' || parts[2] === 'ai' ? parts[2] : 'content'
     return { page: 'cv', id: parts[1], tab }
   }
-  if (parts[0] === 'applications') return { page: 'applications', appId: parts[1] ?? null }
+  if (parts[0] === 'cvs') return { page: 'cvs' }
   if (parts[0] === 'letters') return { page: 'letters', appId: parts[1] ?? null }
-  if (parts[0] === 'profile') return { page: 'jobsearch' }
-  if (parts[0] === 'claude') return { page: 'mcp' }
   const panel = (Object.keys(PANEL_PATHS) as PanelPage[]).find((p) => PANEL_PATHS[p] === parts[0])
   if (panel) return { page: panel }
-  return { page: 'cvs' }
+  // The board is the home page; any unknown address lands there too.
+  return { page: 'applications', appId: parts[0] === 'applications' ? (parts[1] ?? null) : null }
 }
 
 export function routePath(route: Route): string {
   switch (route.page) {
     case 'cvs':
-      return '/edit'
+      return '/cvs'
     case 'jobsearch':
     case 'knowledge':
     case 'mcp':
-      return `/edit/${PANEL_PATHS[route.page]}`
+      return `/${PANEL_PATHS[route.page]}`
     case 'applications':
-      return route.appId ? `/edit/applications/${encodeURIComponent(route.appId)}` : '/edit/applications'
     case 'letters':
-      return route.appId ? `/edit/letters/${encodeURIComponent(route.appId)}` : '/edit/letters'
+      return route.appId ? `/${route.page}/${encodeURIComponent(route.appId)}` : `/${route.page}`
     case 'cv':
-      return `/edit/cv/${encodeURIComponent(route.id)}${route.tab === 'content' ? '' : `/${route.tab}`}`
+      return `/cv/${encodeURIComponent(route.id)}${route.tab === 'content' ? '' : `/${route.tab}`}`
   }
 }
 
 const listeners = new Set<() => void>()
 let currentPath = window.location.pathname
 let current: Route = parseRoute(currentPath)
-// An old address (/edit/profile, /edit/claude) shows the new one.
-if (/^\/edit\/(profile|claude)\/?$/.test(currentPath)) {
+// /, an old /edit/... address or an unknown one shows the page's own address (/join keeps its own: EditorRoot reads it).
+if (currentPath !== '/join' && currentPath !== routePath(current)) {
   currentPath = routePath(current)
-  window.history.replaceState(null, '', currentPath)
+  window.history.replaceState(window.history.state, '', currentPath + window.location.search + window.location.hash)
 }
 
 function sync() {
@@ -92,7 +92,7 @@ export function navigate(to: Route, { replace = false }: { replace?: boolean } =
   sync()
 }
 
-export function getRoute(): Route {
+function getRoute(): Route {
   return current
 }
 

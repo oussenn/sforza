@@ -3,7 +3,7 @@ import { Copy, Download, Eye, Loader2, Mail, PenLine, RefreshCw, Trash2, Triangl
 import { toast } from 'sonner'
 import type { Application, CoverLetter, Lang, Resume } from '@shared/types'
 import { LANG_LABELS, LANGS, LETTER_LAYOUT_LABELS, LETTER_LAYOUTS } from '@shared/types'
-import { ENCLOSURES, LETTER_FRAME, letterLayoutOf, letterStyleOf } from '@shared/utils'
+import { ENCLOSURES, LETTER_FRAME, letterLayoutOf, letterPersonal, letterStyleOf } from '@shared/utils'
 import { InfoTip } from '@/components/InfoTip'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -177,7 +177,7 @@ export default function LetterSection({
           </div>
           <div className="grid gap-1.5">
             <Label className="text-muted-foreground text-xs">Layout</Label>
-            <div className="bg-background ring-hairline flex w-fit items-center rounded-lg p-0.5 ring-1">
+            <div className="bg-background ring-hairline grid grid-cols-5 items-center rounded-lg p-0.5 ring-1 sm:flex sm:w-fit">
               {LETTER_LAYOUTS.map((l) => (
                 <button
                   key={l}
@@ -185,7 +185,7 @@ export default function LetterSection({
                   onClick={() => edit({ layout: l })}
                   aria-pressed={letterLayoutOf(letter, lang) === l}
                   className={cn(
-                    'text-muted-foreground hover:text-foreground h-7 rounded-md px-3 text-xs font-medium',
+                    'text-muted-foreground hover:text-foreground min-h-7 rounded-md px-1 text-xs leading-tight font-medium sm:h-7 sm:px-3',
                     letterLayoutOf(letter, lang) === l && 'bg-muted text-foreground',
                   )}
                 >
@@ -326,6 +326,7 @@ export function LetterSheet({ app, letter, lang }: { app: Application; letter: C
   })
 
   const content = cv ? (cv.content[lang] ?? cv.content[cv.sourceLang]) : undefined
+  const hidden = useEditor((s) => s.searchProfile?.letterHideContacts)
   const scale = width ? width / SHEET_WIDTH : 0
 
   return (
@@ -333,7 +334,7 @@ export function LetterSheet({ app, letter, lang }: { app: Application; letter: C
       {content && cv && scale > 0 && (
         <div style={{ height: Math.max(height, (SHEET_WIDTH * 297) / 210) * scale }} className="overflow-hidden rounded-sm bg-white shadow-md">
           <div ref={sheet} style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: SHEET_WIDTH }}>
-            <LetterDocument letter={letter} personal={content.personal} style={letterStyleOf(cv.style, app.letterStyle, letterLayoutOf(letter, lang))} lang={lang} />
+            <LetterDocument letter={letter} personal={letterPersonal(content.personal, hidden)} style={letterStyleOf(cv.style, app.letterStyle, letterLayoutOf(letter, lang))} lang={lang} />
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ import Serif from './Serif'
 import Leaves from './Leaves'
 import Executive from './Executive'
 import Latex from './Latex'
+import Scholar from './Scholar'
 import './base.css'
 import './signature.css'
 import './generic.css'
@@ -23,4 +24,5 @@ export const TEMPLATE_COMPONENTS: Record<TemplateId, ComponentType<TemplateProps
   leaves: Leaves,
   executive: Executive,
   latex: Latex,
+  scholar: Scholar,
 }

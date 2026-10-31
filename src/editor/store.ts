@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { produce } from 'immer'
 import { toast } from 'sonner'
-import type { AiStatus, Lang, Library, Resume, ResumeContent, ResumeMeta, SearchProfile, Section } from '@shared/types'
+import type { AiStatus, Lang, Library, Resume, ResumeContent, ResumeMeta, SearchProfile } from '@shared/types'
 import { LANGS } from '@shared/types'
 import { toMeta } from '@shared/utils'
 import { api } from '@/lib/api'
@@ -33,11 +33,17 @@ interface EditorState {
   replace: (resume: Resume) => void
   duplicate: (id: string, name?: string) => Promise<Resume>
   remove: (id: string) => Promise<void>
+  /** Drops a CV deleted elsewhere (e.g. with its application card) from the list and the editor. */
+  forget: (id: string) => void
   setMain: (id: string) => Promise<void>
   updateLibrary: (fn: (draft: Library) => void) => void
   updateSearchProfile: (fn: (draft: SearchProfile) => void) => void
   /** Reloads the AI provider status and what was spent. */
   refreshAi: () => Promise<void>
+  /** After a change made elsewhere (sync.ts): the CV list, and the open CV unless it has unsaved edits. */
+  reloadResumes: () => Promise<void>
+  /** After a change made elsewhere: knowledge base and search profile, unless edited here and not saved yet. */
+  reloadSettings: () => Promise<void>
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined
@@ -47,9 +53,14 @@ let version = 0
 let savedVersion = 0
 let inflight: Promise<void> | null = null
 let opening = 0
+// Knowledge base and search profile edits are unsaved while these differ.
+let libraryEdit = 0
+let librarySaved = 0
+let profileEdit = 0
+let profileSaved = 0
 
 /** A job to prefill in "Tailor to a job", e.g. from an application card. */
-export interface TailorDraft {
+interface TailorDraft {
   applicationId: string | null
   title: string
   company: string
@@ -184,6 +195,10 @@ export const useEditor = create<EditorState>((set, get) => {
 
     remove: async (id) => {
       await api.remove(id)
+      get().forget(id)
+    },
+
+    forget: (id) => {
       if (get().resume?.id === id) {
         // Drop unsaved edits of the deleted CV instead of saving them into a 404.
         clearTimeout(saveTimer)
@@ -210,21 +225,52 @@ export const useEditor = create<EditorState>((set, get) => {
       const { library } = get()
       if (!library) return
       const next = produce(library, fn)
+      const edit = ++libraryEdit
       set({ library: next })
       clearTimeout(libraryTimer)
       libraryTimer = setTimeout(() => {
-        api.saveLibrary(get().library!).catch((err: Error) => toast.error(`Could not save library: ${err.message}`))
+        api
+          .saveLibrary(get().library!)
+          .then(() => void (librarySaved = edit))
+          .catch((err: Error) => toast.error(`Could not save library: ${err.message}`))
       }, 700)
     },
 
     updateSearchProfile: (fn) => {
       const { searchProfile } = get()
       if (!searchProfile) return
+      const edit = ++profileEdit
       set({ searchProfile: produce(searchProfile, fn) })
       clearTimeout(profileTimer)
       profileTimer = setTimeout(() => {
-        api.saveSearchProfile(get().searchProfile!).catch((err: Error) => toast.error(`Could not save the search profile: ${err.message}`))
+        api
+          .saveSearchProfile(get().searchProfile!)
+          .then(() => void (profileSaved = edit))
+          .catch((err: Error) => toast.error(`Could not save the search profile: ${err.message}`))
       }, 700)
+    },
+
+    reloadResumes: async () => {
+      const before = get().list
+      const list = await api.list()
+      set({ list })
+      const open = get().resume
+      const stamp = (l: ResumeMeta[]) => l.find((m) => m.id === open?.id)?.updatedAt
+      const dirty = () => version !== savedVersion || !!inflight
+      // Deleted elsewhere: the editor keeps it until the user leaves.
+      if (!open || !stamp(list) || stamp(list) === stamp(before) || dirty()) return
+      const resume = await api.get(open.id)
+      // Edited or switched while it loaded: keep what is on screen.
+      if (get().resume?.id !== open.id || dirty()) return
+      set((s) => ({ resume, lang: resume.content[s.lang] ? s.lang : resume.sourceLang }))
+    },
+
+    reloadSettings: async () => {
+      const [library, searchProfile] = await Promise.all([api.library(), api.searchProfile().catch(() => null)])
+      set((s) => ({
+        library: libraryEdit === librarySaved ? library : s.library,
+        searchProfile: searchProfile && profileEdit === profileSaved ? searchProfile : s.searchProfile,
+      }))
     },
   }
 })
@@ -248,10 +294,6 @@ export function moveInArray<T extends { id: string }>(items: T[], id: string, de
   if (from < 0 || to < 0 || to >= ids.length) return ids
   ids.splice(to, 0, ids.splice(from, 1)[0])
   return ids
-}
-
-export function findSection(content: ResumeContent, id: string): Section | undefined {
-  return content.sections.find((s) => s.id === id)
 }
 
 if (typeof window !== 'undefined') {

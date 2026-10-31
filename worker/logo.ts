@@ -36,7 +36,7 @@ interface Hints {
 }
 
 /** Logo images and company websites mentioned by a job page. */
-export function logoHints(html: string, pageUrl: string): Hints {
+function logoHints(html: string, pageUrl: string): Hints {
   const images: string[] = []
   const sites: string[] = []
   const add = (list: string[], raw: string | undefined) => {

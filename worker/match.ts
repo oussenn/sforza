@@ -44,7 +44,7 @@ const stripMarkup = (s: string) =>
     .replace(/[‐‑–—]/g, '-')
 
 /** Lower-case words only, so quotes survive differences in punctuation, markup and spacing. */
-export function normalizeForMatch(s: string): string {
+function normalizeForMatch(s: string): string {
   return stripMarkup(s)
     .toLowerCase()
     .normalize('NFKD')
@@ -94,7 +94,7 @@ const MONTHS: Record<string, number> = {
 }
 
 /** "2025/10", "10/2025", "Oct 2025", "2024" → months since year 0. */
-export function parseMonth(value: string, fallbackMonth: number): number | null {
+function parseMonth(value: string, fallbackMonth: number): number | null {
   const s = normalizeForMatch(value)
   let m = s.match(/(\d{4}) (\d{1,2})\b/)
   if (m) return Number(m[1]) * 12 + Number(m[2]) - 1
@@ -155,7 +155,7 @@ function coveredMonths(roles: Role[]): number {
 const years = (months: number) => Math.round((months / 12) * 10) / 10
 
 /** Role durations computed in code, so the model never has to do date arithmetic. */
-export function experienceDurations(content: ResumeContent, today = new Date()): string {
+function experienceDurations(content: ResumeContent, today = new Date()): string {
   const roles = rolesOf(content, today)
   if (!roles.length) return 'No dated experience on the CV.'
   const lines = roles.map((r) => `- ${r.label}: ${r.months} months (${r.dates})${r.internship ? ' [internship]' : ''}`)
@@ -236,7 +236,7 @@ export function cvText(content: ResumeContent): string {
 /* 1. Job analysis                                                     */
 /* ------------------------------------------------------------------ */
 
-export const ANALYSIS_SYSTEM = `You extract the hiring requirements from one job posting. The app scores CVs against your list, so it must be complete, precise and free of duplicates.
+const ANALYSIS_SYSTEM = `You extract the hiring requirements from one job posting. The app scores CVs against your list, so it must be complete, precise and free of duplicates.
 
 Return:
 - title, company, location: as the posting states them ("" if absent). workMode, seniority, yearsRequired (the minimum years of experience stated, else null), language (ISO 639-1 code of the posting), summary (one English sentence about the role).
@@ -396,7 +396,7 @@ ${posting.text.slice(0, 40_000)}
 /* 2. Judging a CV                                                     */
 /* ------------------------------------------------------------------ */
 
-export const JUDGE_SYSTEM = `You are a strict recruiter screening one CV against a list of job requirements. For each requirement, decide what the CV proves. Only the CV counts, never what the candidate might also know.
+const JUDGE_SYSTEM = `You are a strict recruiter screening one CV against a list of job requirements. For each requirement, decide what the CV proves. Only the CV counts, never what the candidate might also know.
 
 Verdicts:
 - met: the CV clearly shows it: the same thing, a well-known equivalent (PostgreSQL for SQL) or a higher level.
@@ -440,13 +440,13 @@ const JUDGE_SCHEMA = {
 
 const VERDICTS = new Set<Verdict>(['met', 'partial', 'missing', 'unknown'])
 
-export interface JudgeResult {
+interface JudgeResult {
   results: RequirementResult[]
   /** met/partial verdicts whose evidence is not in the CV (downgraded) */
   unverified: string[]
 }
 
-export async function judgeCv(
+async function judgeCv(
   env: Env,
   content: ResumeContent,
   analysis: JobAnalysis,

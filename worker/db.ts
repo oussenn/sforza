@@ -1,5 +1,5 @@
 import { blankMaster } from '@shared/seed'
-import type { Application, BoardColumn, Library, Resume, SearchProfile } from '@shared/types'
+import type { Application, BoardColumn, ChangeStamps, Library, Resume, SearchProfile } from '@shared/types'
 import { applicationWithoutEmDashes, cleanBoardColumns, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, uid } from '@shared/utils'
 import { primaryUser } from './auth'
 
@@ -191,6 +191,27 @@ export async function setMain(s: Store, id: string): Promise<void> {
     .run()
 }
 
+/* --------------------------------- changes -------------------------------- */
+
+const SETTING_NAMES = ['library', 'search_profile', 'board_columns']
+
+/**
+ * One short stamp per area of the account (CVs, board, settings): its row count and latest change. Open pages
+ * compare them to notice changes made elsewhere (the connector, another tab) and reload only that area.
+ */
+export async function changeStamps(s: Store): Promise<ChangeStamps> {
+  const owner = ownerOf(s)
+  const keys = SETTING_NAMES.map((name) => settingKey(s, name))
+  const count = 'SELECT COUNT(*) AS n, MAX(updated_at) AS at FROM'
+  const [resumes, applications, settings] = await s.DB.batch<{ n: number; at: string | null }>([
+    s.DB.prepare(`${count} resumes WHERE owner = ?`).bind(owner),
+    s.DB.prepare(`${count} applications WHERE owner = ?`).bind(owner),
+    s.DB.prepare(`${count} settings WHERE key IN (${keys.map(() => '?').join(', ')})`).bind(...keys),
+  ])
+  const stamp = (r: D1Result<{ n: number; at: string | null }>) => `${r.results[0]?.n ?? 0}:${r.results[0]?.at ?? ''}`
+  return { resumes: stamp(resumes), applications: stamp(applications), settings: stamp(settings) }
+}
+
 async function getSetting(s: Store, name: string): Promise<string | null> {
   const row = await s.DB.prepare('SELECT value FROM settings WHERE key = ?').bind(settingKey(s, name)).first<{ value: string }>()
   return row?.value ?? null
@@ -280,6 +301,16 @@ export async function putApplication(s: Store, app: Application): Promise<void> 
     .run()
 }
 
-export async function deleteApplication(s: Store, id: string): Promise<void> {
+/**
+ * Deletes a card (its letters live on it) and its tailored CV, unless that CV is the master or another card uses it.
+ * Returns the id of the deleted CV, if any.
+ */
+export async function deleteApplication(s: Store, id: string, { keepCv = false } = {}): Promise<string | null> {
+  const app = await getApplication(s, id)
   await s.DB.prepare('DELETE FROM applications WHERE id = ? AND owner = ?').bind(id, ownerOf(s)).run()
+  if (!app?.resumeId || keepCv) return null
+  const resume = await getResume(s, app.resumeId)
+  if (!resume || resume.kind === 'master' || (await listApplications(s)).some((a) => a.resumeId === resume.id)) return null
+  await deleteResume(s, resume.id)
+  return resume.id
 }

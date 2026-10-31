@@ -98,7 +98,7 @@ export default function ContentPanel() {
             <DialogTitle>Add content</DialogTitle>
             <DialogDescription>Pick a section type. It is added to every language of this CV.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {ADDABLE.map((type) => {
               const Icon = SECTION_ICON[type]
               const exists = content.sections.some((s) => s.type === type)

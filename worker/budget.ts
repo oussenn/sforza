@@ -18,7 +18,7 @@ const PRICES: Record<string, [number, number]> = {
 /** Models missing from the table are counted at this deliberately high rate, so the cap errs on the safe side. */
 const UNKNOWN_PRICE: [number, number] = [5, 25]
 
-export function costOf(usage: Usage): number {
+function costOf(usage: Usage): number {
   if (usage.provider === 'workers-ai') return 0
   const [input, output] = PRICES[usage.model.replace(/-\d{4}-\d{2}-\d{2}$/, '')] ?? UNKNOWN_PRICE
   return (usage.input * input + usage.output * output) / 1_000_000

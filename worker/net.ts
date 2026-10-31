@@ -98,7 +98,7 @@ async function lookup(name: string, type: 'A' | 'AAAA'): Promise<string[]> {
  * Throws unless the name resolves, and only to public addresses. Asked over DNS over HTTPS, so a name that only
  * an office or home network knows counts as unknown; answers are kept for five minutes per isolate.
  */
-export async function assertPublicHost(host: string): Promise<void> {
+async function assertPublicHost(host: string): Promise<void> {
   const name = host.toLowerCase().replace(/\.$/, '')
   let verdict = verdicts.get(name)
   if (!verdict || verdict.until < Date.now()) {

@@ -134,7 +134,7 @@ export function RichTextarea({
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={onKeyDown}
-        className="placeholder:text-muted-foreground block w-full resize-none bg-transparent px-2.5 py-2 text-sm leading-relaxed outline-none"
+        className="placeholder:text-muted-foreground block w-full resize-none bg-transparent px-2.5 py-2 text-base leading-relaxed outline-none md:text-sm"
       />
     </div>
   )

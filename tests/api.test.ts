@@ -170,6 +170,30 @@ describe('accounts never see each other\'s data', () => {
   })
 })
 
+describe('deleting a card', () => {
+  const newCv = async () => ((await (await call('/api/resumes', { method: 'POST', as: 'alice', json: { name: 'Tailored' } })).json()) as { id: string }).id
+  const newCard = async (resumeId: string) =>
+    ((await (await call('/api/applications', { method: 'POST', as: 'alice', json: { title: 'Closed posting', resumeId } })).json()) as { id: string }).id
+  const cvIds = async () => ((await (await call('/api/resumes', { as: 'alice' })).json()) as { id: string }[]).map((r) => r.id)
+
+  it('deletes its tailored CV, but keeps one another card still uses and never the master', async () => {
+    const own = await newCv()
+    const res = await call(`/api/applications/${await newCard(own)}`, { method: 'DELETE', as: 'alice' })
+    expect(((await res.json()) as { deletedCv: string | null }).deletedCv).toBe(own)
+    expect(await cvIds()).not.toContain(own)
+
+    const shared = await newCv()
+    const first = await newCard(shared)
+    await newCard(shared)
+    await call(`/api/applications/${first}`, { method: 'DELETE', as: 'alice' })
+    expect(await cvIds()).toContain(shared)
+
+    const master = (await cvIds())[0]
+    await call(`/api/applications/${await newCard(master)}`, { method: 'DELETE', as: 'alice' })
+    expect(await cvIds()).toContain(master)
+  })
+})
+
 describe('MCP connector', () => {
   const rpc = (path: string, body: unknown, headers: Record<string, string> = {}) =>
     app.request(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) }, env, ctx)
@@ -201,7 +225,7 @@ describe('MCP connector', () => {
     )
     expect(res.status).toBe(200)
     const text = ((await res.json()) as { result: { content: { text: string }[] } }).result.content[0].text
-    expect(JSON.parse(text).editor).toBe('https://cv.example.com/edit')
+    expect(JSON.parse(text).editor).toBe('https://cv.example.com/')
     expect(text).not.toContain('old.example.com')
   })
 
@@ -217,6 +241,18 @@ describe('MCP connector', () => {
     expect(result.isError).toBe(true)
     return result.content[0].text
   }
+
+  it('moves the change stamps of the area the connector changed, for that account only', async () => {
+    const stamps = async (as: string) => (await call('/api/changes', { as })).json() as Promise<Record<string, string>>
+    const [alice, bob] = [await stamps('alice'), await stamps('bob')]
+    await asAlice('save_search_profile', { profile: { notes: 'stamp check' } })
+    const after = await stamps('alice')
+    expect(after.settings).not.toBe(alice.settings)
+    expect(after.resumes).toBe(alice.resumes)
+    expect(after.applications).toBe(alice.applications)
+    expect(await stamps('bob')).toEqual(bob)
+    expect((await call('/api/changes')).status).toBe(401)
+  })
 
   it('gives every account the common CV rules and only its own CV rules', async () => {
     const own = 'Always list my certifications before education.'

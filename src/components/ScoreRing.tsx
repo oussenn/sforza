@@ -8,7 +8,7 @@ export const SCORE_TIERS = [
   { min: 0, color: '#dc2626', label: '< 30' },
 ] as const
 
-export function scoreColor(value: number | null | undefined): string {
+function scoreColor(value: number | null | undefined): string {
   if (value == null) return '#a3a3a3'
   return SCORE_TIERS.find((t) => value >= t.min)?.color ?? '#dc2626'
 }

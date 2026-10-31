@@ -26,7 +26,7 @@ Five designs. Fonts, colours and spacing follow the CV until you change them.
 
 ## CV templates
 
-Eight templates on a live A4 page.
+Nine templates on a live A4 page.
 
 ![CV templates](.github/readme/templates.gif)
 
@@ -70,7 +70,7 @@ Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 
 ## Features
 
-- CV editor, 8 templates, A4 preview, PDF export
+- CV editor, 9 templates, A4 preview, PDF export
 - English, French and German versions of each CV
 - Knowledge base of projects, skills and facts
 - Job reader for LinkedIn, Greenhouse, Lever, Ashby, SmartRecruiters, Workday and most career pages
@@ -81,6 +81,7 @@ Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
+- Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
 
 ![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
@@ -179,7 +180,7 @@ AI routes stream progress as NDJSON.
 
 ## Connect an MCP client
 
-Set `MCP_TOKEN`, sign in, and open MCP in the top bar (`/edit/mcp`) to copy your connector address. It looks like `https://<host>/mcp/<token>`. Each account has its own address and only sees its own data. Treat it like a password.
+Set `MCP_TOKEN`, sign in, and open MCP in the top bar (`/connector`) to copy your connector address. It looks like `https://<host>/mcp/<token>`. Each account has its own address and only sees its own data. Treat it like a password.
 
 ![MCP panel: connector address and setup steps](.github/readme/mcp-setup.png)
 

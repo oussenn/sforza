@@ -63,7 +63,7 @@ export function decodeEntities(s: string): string {
 
 const BLOCK = 'p|div|section|article|header|main|aside|ul|ol|h[1-6]|tr|table|dl|dt|dd|blockquote|pre|form|fieldset|figure'
 
-export function htmlToText(html: string): string {
+function htmlToText(html: string): string {
   return decodeEntities(
     html
       .replace(/<!--[\s\S]*?-->/g, ' ')
@@ -153,7 +153,7 @@ export function jsonLdBlocks(html: string): unknown[] {
   return blocks
 }
 
-export function jobPostingFromHtml(html: string): Omit<JobPage, 'url' | 'source'> | null {
+function jobPostingFromHtml(html: string): Omit<JobPage, 'url' | 'source'> | null {
   for (const data of jsonLdBlocks(html)) {
     const jp = findJobPosting(data)
     if (jp) {

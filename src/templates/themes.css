@@ -696,3 +696,204 @@
   padding-left: var(--indent);
   font-size: var(--small);
 }
+
+/* ======================================================================== */
+/* Scholar                                                                   */
+/* ======================================================================== */
+
+.tpl-scholar {
+  display: flex;
+  flex-direction: column;
+  padding: var(--my) var(--mx) calc(var(--my) * 0.85);
+}
+
+.sch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sch-header {
+  display: flex;
+  align-items: center;
+  gap: 6mm;
+  margin-bottom: calc(var(--sgap) * 1.2);
+}
+
+.sch-photo {
+  flex-shrink: 0;
+  width: var(--photo);
+  height: var(--photo);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.sch-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.sch-name {
+  color: var(--accent);
+  font-family: var(--hfont), var(--font), serif;
+  font-size: 2.1em;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sch-headline {
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 1.12em;
+  font-weight: 700;
+  font-style: italic;
+}
+
+.sch-contacts {
+  justify-content: center;
+  margin-top: 6px;
+  gap: 2px 16px;
+  font-size: 1.02em;
+}
+
+.sch-contacts .fa {
+  color: var(--accent);
+}
+
+/* The rule between the columns runs from the first heading to the bottom margin. */
+.sch-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: var(--col) minmax(0, 1fr);
+}
+
+.sch-side,
+.sch-main,
+.sch-section,
+.sch-entries,
+.sch-lines,
+.sch-langs {
+  display: flex;
+  flex-direction: column;
+}
+
+.sch-side,
+.sch-main {
+  gap: var(--sgap);
+}
+
+.sch-side {
+  padding-right: 2.8mm;
+}
+
+.sch-main {
+  padding-left: 2.8mm;
+  border-left: 0.8pt solid var(--accent);
+}
+
+.sch-heading {
+  margin-bottom: 5px;
+  padding-bottom: 2px;
+  border-bottom: 0.8pt solid var(--accent);
+  color: var(--accent);
+  font-family: var(--hfont), var(--font), serif;
+  font-size: 1.19em;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sch-entries {
+  gap: var(--igap);
+}
+
+.sch-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.sch-row > :first-child {
+  min-width: 0;
+}
+
+.sch-title {
+  font-size: 1.09em;
+  font-weight: 700;
+}
+
+.sch-side .sch-title {
+  font-size: 1.08em;
+}
+
+.sch-sub {
+  font-size: 1.02em;
+  font-style: italic;
+}
+
+.sch-date,
+.sch-when {
+  color: color-mix(in srgb, var(--text) 88%, #fff);
+}
+
+.sch-date {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.sch-desc {
+  margin-top: 2px;
+}
+
+/* Bullets sit a little in from the entry titles. */
+.tpl-scholar .sch-desc .rt-li,
+.sch-award {
+  margin-left: 5px;
+}
+
+.sch-summary {
+  text-align: justify;
+}
+
+.sch-lines {
+  gap: 2px;
+}
+
+.sch-skill {
+  color: var(--accent);
+  font-size: 1.03em;
+}
+
+/* .tpl-scholar beats the shared .resume-sheet .rt reset; awards are bullets like the description lists. */
+.tpl-scholar .sch-awards {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sch-award {
+  padding-left: 11.25px;
+}
+
+.sch-award::before {
+  content: '';
+  float: left;
+  width: 4px;
+  height: 4px;
+  margin: calc(var(--lh) / 2 - 1px) 0 0 -10.25px;
+  border-radius: 50%;
+  background: currentColor;
+}

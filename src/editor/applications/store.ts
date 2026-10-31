@@ -24,6 +24,8 @@ interface ApplicationsState {
   move: (id: string, stage: Stage, beforeId?: string | null) => void
   remove: (id: string) => Promise<void>
   replace: (app: Application) => void
+  /** After a change made elsewhere (sync.ts): cards and columns, keeping cards with unsaved edits. */
+  reload: () => Promise<void>
   flush: () => Promise<void>
   addColumn: (label: string, after: BuiltinStage) => Promise<void>
   renameColumn: (id: BoardColumn['id'], label: string) => Promise<void>
@@ -32,6 +34,8 @@ interface ApplicationsState {
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
+/** cards whose save is on its way */
+const saving = new Set<string>()
 
 export const byOrder = (a: Application, b: Application) => a.order - b.order
 
@@ -51,12 +55,14 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     timers.delete(id)
     const app = get().items.find((a) => a.id === id)
     if (!app) return Promise.resolve()
+    saving.add(id)
     return api
       .saveApplication(app)
       .then(() => undefined)
       .catch((err: Error) => {
         toast.error(`Could not save the application: ${err.message}`)
       })
+      .finally(() => saving.delete(id))
   }
   const schedule = (id: string) => {
     clearTimeout(timers.get(id))
@@ -120,11 +126,18 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     remove: async (id) => {
       clearTimeout(timers.get(id))
       timers.delete(id)
-      await api.removeApplication(id)
+      const { deletedCv } = await api.removeApplication(id)
       set((s) => ({ items: s.items.filter((a) => a.id !== id) }))
+      if (deletedCv) useEditor.getState().forget(deletedCv)
     },
 
     replace: (app) => set((s) => ({ items: s.items.map((a) => (a.id === app.id ? app : a)) })),
+
+    reload: async () => {
+      const [items, columns] = await Promise.all([api.applications(), api.boardColumns().catch(() => null)])
+      const local = (id: string) => (timers.has(id) || saving.has(id) ? get().items.find((a) => a.id === id) : undefined)
+      set((s) => ({ items: items.map((a) => local(a.id) ?? a), columns: columns ?? s.columns }))
+    },
 
     flush: async () => {
       await Promise.all([...timers.keys()].map((id) => save(id)))

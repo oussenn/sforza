@@ -24,7 +24,7 @@ function closing(s: string, from: number, marker: string): number {
   return -1
 }
 
-export function parseInline(s: string): Inline[] {
+function parseInline(s: string): Inline[] {
   const out: Inline[] = []
   let buf = ''
   const flush = () => {
@@ -115,7 +115,7 @@ type Block = { kind: 'bullet' | 'para'; text: string }
 
 const BULLET = /^\s*(?:[-•*])\s+/
 
-export function parseBlocks(text: string): Block[] {
+function parseBlocks(text: string): Block[] {
   return text
     .split(/\r?\n/)
     .filter((line) => line.trim())

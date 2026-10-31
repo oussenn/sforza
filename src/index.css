@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./shadcn.css";
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
@@ -135,6 +135,14 @@
     @apply font-sans;
     }
 }
+
+@layer utilities {
+  /* A grid without columns of its own gets one that can shrink below its content, so a long link or word never
+     pushes a form past the edge of a phone screen. (The CV and letter templates do not use the grid class.) */
+  .grid:not([class*='grid-cols-']) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 /* ------------------------------------------------------------------------ */
 /* App-specific                                                              */
 /* ------------------------------------------------------------------------ */
@@ -142,12 +150,16 @@
 :root {
   --preview-canvas: #ebe9e4;
   --editor-bg: #f1f0ec;
+  /* The painting behind the editor (Backdrop): its blur, and how much of the editor colour lies over it */
+  --backdrop-blur: 28px;
+  --backdrop-wash: 0.62;
 }
 
-/* Plain greys only: no tinted or gradient backgrounds. The CV sheet itself stays white. */
+/* Plain greys for surfaces; the only picture is the backdrop painting. The CV sheet itself stays white. */
 .dark {
   --preview-canvas: oklch(0.175 0 0);
   --editor-bg: oklch(0.145 0 0);
+  --backdrop-wash: 0.74;
 }
 
 html,

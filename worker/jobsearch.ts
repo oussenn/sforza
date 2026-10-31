@@ -51,7 +51,7 @@ const KIND: Record<string, string> = {
 
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 
-export const baJobUrl = (ref: string) => `https://www.arbeitsagentur.de/jobsuche/jobdetail/${encodeURIComponent(ref)}`
+const baJobUrl = (ref: string) => `https://www.arbeitsagentur.de/jobsuche/jobdetail/${encodeURIComponent(ref)}`
 
 function place(job: Json): string {
   const loc = ((job.stellenlokationen as Json[] | undefined) ?? [])[0]?.adresse as Json | undefined

@@ -24,7 +24,7 @@ export function aiStatus(env: Env): AiStatus {
 
 export class AiError extends Error {}
 
-export type Provider = Exclude<AiStatus['provider'], 'none'>
+type Provider = Exclude<AiStatus['provider'], 'none'>
 export interface ModelChoice {
   provider: Provider
   model: string
@@ -261,7 +261,7 @@ const TRANSLATE_SCHEMA: JsonSchema = {
   },
 }
 
-export function translateSystem(from: Lang, to: Lang): string {
+function translateSystem(from: Lang, to: Lang): string {
   const target = LANG_LABELS[to].name
   return `You are a professional CV translator. Translate each value from ${LANG_LABELS[from].name} to ${target} for a CV that recruiters will read.
 

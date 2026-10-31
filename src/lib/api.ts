@@ -4,6 +4,7 @@ import type {
   AiStatus,
   Application,
   BoardColumn,
+  ChangeStamps,
   CoverLetter,
   InviteInfo,
   JobAnalysis,
@@ -77,6 +78,8 @@ export const api = {
   printData: (id: string, token: string) =>
     request<Resume>(`/api/print-data?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}`),
 
+  changes: () => request<ChangeStamps>('/api/changes'),
+
   list: () => request<ResumeMeta[]>('/api/resumes'),
   get: (id: string) => request<Resume>(`/api/resumes/${id}`),
   create: (body: { duplicateOf?: string; name?: string }) => request<Resume>('/api/resumes', json('POST', body)),
@@ -117,7 +120,7 @@ export const api = {
   applications: () => request<Application[]>('/api/applications'),
   createApplication: (fields: Partial<Application>) => request<Application>('/api/applications', json('POST', fields)),
   saveApplication: (app: Application) => request<{ updatedAt: string }>(`/api/applications/${app.id}`, json('PUT', app)),
-  removeApplication: (id: string) => request<{ ok: true }>(`/api/applications/${id}`, json('DELETE')),
+  removeApplication: (id: string) => request<{ ok: true; deletedCv: string | null }>(`/api/applications/${id}`, json('DELETE')),
   boardColumns: () => request<BoardColumn[]>('/api/board-columns'),
   saveBoardColumns: (columns: BoardColumn[]) => request<BoardColumn[]>('/api/board-columns', json('PUT', { columns })),
   /** title, company, location and logo of a job link, without AI */

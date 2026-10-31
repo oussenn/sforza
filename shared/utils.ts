@@ -4,11 +4,13 @@ import type {
   BoardColumn,
   BuiltinStage,
   Contact,
+  ContactType,
   CoverLetter,
   ItemSection,
   Lang,
   LetterLayout,
   LetterStyle,
+  Personal,
   Placement,
   Resume,
   ResumeContent,
@@ -21,7 +23,7 @@ import type {
   Stage,
   TemplateId,
 } from './types'
-import { DOC_LANGS, GERMAN_LIMITS, JOB_TYPES, LANGS, STAGE_LABELS, STAGES, WORK_MODES } from './types'
+import { CONTACT_TYPES, DOC_LANGS, GERMAN_LIMITS, JOB_TYPES, LANGS, STAGE_LABELS, STAGES, WORK_MODES } from './types'
 
 export function uid(prefix = ''): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
@@ -34,7 +36,7 @@ export function clone<T>(value: T): T {
 }
 
 /** Small, stable string hash (FNV-1a) used to detect stale translations. */
-export function hashString(input: string): string {
+function hashString(input: string): string {
   let h = 0x811c9dc5
   for (let i = 0; i < input.length; i++) {
     h ^= input.charCodeAt(i)
@@ -124,7 +126,7 @@ export function isStale(resume: Resume, lang: Lang): boolean {
   return meta.sourceHash !== contentHash(resume.content[resume.sourceLang])
 }
 
-export function slugify(input: string): string {
+function slugify(input: string): string {
   return input
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
@@ -462,7 +464,8 @@ export function defaultSearchProfile(): SearchProfile {
     country: '',
     locations: '',
     radiusKm: 50,
-    jobTypes: [],
+    // This deployment: accounts without a saved profile search student jobs (the public release starts empty).
+    jobTypes: ['working_student', 'student_assistant', 'internship'],
     workModes: ['onsite', 'hybrid', 'remote'],
     germanLevel: '',
     germanLimit: 'basic',
@@ -479,6 +482,7 @@ export function defaultSearchProfile(): SearchProfile {
     minFit: 60,
     notes: '',
     cvRules: '',
+    letterHideContacts: [],
   }
 }
 
@@ -514,8 +518,14 @@ export function cleanSearchProfile(raw: unknown, base: SearchProfile = defaultSe
     minFit: num('minFit', 0, 100),
     notes: text('notes', 8000),
     cvRules: text('cvRules'),
+    letterHideContacts: pick('letterHideContacts', CONTACT_TYPES),
     updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt.slice(0, 40) : base.updatedAt,
   }
+}
+
+/** The sender block of a letter: the CV's name and contacts without the ones the account leaves off letters. */
+export function letterPersonal(personal: Personal, hidden: readonly ContactType[] | undefined): Personal {
+  return hidden?.length ? { ...personal, contacts: personal.contacts.filter((c) => !hidden.includes(c.type)) } : personal
 }
 
 /** Whether the job search is in Germany: German-level rules, Werkstudent job kinds and the Bundesagentur board apply. */

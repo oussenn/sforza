@@ -298,8 +298,8 @@ function applicationSummary(a: Application, origin: string, columns: BoardColumn
     form_answers: a.formAnswers?.length ?? 0,
     next_step: [a.nextStep, a.nextDate].filter(Boolean).join(' · '),
     notes: a.notes.slice(0, 500),
-    edit_url: `${origin}/edit/applications/${a.id}`,
-    cv_edit_url: a.resumeId ? `${origin}/edit/cv/${a.resumeId}` : null,
+    edit_url: `${origin}/applications/${a.id}`,
+    cv_edit_url: a.resumeId ? `${origin}/cv/${a.resumeId}` : null,
   }
 }
 
@@ -559,7 +559,7 @@ const TOOLS: Tool[] = [
         : undefined
       const emptyCv = !content.personal.name.trim() || !content.sections.some((s) => isItemSection(s) && s.items.length > 0)
       const cv_setup_needed = emptyCv
-        ? `The master CV (id "${master.id}") is empty. Before anything else, ask the user for their CV: they can paste its text or upload a PDF here, or import it on the website (${origin}/edit). Then fill the master CV with edit_cv: personal (name, email, phone, location, linkedin, github), headline, summary, and add items to experience, education, skills, languages and certifications, word for word from their CV. Never invent anything.`
+        ? `The master CV (id "${master.id}") is empty. Before anything else, ask the user for their CV: they can paste its text or upload a PDF here, or import it on the website (${origin}/cvs). Then fill the master CV with edit_cv: personal (name, email, phone, location, linkedin, github), headline, summary, and add items to experience, education, skills, languages and certifications, word for word from their CV. Never invent anything.`
         : undefined
       return {
         ...(cv_setup_needed && { cv_setup_needed }),
@@ -574,14 +574,14 @@ const TOOLS: Tool[] = [
         board: Object.fromEntries(boardStages(columns).map((s) => [stageLabel(s, columns), apps.filter((a) => a.stage === s).length])),
         board_columns: columns,
         site_ai: { ...aiStatus(env), spend, detector: detectorName(env) },
-        editor: `${origin}/edit`,
+        editor: `${origin}/`,
       }
     },
   },
   {
     name: 'save_search_profile',
     description:
-      'Updates the job-search profile (only the keys given): country (where the user searches; empty = Germany, where the German-level rules and search_jobs apply), roles, locations, radiusKm, jobTypes [working_student, student_assistant, internship, thesis, part_time, full_time, trainee], workModes [onsite, hybrid, remote], germanLevel, germanLimit (none|basic|B1|B2|C1|any), availability, start, salary, workPermit, targets, sites (job sites to search first, one per line), avoid, docLangs (posting|posting+en|en|all), maxAiPercent, perRun, minFit, notes, cvRules (the user\'s own rules for their CVs and letters, on top of the common ones; read the current text first to append). Only save what the user said.',
+      'Updates the job-search profile (only the keys given): country (where the user searches; empty = Germany, where the German-level rules and search_jobs apply), roles, locations, radiusKm, jobTypes [working_student, student_assistant, internship, thesis, part_time, full_time, trainee], workModes [onsite, hybrid, remote], germanLevel, germanLimit (none|basic|B1|B2|C1|any), availability, start, salary, workPermit, targets, sites (job sites to search first, one per line), avoid, docLangs (posting|posting+en|en|all), maxAiPercent, perRun, minFit, notes, cvRules (the user\'s own rules for their CVs and letters, on top of the common ones; read the current text first to append), letterHideContacts (contact lines the letters leave out while the CVs keep them, e.g. ["github"]: email, phone, location, website, linkedin, github, other). Pass them inside profile. Only save what the user said.',
     inputSchema: obj({ profile: { type: 'object' } }, ['profile']),
     run: async (env, args) => {
       const current = await db.getSearchProfile(env)
@@ -872,7 +872,7 @@ const TOOLS: Tool[] = [
           saved && saved.resumeId !== resume.id
             ? `This posting is already on the board as "${stageLabel(saved.stage)}" with another CV, so this CV was not attached. To attach it: save_application { id: "${saved.id}", resume_id: "${resume.id}" }.`
             : undefined,
-        edit_url: `${origin}/edit/cv/${resume.id}`,
+        edit_url: `${origin}/cv/${resume.id}`,
       }
     },
   },
@@ -910,7 +910,7 @@ const TOOLS: Tool[] = [
         match_score: resume.job?.matchScore ?? null,
         notes: resume.job?.notes,
         application: application ? applicationSummary(application, origin) : null,
-        edit_url: `${origin}/edit/cv/${resume.id}`,
+        edit_url: `${origin}/cv/${resume.id}`,
       }
     },
   },
@@ -1781,7 +1781,7 @@ const TOOLS: Tool[] = [
         saved: app.formAnswers.length,
         warnings: gaps.map((s) => `Points out a missing skill, remove it and save again: "${s}"`),
         to_decide: app.formAnswers.filter((a) => a.note || !a.answer.trim()).map((a) => a.question),
-        edit_url: `${origin}/edit/applications/${app.id}`,
+        edit_url: `${origin}/applications/${app.id}`,
       }
     },
   },
@@ -1913,22 +1913,13 @@ const TOOLS: Tool[] = [
   {
     name: 'delete_application',
     description:
-      'Deletes a board card that was not sent (stage saved or draft), e.g. a duplicate. delete_cv: true also deletes its tailored CV when no other card uses it. Sent applications stay on the board as history (move them to "rejected" instead).',
-    inputSchema: obj({ id: { type: 'string' }, delete_cv: { type: 'boolean' } }, ['id']),
+      'Deletes a board card that was not sent (stage saved or draft), e.g. a duplicate or a posting that closed, with its letters and its tailored CV (unless another card uses that CV; delete_cv: false keeps it, the master CV is never deleted). Sent applications stay on the board as history (move them to "rejected" instead).',
+    inputSchema: obj({ id: { type: 'string' }, delete_cv: { type: 'boolean', description: 'default true' } }, ['id']),
     run: async (env, args) => {
       const app = await needApplication(env, args.id)
       if (!isUnsent(app.stage)) throw new ToolError(`"${app.title}" is ${stageLabel(app.stage)}: sent applications are kept; set stage "rejected" if it is over.`)
-      await db.deleteApplication(env, app.id)
-      let cv: string | undefined
-      if (args.delete_cv === true && app.resumeId) {
-        const resume = await db.getResume(env, app.resumeId)
-        const used = (await db.listApplications(env)).some((a) => a.resumeId === app.resumeId)
-        if (resume && resume.kind !== 'master' && !used) {
-          await db.deleteResume(env, resume.id)
-          cv = resume.id
-        }
-      }
-      return { deleted: app.id, title: app.title, company: app.company, deleted_cv: cv ?? null }
+      const cv = await db.deleteApplication(env, app.id, { keepCv: args.delete_cv === false })
+      return { deleted: app.id, title: app.title, company: app.company, deleted_cv: cv }
     },
   },
   {

@@ -45,7 +45,7 @@ export function ItemList({ type, items, onChange, onAdd, onRemove, onMove, onTog
                 </span>
                 {subtitle && <span className="text-muted-foreground w-full truncate text-xs">{subtitle}</span>}
               </button>
-              <div className="flex items-center opacity-100 transition-opacity sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
+              <div className="flex items-center opacity-100 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100">
                 <Button variant="ghost" size="icon-sm" disabled={i === 0} onClick={() => onMove(item.id, -1)} title="Move up">
                   <ChevronUp />
                 </Button>

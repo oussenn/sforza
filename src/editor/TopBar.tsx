@@ -22,6 +22,7 @@ import {
   UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { faGithub } from '@fortawesome/free-brands-svg-icons'
 import { LANG_LABELS, LANGS, type Application, type Lang } from '@shared/types'
 import { isStale } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
@@ -43,6 +44,7 @@ import { api } from '@/lib/api'
 import { useTheme, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { downloadLetterPdf } from '@/resume/download'
+import { FaIcon } from '@/templates/shared'
 import { AccountDialog } from './AccountDialog'
 import { logoFor, openCvIn, useApplications } from './applications/store'
 import { ConfirmDialog, PromptDialog } from './dialogs'
@@ -50,6 +52,9 @@ import { PANELS } from './profile/ProfilePage'
 import { navigate, openCv, setCvTab, useRoute, type CvTab, type PanelPage } from './router'
 import { useEditor } from './store'
 import { useDownload } from './useDownload'
+
+/** The public repository of this app. */
+const SOURCE_URL = 'https://github.com/oussenn/sforza'
 
 const TABS: { id: CvTab; label: string; icon: typeof FileText }[] = [
   { id: 'content', label: 'Content', icon: FileText },
@@ -74,7 +79,7 @@ function NavButton({
   icon: typeof FileText
   label: string
   onClick: () => void
-  /** Icon only until very wide screens (1800 px): the CV tabs and tools share the bar. */
+  /** Icon only until very wide screens (1800 px): the CV tabs and tools share the bar. Otherwise labels from 1280 px. */
   compact: boolean
 }) {
   return (
@@ -90,7 +95,7 @@ function NavButton({
       )}
     >
       <Icon className="size-4" />
-      <span className={compact ? 'hidden min-[1800px]:inline' : 'hidden md:inline'}>{label}</span>
+      <span className={compact ? 'hidden min-[1800px]:inline' : 'hidden xl:inline'}>{label}</span>
     </button>
   )
 }
@@ -122,8 +127,9 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
     onLogout()
   }
 
+  // Phones and tablets: two rows. The pages and the menu on top; a CV's tabs and the page's tools (CV, letters) below.
   return (
-    <header className="bg-background border-hairline flex h-14 shrink-0 items-center gap-1 border-b px-2 sm:h-16 sm:gap-2 sm:px-4">
+    <header className="bg-background/70 border-hairline flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b px-2 py-2 backdrop-blur-xl sm:gap-x-2 sm:px-4 lg:h-16 lg:flex-nowrap lg:py-0">
       <button
         type="button"
         onClick={() => navigate({ page: 'applications', appId: null })}
@@ -144,9 +150,8 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
         <NavButton compact={inCv} active={route.page === 'cvs'} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
         <NavButton compact={inCv} active={route.page === 'letters'} icon={Mail} label="Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
       </nav>
-      {/* On narrow screens, editing a CV needs the room: the three panels stay one tap away on My CVs. */}
-      <div className={cn('bg-border mx-0.5 h-6 w-px sm:mx-1.5', inCv && 'hidden lg:block')} aria-hidden />
-      <nav className={cn('flex items-center gap-0.5 sm:gap-1', inCv && 'hidden lg:flex')} aria-label="About you">
+      <div className="bg-border mx-0.5 h-6 w-px sm:mx-1.5" aria-hidden />
+      <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="About you">
         {(Object.keys(PANELS) as PanelPage[]).map((p) => (
           <NavButton
             key={p}
@@ -161,8 +166,8 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
 
       {route.page === 'cv' && (
         <>
-          <div className="bg-border mx-0.5 h-6 w-px sm:mx-1.5" />
-          <nav className="flex items-center gap-0.5 sm:gap-1">
+          <div className="bg-border mx-1.5 h-6 w-px max-lg:hidden" />
+          <nav className="flex items-center gap-0.5 max-lg:order-2 sm:gap-1" aria-label="CV">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -182,7 +187,8 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
         </>
       )}
 
-      <div className="ml-auto flex items-center gap-1 sm:gap-2">
+      <div className="ml-auto flex items-center gap-1 max-lg:contents sm:gap-2">
+        <div className="flex items-center gap-1 max-lg:order-2 max-lg:ml-auto sm:gap-2">
         {cv && <SaveIndicator state={saveState} />}
 
         {cv && (
@@ -258,11 +264,13 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
           </Button>
         )}
 
-        <ThemeToggle className="hidden sm:inline-flex" />
+        </div>
+
+        <ThemeToggle className="hidden lg:inline-flex" />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="size-9" aria-label="Menu">
+            <Button variant="outline" size="icon" className="size-9 max-lg:order-1 max-lg:ml-auto" aria-label="Menu">
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -325,6 +333,12 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
               ))}
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <a href={SOURCE_URL} target="_blank" rel="noreferrer">
+                <FaIcon icon={faGithub} /> Source code on GitHub
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {user && <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Signed in as {user}</DropdownMenuLabel>}
             <DropdownMenuItem onClick={() => setAccount(true)}>
               <UserRound /> Account
@@ -335,6 +349,8 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {(inCv || route.page === 'letters') && <div className="hidden h-0 basis-full max-lg:order-1 max-lg:block" aria-hidden />}
 
       {user && <AccountDialog open={account} onOpenChange={setAccount} user={user} />}
 

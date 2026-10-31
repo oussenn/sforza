@@ -1,6 +1,6 @@
 import type { Lang, Placement, ResumeStyle, SectionType, TemplateId } from './types'
 
-export type LayoutKind = 'mixed' | 'sidebar' | 'single'
+type LayoutKind = 'mixed' | 'sidebar' | 'single'
 
 export interface TemplateMeta {
   id: TemplateId
@@ -213,6 +213,37 @@ export const TEMPLATES: TemplateMeta[] = [
       showIcons: false,
     },
     placement: {},
+  },
+  {
+    id: 'scholar',
+    name: 'Scholar',
+    description: 'Navy serif with a round photo, a centred header and a ruled side column.',
+    layout: 'sidebar',
+    summaryTitle: true,
+    style: {
+      ...base,
+      accent: '#1f4e79',
+      text: '#1a1a1a',
+      font: 'Tinos',
+      fontSize: 9,
+      lineHeight: 1.12,
+      marginX: 14,
+      marginY: 9,
+      sectionGap: 9,
+      itemGap: 6,
+      columnRatio: 34,
+      photoSize: 115,
+    },
+    placement: {
+      summary: 'main',
+      experience: 'main',
+      projects: 'main',
+      custom: 'main',
+      certifications: 'main',
+      education: 'side',
+      languages: 'side',
+      skills: 'side',
+    },
   },
 ]
 

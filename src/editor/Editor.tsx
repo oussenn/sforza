@@ -19,6 +19,7 @@ import LettersPage from './letters/LettersPage'
 import ProfilePage, { PANELS } from './profile/ProfilePage'
 import { navigate, useRoute } from './router'
 import { useEditor } from './store'
+import { checkForChanges, startSync } from './sync'
 import TopBar from './TopBar'
 
 const Spinner = () => (
@@ -44,6 +45,12 @@ export default function Editor({ onLogout, user }: { onLogout: () => void; user:
       .load()
       .catch((err: Error) => toast.error(`Could not load applications: ${err.message}`))
   }, [])
+
+  // Changes made elsewhere (the connector, another tab) show up without a reload, also on every page change.
+  useEffect(() => (ready ? startSync() : undefined), [ready])
+  useEffect(() => {
+    if (ready) void checkForChanges()
+  }, [ready, route])
 
   // The CV in the URL is the one being edited.
   const wantedId = route.page === 'cv' ? route.id : null
@@ -89,14 +96,14 @@ export default function Editor({ onLogout, user }: { onLogout: () => void; user:
 
   if (!ready) {
     return (
-      <div className="flex min-h-dvh bg-[var(--editor-bg)]">
+      <div className="flex min-h-dvh">
         <Spinner />
       </div>
     )
   }
 
   return (
-    <div className="flex h-dvh flex-col bg-[var(--editor-bg)]">
+    <div className="flex h-dvh flex-col">
       <TopBar onLogout={onLogout} user={user} />
       {route.page === 'cvs' && <Overview />}
       {(route.page === 'jobsearch' || route.page === 'knowledge' || route.page === 'mcp') && <ProfilePage panel={route.page} />}
@@ -111,7 +118,7 @@ export default function Editor({ onLogout, user }: { onLogout: () => void; user:
               {route.tab === 'customize' && <CustomizePanel />}
               {route.tab === 'ai' && <AiPanel />}
             </aside>
-            <main className="hidden min-w-0 flex-1 overflow-y-auto bg-[var(--preview-canvas)] py-6 md:block">
+            <main className="hidden min-w-0 flex-1 overflow-y-auto py-6 md:block">
               {previewDoc && <ResumePreview {...previewDoc} maxScale={1.1} padding={28} />}
             </main>
           </div>

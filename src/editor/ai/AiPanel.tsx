@@ -331,7 +331,7 @@ function TailorCard() {
         )}
         <div className="flex items-start gap-3">
           {(logo || company) && <CompanyLogo src={logo} name={company || title} size={40} className="mt-5.5" />}
-          <div className="grid flex-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 flex-1 gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label className="text-muted-foreground text-xs">Job title *</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Data Engineer" disabled={working} />
@@ -375,7 +375,7 @@ function TailorCard() {
           freshAnalysis && <AnalysisSummary analysis={freshAnalysis} source={analysis?.source} />
         )}
 
-        <div className="bg-muted/60 grid gap-3 rounded-xl p-3 sm:grid-cols-2">
+        <div className="bg-muted/60 grid grid-cols-1 gap-3 rounded-xl p-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
             <Label className="text-muted-foreground text-xs">Start from</Label>
             <Select value={baseId} onValueChange={setBaseId} disabled={working}>

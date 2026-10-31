@@ -15,7 +15,7 @@ export interface PromptContext {
   github: string
 }
 
-export interface PromptArg {
+interface PromptArg {
   name: string
   description: string
   required: boolean

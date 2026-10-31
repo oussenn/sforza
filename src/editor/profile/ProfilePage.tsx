@@ -103,7 +103,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         <Textarea {...text('roles')} rows={3} placeholder="Data analyst, BI developer, junior data engineer…" />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-[10rem_1fr_8rem]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[10rem_1fr_8rem]">
         <Field label="Country" hint="The job market to search. Left empty, the search uses Germany and its job boards.">
           <Input {...text('country')} placeholder="Germany" />
         </Field>
@@ -123,7 +123,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
       </Field>
 
       {searchesGermany(profile) && (
-        <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[8rem_1fr]">
           <Field label="My German" hint="Your level, e.g. B1. Shown only when the search is in Germany.">
             <Input {...text('germanLevel')} placeholder="B1" />
           </Field>
@@ -144,7 +144,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Availability" hint="Hours per week or full-time. Letters and form answers use it.">
           <Input {...text('availability')} placeholder="Full-time" />
         </Field>
@@ -160,7 +160,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         <Textarea {...text('workPermit')} rows={2} placeholder="EU citizen, no permit needed" />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Prefer" hint="Industries, companies or teams to look for first.">
           <Textarea {...text('targets')} rows={3} placeholder="Industries, company sizes, team language…" />
         </Field>
@@ -173,10 +173,10 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         label="Job sites, searched first"
         hint="One per line: name, link, what it is good for. Claude starts with these in this order, then follows anything relevant it finds (company career pages)."
       >
-        <Textarea {...text('sites')} rows={8} className="font-mono text-xs" placeholder="LinkedIn Jobs: https://www.linkedin.com/jobs/ (roles in English)" />
+        <Textarea {...text('sites')} rows={8} className="font-mono text-base md:text-xs" placeholder="LinkedIn Jobs: https://www.linkedin.com/jobs/ (roles in English)" />
       </Field>
 
-      <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         <Field label="CV and letter in" hint="The language of the CV and letter for each posting." className="sm:col-span-3 lg:col-span-2">
           <Select value={profile.docLangs} onValueChange={(v) => set('docLangs', v as DocLangs)}>
             <SelectTrigger className="w-full min-w-0">
@@ -253,7 +253,7 @@ function PromptCard({ prompt, ctx }: { prompt: ClaudePrompt; ctx: PromptContext 
         </Button>
       </div>
       {prompt.args.length > 0 && (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {prompt.args.map((a) => (
             <Input
               key={a.name}

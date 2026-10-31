@@ -35,7 +35,7 @@ const NO_CV = 'none'
 
 function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
   return (
-    <div className={cn('grid gap-1.5', className)}>
+    <div className={cn('grid min-w-0 gap-1.5', className)}>
       <Label className="text-muted-foreground text-xs">{label}</Label>
       {children}
     </div>
@@ -187,7 +187,7 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
             onChange={(e) => set('company', e.target.value)}
             placeholder="Company"
             aria-label="Company"
-            className="text-muted-foreground placeholder:text-muted-foreground/60 mt-0.5 w-full rounded-md bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="text-muted-foreground placeholder:text-muted-foreground/60 mt-0.5 w-full rounded-md bg-transparent text-base outline-none md:text-sm focus-visible:ring-2 focus-visible:ring-ring/40"
           />
           <SheetDescription className="sr-only">Details of this job application</SheetDescription>
         </div>
@@ -231,7 +231,7 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
           ))}
         </div>
 
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           <Field label="Job posting">
             <Input value={app.url} onChange={(e) => set('url', e.target.value)} placeholder="https://www.linkedin.com/jobs/view/…" />
           </Field>
@@ -312,7 +312,7 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
 
           <FitBlock app={app} />
 
-          <div className="bg-muted/50 grid gap-3 rounded-xl p-3">
+          <div className="bg-muted/50 grid grid-cols-1 gap-3 rounded-xl p-3">
             <div className="flex items-end gap-2">
               <Field label={app.appliedOn ? 'CV sent' : 'CV to send'} className="min-w-0 flex-1">
                 <Select
@@ -423,7 +423,7 @@ function Details({ app, onClose }: { app: Application; onClose: () => void }) {
         open={deleting}
         onOpenChange={setDeleting}
         title={`Delete “${app.title || 'this application'}”?`}
-        description="The card and its notes are removed. The CV itself is kept."
+        description="The card, its notes and letters are removed, and its tailored CV too unless another card uses it. The master CV is kept."
         confirmLabel="Delete"
         destructive
         onConfirm={async () => {
@@ -579,17 +579,17 @@ function AiChecks({ app, cvLangs }: { app: Application; cvLangs: Lang[] }) {
   }
 
   return (
-    <div className="bg-muted/50 grid gap-2 rounded-xl p-3">
+    <div className="bg-muted/50 grid grid-cols-1 gap-2 rounded-xl p-3">
       <div className="flex items-center gap-2">
         <ShieldCheck className="text-muted-foreground size-4" />
         <span className="flex-1 text-sm font-medium">AI-text checks</span>
         <span className="text-muted-foreground text-xs">target ≤ {target}%</span>
       </div>
-      <ul className="grid gap-1">
+      <ul className="grid grid-cols-1 gap-1">
         {[...rows.entries()].map(([key, { doc, lang }]) => {
           const check = latest.get(key)
           return (
-            <li key={key} className="bg-background ring-hairline flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs ring-1">
+            <li key={key} className="bg-background ring-hairline flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs ring-1">
               <span className="w-20 shrink-0 font-medium">
                 {DOC_LABEL[doc]} <span className="text-muted-foreground font-mono text-[10px]">{lang.toUpperCase()}</span>
               </span>

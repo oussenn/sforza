@@ -5,7 +5,7 @@ import { AiError } from './ai'
  * AIORNOT_API_KEY secret. Without it, Claude checks the documents in a browser detector and records the result.
  */
 
-export const DETECTOR = 'AI or Not'
+const DETECTOR = 'AI or Not'
 
 export const detectorName = (env: Env): string | null => (env.AIORNOT_API_KEY ? DETECTOR : null)
 

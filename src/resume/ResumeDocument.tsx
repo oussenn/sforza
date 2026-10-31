@@ -18,7 +18,7 @@ export interface DocProps {
   onPages?: (pages: number) => void
 }
 
-export function styleVars(style: ResumeStyle): CSSProperties {
+function styleVars(style: ResumeStyle): CSSProperties {
   const fs = (style.fontSize * 96) / 72
   return {
     '--accent': style.accent,

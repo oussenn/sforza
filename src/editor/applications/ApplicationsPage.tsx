@@ -225,7 +225,7 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
               onDrop={drop(stage)}
               className="flex w-[82vw] shrink-0 snap-center flex-col sm:w-72 xl:w-auto xl:min-w-48 xl:flex-1"
             >
-              <header className="bg-(--editor-bg) sticky top-0 z-10 flex items-center gap-2 px-1 pt-1 pb-2">
+              <header className="sticky top-0 z-10 flex items-center gap-2 px-1 pt-1 pb-2 backdrop-blur-xl">
                 <span className={cn('size-2 shrink-0 rounded-full', stageDot(stage))} />
                 <h2 className="truncate text-sm font-semibold">{label(stage)}</h2>
                 <span className="text-muted-foreground text-xs tabular-nums">{cards.length}</span>

@@ -4,15 +4,27 @@ import { PAGE_HEIGHT, ResumeDocument, SHEET_WIDTH, type DocProps } from './Resum
 
 const GAP = 16
 
-/** Scales the sheet to the available width and draws gaps between pages. */
+/**
+ * Masks a gap out of the sheet at every page break, so whatever lies behind the preview (the backdrop) shows
+ * between the pages. The drop shadow follows the mask: each page gets its own.
+ */
+function pageGaps(pages: number): string | undefined {
+  if (pages < 2) return undefined
+  const stops = Array.from({ length: pages - 1 }, (_, i) => {
+    const at = (i + 1) * PAGE_HEIGHT
+    return `#000 ${at - GAP / 2}px, transparent ${at - GAP / 2}px, transparent ${at + GAP / 2}px, #000 ${at + GAP / 2}px`
+  })
+  return `linear-gradient(#000 0, ${stops.join(', ')}, #000 100%)`
+}
+
+/** Scales the sheet to the available width and leaves gaps between pages. */
 export function ResumePreview({
   className,
   maxScale = 1.25,
   padding = 24,
-  gapColor = 'var(--preview-canvas)',
   onPages,
   ...doc
-}: DocProps & { className?: string; maxScale?: number; padding?: number; gapColor?: string }) {
+}: DocProps & { className?: string; maxScale?: number; padding?: number }) {
   const outer = useRef<HTMLDivElement>(null)
   const [pages, setPages] = useState(1)
   const [width, setWidth] = useState(0)
@@ -31,6 +43,7 @@ export function ResumePreview({
     setPages(n)
     onPages?.(n)
   }
+  const mask = pageGaps(pages)
 
   return (
     <div ref={outer} className={cn('w-full', className)}>
@@ -39,18 +52,16 @@ export function ResumePreview({
         style={{ width: SHEET_WIDTH * scale, height: pages * PAGE_HEIGHT * scale, visibility: scale ? 'visible' : 'hidden' }}
       >
         <div
-          className="absolute top-0 left-0 origin-top-left shadow-[0_1px_3px_rgba(0,0,0,0.08),0_8px_28px_rgba(0,0,0,0.08)]"
-          style={{ width: SHEET_WIDTH, transform: `scale(${scale || 1})` }}
+          className="absolute top-0 left-0 origin-top-left"
+          style={{
+            width: SHEET_WIDTH,
+            transform: `scale(${scale || 1})`,
+            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.08)) drop-shadow(0 8px 20px rgba(0,0,0,0.1))',
+          }}
         >
-          <ResumeDocument {...doc} onPages={handlePages} />
-          {Array.from({ length: pages - 1 }, (_, i) => (
-            <div
-              key={i}
-              aria-hidden
-              className="pointer-events-none absolute -right-10 -left-10"
-              style={{ top: (i + 1) * PAGE_HEIGHT - GAP / 2, height: GAP, background: gapColor }}
-            />
-          ))}
+          <div style={{ maskImage: mask, WebkitMaskImage: mask }}>
+            <ResumeDocument {...doc} onPages={handlePages} />
+          </div>
         </div>
       </div>
     </div>

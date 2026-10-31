@@ -70,7 +70,7 @@ export async function rescore(env: Env, resume: Resume, progress: Progress = () 
  * Puts a new tailored CV on the applications board: on the application it was made for, on a card for the
  * same posting that is not sent yet, or on a new card. Cards with documents ready and not sent are "Draft".
  */
-export async function trackApplication(
+async function trackApplication(
   d1: db.Store,
   resume: Resume,
   job: TailorJob,
@@ -301,7 +301,7 @@ export async function saveLetter(d1: db.Store, application: Application, lang: L
 }
 
 /** The language a letter for this posting should use: the posting's, when the app supports it. */
-export function postingLang(analysis: Pick<JobAnalysis, 'language'> | null | undefined, fallback: Lang): Lang {
+function postingLang(analysis: Pick<JobAnalysis, 'language'> | null | undefined, fallback: Lang): Lang {
   const l = analysis?.language?.slice(0, 2).toLowerCase()
   return (LANGS as readonly string[]).includes(l ?? '') ? (l as Lang) : fallback
 }

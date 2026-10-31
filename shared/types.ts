@@ -7,7 +7,8 @@ export const LANG_LABELS: Record<Lang, { short: string; name: string; flag: stri
   de: { short: 'DE', name: 'Deutsch', flag: '🇩🇪' },
 }
 
-export type ContactType = 'email' | 'phone' | 'location' | 'website' | 'linkedin' | 'github' | 'other'
+export const CONTACT_TYPES = ['email', 'phone', 'location', 'website', 'linkedin', 'github', 'other'] as const
+export type ContactType = (typeof CONTACT_TYPES)[number]
 
 export interface Contact {
   id: string
@@ -110,27 +111,27 @@ interface SectionBase<T extends SectionType> {
   placement: Placement
 }
 
-export interface SummarySection extends SectionBase<'summary'> {
+interface SummarySection extends SectionBase<'summary'> {
   text: string
   /** undefined → template decides */
   showTitle?: boolean
 }
-export interface ExperienceSection extends SectionBase<'experience'> {
+interface ExperienceSection extends SectionBase<'experience'> {
   items: ExperienceItem[]
 }
-export interface ProjectsSection extends SectionBase<'projects'> {
+interface ProjectsSection extends SectionBase<'projects'> {
   items: ProjectItem[]
 }
-export interface EducationSection extends SectionBase<'education'> {
+interface EducationSection extends SectionBase<'education'> {
   items: EducationItem[]
 }
 export interface SkillsSection extends SectionBase<'skills'> {
   items: SkillItem[]
 }
-export interface CertificationsSection extends SectionBase<'certifications'> {
+interface CertificationsSection extends SectionBase<'certifications'> {
   items: CertificationItem[]
 }
-export interface LanguagesSection extends SectionBase<'languages'> {
+interface LanguagesSection extends SectionBase<'languages'> {
   items: LanguageItem[]
 }
 export interface CustomSection extends SectionBase<'custom'> {
@@ -155,7 +156,7 @@ export interface ResumeContent {
   sections: Section[]
 }
 
-export type TemplateId = 'signature' | 'atlantic' | 'mercury' | 'steady' | 'serif' | 'leaves' | 'executive' | 'latex'
+export type TemplateId = 'signature' | 'atlantic' | 'mercury' | 'steady' | 'serif' | 'leaves' | 'executive' | 'latex' | 'scholar'
 
 export interface ResumeStyle {
   accent: string
@@ -271,7 +272,7 @@ export interface MatchScore {
   at: string
 }
 
-export interface TranslationMeta {
+interface TranslationMeta {
   sourceHash: string
   at: string
 }
@@ -291,6 +292,13 @@ export interface Resume {
   job: JobInfo | null
   createdAt: string
   updatedAt: string
+}
+
+/** Row count and latest change of each area of an account; a different stamp means that area changed. */
+export interface ChangeStamps {
+  resumes: string
+  applications: string
+  settings: string
 }
 
 /** One account as the admin sees it (Account dialog). */
@@ -371,7 +379,7 @@ export interface ScrapedJob {
 export const STAGES = ['saved', 'draft', 'applied', 'interview', 'offer', 'rejected'] as const
 export type BuiltinStage = (typeof STAGES)[number]
 /** A column the user added: "col_<built-in stage it follows>_<random>", so its place and meaning are known from the id. */
-export type CustomStage = `col_${BuiltinStage}_${string}`
+type CustomStage = `col_${BuiltinStage}_${string}`
 export type Stage = BuiltinStage | CustomStage
 
 /** A column the user added to the board, shown right after its built-in stage. */
@@ -450,7 +458,7 @@ export interface Application {
   updatedAt: string
 }
 
-export interface ApplicationFit {
+interface ApplicationFit {
   /** 0–100, null when not estimated */
   score: number | null
   /** why it fits, and the gaps */
@@ -554,7 +562,7 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
 }
 
 export const WORK_MODES = ['onsite', 'hybrid', 'remote'] as const
-export type WorkMode = (typeof WORK_MODES)[number]
+type WorkMode = (typeof WORK_MODES)[number]
 
 /** The highest German requirement worth applying to. */
 export const GERMAN_LIMITS = ['none', 'basic', 'B1', 'B2', 'C1', 'any'] as const
@@ -618,5 +626,7 @@ export interface SearchProfile {
   notes: string
   /** the user's own rules for their CVs and letters, on top of CV_RULES */
   cvRules: string
+  /** contact lines the letters leave out (the CVs keep them), e.g. ['github'] */
+  letterHideContacts: ContactType[]
   updatedAt?: string
 }

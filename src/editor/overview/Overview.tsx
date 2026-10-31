@@ -56,7 +56,7 @@ export default function Overview() {
             </Button>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((m) => {
               const accent = TEMPLATE_MAP[m.template]?.style.accent ?? '#333'
               const app = applicationFor(apps, m.id)
@@ -69,7 +69,7 @@ export default function Overview() {
                   )}
                 >
                   <a
-                    href={`/edit/cv/${encodeURIComponent(m.id)}`}
+                    href={`/cv/${encodeURIComponent(m.id)}`}
                     onClick={(e) => {
                       // Plain clicks stay in the app; Ctrl/⌘-click opens a new tab.
                       if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return

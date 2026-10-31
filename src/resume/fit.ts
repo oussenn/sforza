@@ -26,7 +26,7 @@ export interface FitOptions {
   maxLineHeight: number
 }
 
-export const FIT_FONT = [9, 11] as const
+const FIT_FONT = [9, 11] as const
 /** fill of the page, in %, below which a larger font is tried */
 const FULL = 95
 /** how far the column width may move from the CV's own, in % */

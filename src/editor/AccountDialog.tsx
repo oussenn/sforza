@@ -72,7 +72,7 @@ function PasswordForm({ user }: { user: string }) {
       {/* Lets a password manager file the new password under this account. */}
       <input type="text" name="username" autoComplete="username" value={user} readOnly tabIndex={-1} aria-hidden className="sr-only" />
       <PasswordField id="pw-current" label="Current password" value={current} onChange={setCurrent} autoComplete="current-password" />
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <PasswordField id="pw-new" label="New password" value={next} onChange={setNext} autoComplete="new-password" />
         <PasswordField id="pw-confirm" label="Repeat it" value={confirm} onChange={setConfirm} autoComplete="new-password" />
       </div>

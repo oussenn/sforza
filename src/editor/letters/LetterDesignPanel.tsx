@@ -3,7 +3,7 @@ import { Check, RotateCcw } from 'lucide-react'
 import { ACCENTS, FONTS } from '@shared/templates'
 import type { Application, CoverLetter, Lang, LetterLayout, LetterStyle, Personal } from '@shared/types'
 import { LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUT_LABELS, LETTER_LAYOUTS } from '@shared/types'
-import { LETTER_STYLE_LIMITS, letterLayoutOf, letterStyleOf } from '@shared/utils'
+import { LETTER_STYLE_LIMITS, letterLayoutOf, letterPersonal, letterStyleOf } from '@shared/utils'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
@@ -12,6 +12,7 @@ import { LetterDocument } from '@/resume/LetterDocument'
 import { SHEET_WIDTH } from '@/resume/ResumeDocument'
 import { useLetterCv } from '../applications/LetterSection'
 import { useApplications } from '../applications/store'
+import { useEditor } from '../store'
 import { Card, ColorInput, Row } from '../customize/CustomizePanel'
 
 const THUMB_WIDTH = 132
@@ -37,7 +38,8 @@ export default function LetterDesignPanel({ app, letter, lang }: { app: Applicat
   const own = app.letterStyle ?? {}
   const din = layout === 'din5008'
 
-  const personal = cv ? (cv.content[lang] ?? cv.content[cv.sourceLang])!.personal : null
+  const hidden = useEditor((s) => s.searchProfile?.letterHideContacts)
+  const personal = cv ? letterPersonal((cv.content[lang] ?? cv.content[cv.sourceLang])!.personal, hidden) : null
   const style = cv ? letterStyleOf(cv.style, own, layout) : null
   // One thumbnail per template, in this letter's text and the card's style.
   const thumbs = useMemo(

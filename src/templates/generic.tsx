@@ -151,7 +151,7 @@ function entriesOf(section: Section, lang: Lang, parts: Parts): EntryData[] {
   }
 }
 
-export function SectionBody({ section, lang, parts }: { section: Section; lang: Lang; parts: Parts }) {
+function SectionBody({ section, lang, parts }: { section: Section; lang: Lang; parts: Parts }) {
   const cx = classes(parts.p)
   switch (section.type) {
     case 'summary':

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { cleanSearchProfile, letterPersonal } from '@shared/utils'
 import { fullNameSalutation, gapSentences, letterIssues } from '../worker/letter'
 
 describe('gapSentences: letters and form answers never point out a missing skill', () => {
@@ -68,5 +69,22 @@ describe('fullNameSalutation', () => {
     expect(fullNameSalutation('Sehr geehrte Frau Stricker,\n\nText')).toBeNull()
     expect(fullNameSalutation('Dear Hiring Team,\n\nText')).toBeNull()
     expect(fullNameSalutation('Sehr geehrte Damen und Herren,\n\nText')).toBeNull()
+  })
+})
+
+describe('contacts left off letters', () => {
+  it('drops only the hidden contact types, and the profile keeps only known types', () => {
+    const personal = {
+      name: 'A',
+      headline: '',
+      contacts: [
+        { id: 'a', type: 'email' as const, value: 'a@b.c' },
+        { id: 'b', type: 'github' as const, value: 'github.com/x' },
+      ],
+    }
+    expect(letterPersonal(personal, ['github']).contacts.map((c) => c.type)).toEqual(['email'])
+    expect(letterPersonal(personal, []).contacts).toHaveLength(2)
+    expect(cleanSearchProfile({ letterHideContacts: ['github', 'nope'] }).letterHideContacts).toEqual(['github'])
+    expect(cleanSearchProfile({}).letterHideContacts).toEqual([])
   })
 })
