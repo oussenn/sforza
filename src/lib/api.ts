@@ -54,10 +54,23 @@ type JobInput = Pick<JobInfo, 'title' | 'company' | 'url' | 'description'>
 export type TailorJob = JobInput & { logo?: string; location?: string }
 type Progress = (message: string) => void
 
+/** A public demo session (worker/demo.ts): its sample data is deleted at expiresAt (seconds). */
+export type DemoSession = { expiresAt: number }
+
 export const api = {
   me: () =>
-    request<{ authenticated: boolean; user: string | null; moveTo?: string; setup?: { needsToken: boolean } }>('/api/auth/me'),
-  login: (username: string, password: string) => request<{ ok: true; user: string }>('/api/auth/login', json('POST', { username, password })),
+    request<{
+      authenticated: boolean
+      user: string | null
+      moveTo?: string
+      setup?: { needsToken: boolean }
+      /** signed in to the public demo: when its sandbox is deleted (seconds) */
+      demo?: DemoSession
+      /** signed out, and this site has the public demo */
+      demoAvailable?: boolean
+    }>('/api/auth/me'),
+  login: (username: string, password: string) =>
+    request<{ ok: true; user: string; demo?: DemoSession }>('/api/auth/login', json('POST', { username, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', json('POST', {})),
   setup: (username: string, password: string, setupToken: string) =>
     request<{ ok: true; user: string }>('/api/auth/setup', json('POST', { username, password, setupToken })),

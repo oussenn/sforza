@@ -20,6 +20,7 @@ interface __BaseEnv_Env {
 	MCP_TOKEN: string;
 	AIORNOT_API_KEY: string;
 	AUTH_USERS?: string;
+	DEMO_PASSWORD?: string;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

@@ -38,6 +38,7 @@ import {
   createInvite,
   hasAccounts,
   isLocalRequest,
+  issueDemoSession,
   issueSession,
   joinWithInvite,
   listAccounts,
@@ -47,6 +48,7 @@ import {
   revokeInvite,
   sameSecret,
   secretConfigured,
+  sessionExpiry,
   sessionUser,
   setLocked,
   setPassword,
@@ -55,6 +57,7 @@ import {
 } from './auth'
 import { PdfError, renderLetterPdf, renderPdf } from './pdf'
 import { handleMcp } from './mcp'
+import { DEMO_USER, NOT_IN_DEMO, demoEnabled, demoRoomFor, demoRouteAllowed, demoWrite, endDemo, isDemoOwner, purgeExpired, startDemo } from './demo'
 import {
   addAiCheck,
   analysisFor,
@@ -74,6 +77,7 @@ type App = { Bindings: Env }
 type Ctx = Context<App>
 
 const app = new Hono<App>()
+const encoder = new TextEncoder()
 
 // Everything else needs a session. The print and share routes check their own signed token and scope to its account.
 const PUBLIC_API = new Set([
@@ -103,6 +107,17 @@ app.use('/api/*', async (c, next) => {
   if (!isPublic) {
     const user = await sessionUser(c)
     if (!user) return c.json({ error: 'Unauthorized' }, 401)
+    // A demo sandbox may only use the routes on its allow-list, and every write spends its budget (demo.ts).
+    if (isDemoOwner(user)) {
+      if (!demoRouteAllowed(c.req.method, path)) return c.json({ error: NOT_IN_DEMO }, 403)
+      if (c.req.method !== 'GET' && c.req.method !== 'HEAD') {
+        // The body's real size: HTTP/2 requests may come without Content-Length. Hono keeps the text for the route.
+        const declared = Number(c.req.header('content-length'))
+        const size = Number.isFinite(declared) && declared > 0 ? declared : encoder.encode(await c.req.text()).length
+        const refused = await demoWrite(c.env, user, size)
+        if (refused) return c.json({ error: refused.error }, refused.status)
+      }
+    }
     // From here on every read and write of this request belongs to this account.
     c.env = db.forOwner(c.env, user)
     await db.ensureAccount(c.env)
@@ -138,6 +153,7 @@ app.post('/api/auth/login', async (c) => {
   if (!secretConfigured(c.env)) return c.json({ error: NO_SECRET }, 500)
   const { username, password } = await credentials(c)
   const ip = clientIp(c)
+  if (username === DEMO_USER && demoEnabled(c.env)) return demoLogin(c, password, ip)
   const wait = await loginLocked(c.env.DB, ip, username)
   if (wait > 0) return tooMany(c, wait)
   const user = await verifyLogin(c.env, username, password.slice(0, 256))
@@ -151,7 +167,31 @@ app.post('/api/auth/login', async (c) => {
   return c.json({ ok: true, user })
 })
 
-app.post('/api/auth/logout', (c) => {
+/**
+ * The public demo: the published password opens a new private sandbox of sample data (demo.ts). Wrong passwords
+ * count against the address only, so nobody can lock the demo for everyone else.
+ */
+async function demoLogin(c: Ctx, password: string, ip: string) {
+  const wait = await loginLocked(c.env.DB, ip, '')
+  if (wait > 0) return tooMany(c, wait)
+  if (!(await sameSecret(password.slice(0, 256), c.env.DEMO_PASSWORD ?? ''))) {
+    await recordLoginFailure(c.env.DB, ip, DEMO_USER, { perUser: false })
+    await slowDown()
+    return c.json({ error: 'Wrong username or password' }, 401)
+  }
+  const started = await startDemo(c.env, ip)
+  if ('error' in started) return c.json({ error: started.error }, 429)
+  await issueDemoSession(c, started.owner, started.expiresAt)
+  return c.json({ ok: true, user: DEMO_USER, demo: { expiresAt: started.expiresAt } })
+}
+
+app.post('/api/auth/logout', async (c) => {
+  // Leaving the demo ends its sandbox now rather than when it would run out; the next purge deletes its data.
+  const user = await sessionUser(c)
+  if (isDemoOwner(user)) {
+    await endDemo(c.env, user)
+    c.executionCtx.waitUntil(purgeExpired(c.env, 5))
+  }
   clearSession(c)
   return c.json({ ok: true })
 })
@@ -169,7 +209,15 @@ app.get('/api/auth/me', async (c) => {
   const site = siteOrigin(c.env, c.req.url)
   // A new deployment without any account: the sign-in page offers to create the first one.
   const setup = !user && !(await hasAccounts(c.env)) ? { setup: { needsToken: !isLocalRequest(c.req.url) } } : {}
-  return c.json({ authenticated: !!user, user, ...setup, ...(site !== new URL(c.req.url).origin && { moveTo: site }) })
+  // A demo sandbox shows as "demo", with the time its data is deleted; the sign-in page mentions the demo when it is on.
+  const demo = isDemoOwner(user) ? { demo: { expiresAt: sessionExpiry(c) } } : !user && demoEnabled(c.env) ? { demoAvailable: true } : {}
+  return c.json({
+    authenticated: !!user,
+    user: isDemoOwner(user) ? DEMO_USER : user,
+    ...setup,
+    ...demo,
+    ...(site !== new URL(c.req.url).origin && { moveTo: site }),
+  })
 })
 
 /**
@@ -343,7 +391,12 @@ app.get('/api/resumes/:id', async (c) => {
   return resume ? c.json(resume) : c.json({ error: 'Not found' }, 404)
 })
 
+/** A demo sandbox keeps to a few CVs and cards (demo.ts). */
+const demoFull = async (c: Ctx, kind: 'resumes' | 'applications') => isDemoOwner(db.ownerOf(c.env)) && !(await demoRoomFor(c.env, db.ownerOf(c.env), kind))
+const DEMO_FULL = 'The demo keeps a limited number of CVs and cards. Delete one first.'
+
 app.post('/api/resumes', async (c) => {
+  if (await demoFull(c, 'resumes')) return c.json({ error: DEMO_FULL }, 403)
   const body = await c.req.json<{ duplicateOf?: string; name?: string; blank?: boolean }>()
   const now = new Date().toISOString()
   const source = body.duplicateOf ? await db.getResume(c.env, body.duplicateOf) : await db.getMainResume(c.env)
@@ -430,6 +483,8 @@ app.put('/api/search-profile', async (c) => {
 /* ------------------------------------ AI ---------------------------------- */
 
 app.get('/api/ai/status', async (c) => {
+  // The demo has no AI: its buttons stay hidden, like on a site without a provider.
+  if (isDemoOwner(db.ownerOf(c.env))) return c.json({ provider: 'none', model: '', spend: null, detector: null } satisfies AiStatus)
   const status = aiStatus(c.env)
   const paid = status.provider === 'openai' || status.provider === 'anthropic'
   return c.json({ ...status, spend: paid ? await aiSpend(c.env) : null, detector: detectorName(c.env) } satisfies AiStatus)
@@ -672,6 +727,7 @@ app.put('/api/board-columns', async (c) => {
 })
 
 app.post('/api/applications', async (c) => {
+  if (await demoFull(c, 'applications')) return c.json({ error: DEMO_FULL }, 403)
   const fields = applicationFields(await c.req.json())
   const application = newApplication({ ...fields, source: fields.source || jobSource(fields.url ?? '') }, new Date().toISOString())
   await db.putApplication(c.env, application)
@@ -743,6 +799,7 @@ app.post('/api/applications/:id/logo', async (c) => {
 
 /** Adds the tailored CVs that are not on the board yet as "Saved" cards. */
 app.post('/api/applications/import', async (c) => {
+  if (await demoFull(c, 'applications')) return c.json({ error: DEMO_FULL }, 403)
   const [resumes, apps] = await Promise.all([db.listResumes(c.env), db.listApplications(c.env)])
   const linked = new Set(apps.map((a) => a.resumeId))
   const now = new Date().toISOString()
@@ -874,4 +931,9 @@ app.onError((err, c) => {
 /** The MCP endpoint needs no OAuth (the token is in the URL): say so to connectors that look for it. */
 app.all('/.well-known/*', (c) => c.json({ error: 'Not found' }, 404))
 
-export default app
+/** Every 30 minutes (wrangler.jsonc triggers): deletes the data of demo sandboxes that ran out. */
+async function scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+  ctx.waitUntil(db.ensureDb(env).then(() => purgeExpired(env, 200)))
+}
+
+export default Object.assign(app, { scheduled })

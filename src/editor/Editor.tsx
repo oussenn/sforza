@@ -19,6 +19,8 @@ import LettersPage from './letters/LettersPage'
 import ProfilePage, { PANELS } from './profile/ProfilePage'
 import { navigate, useRoute } from './router'
 import { useEditor } from './store'
+import DemoBanner from './DemoBanner'
+import type { DemoSession } from '@/lib/api'
 import { checkForChanges, startSync } from './sync'
 import TopBar from './TopBar'
 
@@ -28,7 +30,7 @@ const Spinner = () => (
   </div>
 )
 
-export default function Editor({ onLogout, user }: { onLogout: () => void; user: string | null }) {
+export default function Editor({ onLogout, user, demo = null }: { onLogout: () => void; user: string | null; demo?: DemoSession | null }) {
   const route = useRoute()
   const ready = useEditor((s) => s.ready)
   const resume = useEditor((s) => s.resume)
@@ -104,7 +106,8 @@ export default function Editor({ onLogout, user }: { onLogout: () => void; user:
 
   return (
     <div className="flex h-dvh flex-col">
-      <TopBar onLogout={onLogout} user={user} />
+      {demo && <DemoBanner expiresAt={demo.expiresAt} />}
+      <TopBar onLogout={onLogout} user={user} demo={!!demo} />
       {route.page === 'cvs' && <Overview />}
       {(route.page === 'jobsearch' || route.page === 'knowledge' || route.page === 'mcp') && <ProfilePage panel={route.page} />}
       {route.page === 'applications' && <ApplicationsPage appId={route.appId} />}

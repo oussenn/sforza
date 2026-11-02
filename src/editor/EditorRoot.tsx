@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Backdrop } from '@/components/Backdrop'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { api } from '@/lib/api'
+import { api, type DemoSession } from '@/lib/api'
 import Editor from './Editor'
 import Login, { type LoginMode } from './Login'
 import { navigate } from './router'
@@ -22,6 +22,8 @@ export default function EditorRoot() {
   const [auth, setAuth] = useState<'checking' | 'in' | 'out'>('checking')
   const [user, setUser] = useState<string | null>(null)
   const [setup, setSetup] = useState<{ needsToken: boolean } | null>(null)
+  const [demo, setDemo] = useState<DemoSession | null>(null)
+  const [demoAvailable, setDemoAvailable] = useState(false)
   const [joinCode, setJoinCode] = useState(readJoinCode)
   // The backdrop blurs with motion only after the sign-in page was on screen; a signed-in visit starts blurred.
   const [animate, setAnimate] = useState(false)
@@ -35,6 +37,8 @@ export default function EditorRoot() {
         if (r.moveTo) return window.location.replace(r.moveTo + window.location.pathname + window.location.search + window.location.hash)
         setUser(r.user)
         setSetup(r.setup ?? null)
+        setDemo(r.demo ?? null)
+        setDemoAvailable(!!r.demoAvailable)
         setAnimate(!r.authenticated)
         setAuth(r.authenticated ? 'in' : 'out')
       })
@@ -47,8 +51,9 @@ export default function EditorRoot() {
   // A full reload drops everything the previous account had loaded into memory.
   const signedOut = () => window.location.replace('/')
 
-  const signedIn = (name: string) => {
+  const signedIn = (name: string, demoSession?: DemoSession) => {
     setUser(name)
+    setDemo(demoSession ?? null)
     setSetup(null)
     setAuth('in')
   }
@@ -69,8 +74,8 @@ export default function EditorRoot() {
       {auth === 'checking' ? <div className="min-h-dvh bg-[var(--preview-canvas)]" /> : <Backdrop blurred={inEditor} animate={animate} />}
       {/* A new account from an invitation replaces any session in this browser. */}
       {auth !== 'checking' && joinCode !== null && <Login mode={{ kind: 'join', code: joinCode }} onSuccess={joined} />}
-      {auth === 'out' && joinCode === null && <Login mode={mode} onSuccess={signedIn} />}
-      {inEditor && <Editor onLogout={signedOut} user={user} />}
+      {auth === 'out' && joinCode === null && <Login mode={mode} onSuccess={signedIn} demoAvailable={demoAvailable} />}
+      {inEditor && <Editor onLogout={signedOut} user={user} demo={demo} />}
       <Toaster position="bottom-center" richColors closeButton />
     </TooltipProvider>
   )

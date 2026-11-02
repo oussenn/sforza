@@ -2,6 +2,7 @@ import type { Context } from 'hono'
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import type { AccountInfo, InviteInfo } from '@shared/types'
 import { USERNAME_PATTERN } from '@shared/utils'
+import { demoEnabled, isDemoOwner } from './demo'
 
 const COOKIE = 'rs_session'
 const MAX_AGE = 60 * 60 * 24 * 30 // 30 days
@@ -352,9 +353,44 @@ export function clearSession(c: Context<{ Bindings: Env }>): void {
   deleteCookie(c, COOKIE, { path: '/', secure: true })
 }
 
-/** The signed-in username, or null. */
+/** The signed-in username (or demo sandbox, see demo.ts), or null. */
 export async function sessionUser(c: Context<{ Bindings: Env }>): Promise<string | null> {
-  return verifyToken(c.env, getCookie(c, COOKIE), sessionPayload)
+  const token = getCookie(c, COOKIE)
+  if (isDemoOwner(token?.split('.')[0])) return verifyDemoToken(c.env, token!)
+  return verifyToken(c.env, token, sessionPayload)
+}
+
+/** The expiry of this request's session cookie (seconds), 0 without one. */
+export function sessionExpiry(c: Context<{ Bindings: Env }>): number {
+  return Number(getCookie(c, COOKIE)?.split('.')[1]) || 0
+}
+
+/* ---------------------------------- demo ---------------------------------- */
+
+// A demo session signs its sandbox, its expiry and a stamp of DEMO_PASSWORD: a new password, or none, ends them all.
+// It is checked without any database read, so a demo visitor costs no more per request than a signed-in user.
+const demoStamp = async (env: Env) => b64url(await sha256(`demo:${env.DEMO_PASSWORD ?? ''}`)).slice(0, 16)
+const demoPayload = (owner: string, exp: number, stamp: string) => `demo-session:${owner}:${exp}:${stamp}`
+
+export async function issueDemoSession(c: Context<{ Bindings: Env }>, owner: string, expiresAt: number): Promise<void> {
+  const sig = await sign(c.env, demoPayload(owner, expiresAt, await demoStamp(c.env)))
+  setCookie(c, COOKIE, `${owner}.${expiresAt}.${sig}`, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+    path: '/',
+    maxAge: Math.max(1, expiresAt - Math.floor(Date.now() / 1000)),
+  })
+}
+
+async function verifyDemoToken(env: Env, token: string): Promise<string | null> {
+  if (!demoEnabled(env) || !secretConfigured(env)) return null
+  const [owner, expRaw, sig] = token.split('.')
+  const exp = Number(expRaw)
+  if (!owner || !sig || !Number.isFinite(exp) || exp < Date.now() / 1000) return null
+  const expected = await sign(env, demoPayload(owner, exp, await demoStamp(env)))
+  if (expected.length !== sig.length || !crypto.subtle.timingSafeEqual(encoder.encode(expected), encoder.encode(sig))) return null
+  return owner
 }
 
 /* ------------------------------ signed links ------------------------------ */
@@ -394,7 +430,8 @@ export async function loginLocked(d1: D1Database, ip: string, user: string): Pro
   return Math.max(0, Math.ceil(until - Date.now() / 1000))
 }
 
-export async function recordLoginFailure(d1: D1Database, ip: string, user: string): Promise<void> {
+/** Counts a failed attempt against the address and, unless perUser is false (the public demo name), the account. */
+export async function recordLoginFailure(d1: D1Database, ip: string, user: string, { perUser = true } = {}): Promise<void> {
   const now = Math.floor(Date.now() / 1000)
   const bump = (key: string, limit: number) =>
     d1
@@ -406,7 +443,7 @@ export async function recordLoginFailure(d1: D1Database, ip: string, user: strin
                                WHEN fails + 1 >= ?3 THEN ?2 + ?4 ELSE locked_until END`,
       )
       .bind(key, now, limit, LOCK_SECONDS)
-  await d1.batch([bump(`ip:${ip}`, IP_LIMIT), bump(`user:${user.slice(0, 64)}`, USER_LIMIT)])
+  await d1.batch([bump(`ip:${ip}`, IP_LIMIT), ...(perUser ? [bump(`user:${user.slice(0, 64)}`, USER_LIMIT)] : [])])
 }
 
 export async function clearLoginFailures(d1: D1Database, ip: string, user: string): Promise<void> {

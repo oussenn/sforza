@@ -100,7 +100,7 @@ function NavButton({
   )
 }
 
-export default function TopBar({ onLogout, user }: { onLogout: () => void; user: string | null }) {
+export default function TopBar({ onLogout, user, demo = false }: { onLogout: () => void; user: string | null; demo?: boolean }) {
   const route = useRoute()
   const resume = useEditor((s) => s.resume)
   const list = useEditor((s) => s.list)
@@ -339,10 +339,12 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
               </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {user && <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Signed in as {user}</DropdownMenuLabel>}
-            <DropdownMenuItem onClick={() => setAccount(true)}>
-              <UserRound /> Account
-            </DropdownMenuItem>
+            {user && <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">{demo ? 'Demo session' : `Signed in as ${user}`}</DropdownMenuLabel>}
+            {!demo && (
+              <DropdownMenuItem onClick={() => setAccount(true)}>
+                <UserRound /> Account
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => void logout()}>
               <LogOut /> Log out
             </DropdownMenuItem>
@@ -352,7 +354,7 @@ export default function TopBar({ onLogout, user }: { onLogout: () => void; user:
 
       {(inCv || route.page === 'letters') && <div className="hidden h-0 basis-full max-lg:order-1 max-lg:block" aria-hidden />}
 
-      {user && <AccountDialog open={account} onOpenChange={setAccount} user={user} />}
+      {user && !demo && <AccountDialog open={account} onOpenChange={setAccount} user={user} />}
 
       <PromptDialog
         open={renaming}

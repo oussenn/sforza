@@ -4,7 +4,7 @@ import { PASSWORD_MIN, passwordProblem, usernameProblem } from '@shared/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { api } from '@/lib/api'
+import { api, type DemoSession } from '@/lib/api'
 
 /**
  * Sign in, or make an account: the first one of a new deployment (setup) or one from an invitation link (join).
@@ -22,7 +22,17 @@ const TEXT: Record<LoginMode['kind'], { subtitle: string; button: string; intro?
   join: { subtitle: 'You are invited', button: 'Create account', intro: 'Pick a username and a password for your account.' },
 }
 
-export default function Login({ mode, onSuccess }: { mode: LoginMode; onSuccess: (user: string) => void }) {
+const README_DEMO = 'https://github.com/oussenn/sforza#try-the-demo'
+
+export default function Login({
+  mode,
+  onSuccess,
+  demoAvailable = false,
+}: {
+  mode: LoginMode
+  onSuccess: (user: string, demo?: DemoSession) => void
+  demoAvailable?: boolean
+}) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -48,7 +58,7 @@ export default function Login({ mode, onSuccess }: { mode: LoginMode; onSuccess:
           : mode.kind === 'join'
             ? await api.join(mode.code, user, password)
             : await api.login(username, password)
-      onSuccess(result.user)
+      onSuccess(result.user, (result as { demo?: DemoSession }).demo)
     } catch (err) {
       setError((err as Error).message)
       if (!creating) setPassword('')
@@ -139,6 +149,15 @@ export default function Login({ mode, onSuccess }: { mode: LoginMode; onSuccess:
         {error && (
           <p role="alert" className="text-destructive mt-3 text-sm">
             {error}
+          </p>
+        )}
+        {mode.kind === 'signin' && demoAvailable && (
+          <p className="text-muted-foreground mt-5 border-t pt-4 text-xs">
+            Just looking? Sign in as <span className="text-foreground font-mono">demo</span> with the password from the{' '}
+            <a href={README_DEMO} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+              README
+            </a>
+            . You get your own copy of sample data for two hours.
           </p>
         )}
       </form>

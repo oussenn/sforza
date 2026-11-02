@@ -1,0 +1,1869 @@
+{
+ "_comment": "Fictional sample data (Alex Morgan) that every demo sandbox starts from. Made by .demo/build_demo.test.ts in the public repo; no real person.",
+ "resumes": [
+  {
+   "id": "cv_3i4547173y18",
+   "name": "Master CV",
+   "kind": "master",
+   "is_main": 1,
+   "data": {
+    "id": "cv_3i4547173y18",
+    "name": "Master CV",
+    "kind": "master",
+    "baseId": null,
+    "template": "signature",
+    "style": {
+     "accent": "#000000",
+     "text": "#1f1f1f",
+     "background": "#fffcf9",
+     "font": "Open Sans",
+     "headingFont": "",
+     "fontSize": 15,
+     "lineHeight": 1.184,
+     "marginX": 14,
+     "marginY": 9.5,
+     "sectionGap": 14.4,
+     "itemGap": 9,
+     "columnRatio": 51,
+     "showPhoto": true,
+     "photoSize": 115,
+     "showIcons": true
+    },
+    "photo": "",
+    "sourceLang": "en",
+    "content": {
+     "en": {
+      "personal": {
+       "name": "Alex Morgan",
+       "headline": "M.Sc. Business Analytics Student · Data Analysis & Reporting",
+       "contacts": [
+        {
+         "id": "c_email",
+         "type": "email",
+         "value": "alex.morgan@example.com",
+         "url": "mailto:alex.morgan@example.com"
+        },
+        {
+         "id": "c_phone",
+         "type": "phone",
+         "value": "+49 170 0000000",
+         "url": "tel:+491700000000"
+        },
+        {
+         "id": "c_location",
+         "type": "location",
+         "value": "Essen, Germany",
+         "url": ""
+        },
+        {
+         "id": "c_linkedin",
+         "type": "linkedin",
+         "value": "linkedin.com/in/example",
+         "url": "https://linkedin.com/in/example"
+        },
+        {
+         "id": "c_github",
+         "type": "github",
+         "value": "github.com/example",
+         "url": "https://github.com/example"
+        }
+       ]
+      },
+      "sections": [
+       {
+        "id": "sec_summary",
+        "type": "summary",
+        "title": "Profile",
+        "visible": true,
+        "placement": "full",
+        "text": "M.Sc. Business Analytics student with two years of part-time work in sales and logistics analytics. Builds SQL data models, Power BI reports and Python analyses on messy business data. English native, German and Spanish at B1."
+       },
+       {
+        "id": "sec_experience",
+        "type": "experience",
+        "title": "Professional Experience",
+        "visible": true,
+        "placement": "main",
+        "items": [
+         {
+          "id": "exp_sales",
+          "position": "Working Student, Sales Analytics",
+          "company": "Northwind Traders",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2025/04",
+          "end": "",
+          "current": true,
+          "description": "- Built **Power BI** sales reports for 12 regional managers on a **SQL** data model refreshed every night.\n- Cleaned and matched **80k+ customer records** from two CRM systems before a migration.\n- Automated a weekly margin analysis in **Python (pandas)** that used to take a day in Excel."
+         },
+         {
+          "id": "exp_logistics",
+          "position": "Data Analyst Intern",
+          "company": "Contoso Logistics",
+          "url": "",
+          "location": "On-site",
+          "start": "2024/07",
+          "end": "2024/12",
+          "current": false,
+          "description": "- Analysed delivery times for 300 routes in **SQL** and flagged the slowest depots in a **Tableau** dashboard.\n- Wrote data quality checks for shipment data and documented the fixes with the IT team."
+         },
+         {
+          "id": "exp_research",
+          "position": "Research Assistant, Survey Lab",
+          "company": "Example University",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2023/10",
+          "end": "2024/06",
+          "current": false,
+          "description": "- Prepared survey data for four studies in **R** and wrote the descriptive statistics.\n- Kept the lab's data dictionary and codebooks up to date."
+         },
+         {
+          "id": "exp_cafe",
+          "position": "Customer Service Assistant",
+          "company": "Fabrikam Coffee",
+          "url": "",
+          "location": "Part-time",
+          "start": "2021/09",
+          "end": "2023/06",
+          "current": false,
+          "description": "- Handled orders and complaints in English and German, and trained three new colleagues."
+         }
+        ]
+       },
+       {
+        "id": "sec_education",
+        "type": "education",
+        "title": "Education",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "edu_msc",
+          "degree": "M.Sc. Business Analytics",
+          "school": "Example Technical University",
+          "url": "",
+          "location": "Germany",
+          "start": "2024/10",
+          "end": "Expected 2026",
+          "current": false,
+          "description": ""
+         },
+         {
+          "id": "edu_bsc",
+          "degree": "B.Sc. Economics",
+          "school": "Example University",
+          "url": "",
+          "location": "",
+          "start": "2020/10",
+          "end": "2024/09",
+          "current": false,
+          "description": "**_Relevant Coursework_:** Econometrics, Statistics, Databases, Marketing Analytics."
+         }
+        ]
+       },
+       {
+        "id": "sec_projects",
+        "type": "projects",
+        "title": "Projects",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "prj_forecast",
+          "name": "Retail Demand Forecast",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Weekly demand forecast for 40 stores from two years of sales in Python (scikit-learn); 18% lower error than the naive baseline."
+         },
+         {
+          "id": "prj_churn",
+          "name": "Customer Churn Dashboard",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Power BI report that tracks churn by cohort and region, built on a star schema in PostgreSQL."
+         },
+         {
+          "id": "prj_survey",
+          "name": "Survey Text Classifier",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Sorted 5,000 open survey answers into topics with a small text classifier in Python."
+         }
+        ]
+       },
+       {
+        "id": "sec_languages",
+        "type": "languages",
+        "title": "Languages",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lang_en",
+          "name": "English",
+          "level": "Native",
+          "rating": 5
+         },
+         {
+          "id": "lang_de",
+          "name": "German",
+          "level": "B1",
+          "rating": 3
+         },
+         {
+          "id": "lang_es",
+          "name": "Spanish",
+          "level": "B1",
+          "rating": 3
+         }
+        ]
+       },
+       {
+        "id": "sec_skills",
+        "type": "skills",
+        "title": "Technical Skills",
+        "visible": true,
+        "placement": "main",
+        "items": [
+         {
+          "id": "sk_data",
+          "name": "Data & Analytics",
+          "details": "SQL, Python (pandas, NumPy), R, Power BI (DAX, Power Query), Tableau, KPI reporting.",
+          "level": 0
+         },
+         {
+          "id": "sk_eng",
+          "name": "Data Engineering",
+          "details": "PostgreSQL, ETL pipelines, data modeling, data cleaning, Git.",
+          "level": 0
+         },
+         {
+          "id": "sk_stats",
+          "name": "Statistics",
+          "details": "Regression, forecasting, A/B testing, survey analysis.",
+          "level": 0
+         },
+         {
+          "id": "sk_office",
+          "name": "Office",
+          "details": "Advanced Excel, PowerPoint, Jira.",
+          "level": 0
+         }
+        ]
+       },
+       {
+        "id": "sec_certs",
+        "type": "certifications",
+        "title": "Certifications",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "cert_pl300",
+          "name": "Power BI Data Analyst (PL-300)",
+          "issuer": "Microsoft",
+          "date": "",
+          "url": ""
+         },
+         {
+          "id": "cert_gda",
+          "name": "Google Data Analytics Certificate",
+          "issuer": "Google",
+          "date": "",
+          "url": ""
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "translations": {},
+    "job": null,
+    "createdAt": "2026-10-27T14:53:33.877Z",
+    "updatedAt": "2026-10-30T15:25:56.748Z"
+   },
+   "created_at": "2026-10-27T14:53:33.877Z",
+   "updated_at": "2026-10-30T15:25:56.748Z"
+  },
+  {
+   "id": "cv_0y5j6g150f64",
+   "name": "Data Analytics – Brightline Energy",
+   "kind": "tailored",
+   "is_main": 0,
+   "data": {
+    "id": "cv_0y5j6g150f64",
+    "name": "Data Analytics – Brightline Energy",
+    "kind": "tailored",
+    "baseId": "cv_3i4547173y18",
+    "template": "signature",
+    "style": {
+     "accent": "#000000",
+     "text": "#1f1f1f",
+     "background": "#fffcf9",
+     "font": "Open Sans",
+     "headingFont": "",
+     "fontSize": 9.5,
+     "lineHeight": 1.184,
+     "marginX": 14,
+     "marginY": 9.5,
+     "sectionGap": 14.4,
+     "itemGap": 9,
+     "columnRatio": 51,
+     "showPhoto": false,
+     "photoSize": 115,
+     "showIcons": true
+    },
+    "photo": "",
+    "sourceLang": "en",
+    "content": {
+     "en": {
+      "personal": {
+       "name": "Alex Morgan",
+       "headline": "Working Student Data Analytics · SQL, Python, Power BI",
+       "contacts": [
+        {
+         "id": "c_email",
+         "type": "email",
+         "value": "alex.morgan@example.com",
+         "url": "mailto:alex.morgan@example.com"
+        },
+        {
+         "id": "c_phone",
+         "type": "phone",
+         "value": "+49 170 0000000",
+         "url": "tel:+491700000000"
+        },
+        {
+         "id": "c_location",
+         "type": "location",
+         "value": "Essen, Germany",
+         "url": ""
+        },
+        {
+         "id": "c_linkedin",
+         "type": "linkedin",
+         "value": "linkedin.com/in/example",
+         "url": "https://linkedin.com/in/example"
+        },
+        {
+         "id": "c_github",
+         "type": "github",
+         "value": "github.com/example",
+         "url": "https://github.com/example"
+        }
+       ]
+      },
+      "sections": [
+       {
+        "id": "sec_summary",
+        "type": "summary",
+        "title": "Profile",
+        "visible": true,
+        "placement": "full",
+        "text": "M.Sc. Business Analytics student with two years of part-time work in sales and logistics analytics. Builds SQL data models, Power BI reports and Python analyses on messy business data. English native, German and Spanish at B1."
+       },
+       {
+        "id": "sec_experience",
+        "type": "experience",
+        "title": "Professional Experience",
+        "visible": true,
+        "placement": "main",
+        "items": [
+         {
+          "id": "exp_sales",
+          "position": "Working Student, Sales Analytics",
+          "company": "Northwind Traders",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2025/04",
+          "end": "",
+          "current": true,
+          "description": "- Built **Power BI** sales reports for 12 regional managers on a **SQL** data model refreshed every night.\n- Cleaned and matched **80k+ customer records** from two CRM systems before a migration.\n- Automated a weekly margin analysis in **Python (pandas)** that used to take a day in Excel."
+         },
+         {
+          "id": "exp_logistics",
+          "position": "Data Analyst Intern",
+          "company": "Contoso Logistics",
+          "url": "",
+          "location": "On-site",
+          "start": "2024/07",
+          "end": "2024/12",
+          "current": false,
+          "description": "- Analysed delivery times for 300 routes in **SQL** and flagged the slowest depots in a **Tableau** dashboard.\n- Wrote data quality checks for shipment data and documented the fixes with the IT team."
+         },
+         {
+          "id": "exp_research",
+          "position": "Research Assistant, Survey Lab",
+          "company": "Example University",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2023/10",
+          "end": "2024/06",
+          "current": false,
+          "description": "- Prepared survey data for four studies in **R** and wrote the descriptive statistics."
+         },
+         {
+          "id": "exp_cafe",
+          "position": "Customer Service Assistant",
+          "company": "Fabrikam Coffee",
+          "url": "",
+          "location": "Part-time",
+          "start": "2021/09",
+          "end": "2023/06",
+          "current": false,
+          "description": "- Handled orders and complaints in English and German, and trained three new colleagues."
+         }
+        ]
+       },
+       {
+        "id": "sec_education",
+        "type": "education",
+        "title": "Education",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "edu_msc",
+          "degree": "M.Sc. Business Analytics",
+          "school": "Example Technical University",
+          "url": "",
+          "location": "Germany",
+          "start": "2024/10",
+          "end": "Expected 2026",
+          "current": false,
+          "description": ""
+         },
+         {
+          "id": "edu_bsc",
+          "degree": "B.Sc. Economics",
+          "school": "Example University",
+          "url": "",
+          "location": "",
+          "start": "2020/10",
+          "end": "2024/09",
+          "current": false,
+          "description": "**_Relevant Coursework_:** Econometrics, Statistics, Databases, Marketing Analytics."
+         }
+        ]
+       },
+       {
+        "id": "sec_projects",
+        "type": "projects",
+        "title": "Projects",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lib_reporting",
+          "name": "Inventory Reporting Pipeline",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Loaded nightly inventory exports into PostgreSQL and built stock-level dashboards; reconciled the counts with the warehouse team.",
+          "hidden": false
+         },
+         {
+          "id": "prj_churn",
+          "name": "Customer Churn Dashboard",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Power BI report that tracks churn by cohort and region, built on a star schema in PostgreSQL.",
+          "hidden": false
+         },
+         {
+          "id": "prj_forecast",
+          "name": "Retail Demand Forecast",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Weekly demand forecast for 40 stores from two years of sales in Python (scikit-learn); 18% lower error than the naive baseline.",
+          "hidden": false
+         }
+        ]
+       },
+       {
+        "id": "sec_languages",
+        "type": "languages",
+        "title": "Languages",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lang_en",
+          "name": "English",
+          "level": "Native",
+          "rating": 5
+         },
+         {
+          "id": "lang_de",
+          "name": "German",
+          "level": "B1",
+          "rating": 3
+         },
+         {
+          "id": "lang_es",
+          "name": "Spanish",
+          "level": "B1",
+          "rating": 3
+         }
+        ]
+       },
+       {
+        "id": "sec_skills",
+        "type": "skills",
+        "title": "Technical Skills",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "it_5p5t4u1n2m43",
+          "name": "Data & Analytics",
+          "details": "SQL, Python (pandas, NumPy), Power BI (DAX, Power Query), ETL pipelines, KPI reporting, Tableau.",
+          "level": 0
+         },
+         {
+          "id": "it_3k4d4s4g125o",
+          "name": "Data Engineering & Tools",
+          "details": "PostgreSQL, data modeling, data cleaning, Git, Advanced Excel.",
+          "level": 0
+         }
+        ]
+       },
+       {
+        "id": "sec_certs",
+        "type": "certifications",
+        "title": "Certifications",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "cert_pl300",
+          "name": "Power BI Data Analyst (PL-300)",
+          "issuer": "Microsoft",
+          "date": "",
+          "url": ""
+         },
+         {
+          "id": "cert_gda",
+          "name": "Google Data Analytics Certificate",
+          "issuer": "Google",
+          "date": "",
+          "url": ""
+         }
+        ]
+       }
+      ]
+     },
+     "de": {
+      "personal": {
+       "name": "Alex Morgan",
+       "headline": "Werkstudium Data Analytics · SQL, Python, Power BI",
+       "contacts": [
+        {
+         "id": "c_email",
+         "type": "email",
+         "value": "alex.morgan@example.com",
+         "url": "mailto:alex.morgan@example.com"
+        },
+        {
+         "id": "c_phone",
+         "type": "phone",
+         "value": "+49 170 0000000",
+         "url": "tel:+491700000000"
+        },
+        {
+         "id": "c_location",
+         "type": "location",
+         "value": "Essen, Deutschland",
+         "url": ""
+        },
+        {
+         "id": "c_linkedin",
+         "type": "linkedin",
+         "value": "linkedin.com/in/example",
+         "url": "https://linkedin.com/in/example"
+        },
+        {
+         "id": "c_github",
+         "type": "github",
+         "value": "github.com/example",
+         "url": "https://github.com/example"
+        }
+       ]
+      },
+      "sections": [
+       {
+        "id": "sec_summary",
+        "type": "summary",
+        "title": "Profil",
+        "visible": true,
+        "placement": "full",
+        "text": "Masterstudium Business Analytics mit zwei Jahren Teilzeiterfahrung in der Vertriebs- und Logistikanalyse. Baut SQL-Datenmodelle, Power-BI-Berichte und Python-Analysen auf unübersichtlichen Geschäftsdaten. Englisch als Muttersprache, Deutsch und Spanisch auf B1-Niveau."
+       },
+       {
+        "id": "sec_experience",
+        "type": "experience",
+        "title": "Berufserfahrung",
+        "visible": true,
+        "placement": "main",
+        "items": [
+         {
+          "id": "exp_sales",
+          "position": "Werkstudium Vertriebsanalyse",
+          "company": "Northwind Traders",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2025/04",
+          "end": "",
+          "current": true,
+          "description": "- **Power BI**-Vertriebsberichte für 12 Regionalleitungen auf einem nächtlich aktualisierten **SQL**-Datenmodell gebaut.\n- **Über 80.000 Kundendatensätze** aus zwei CRM-Systemen vor einer Migration bereinigt und abgeglichen.\n- Eine wöchentliche Margenanalyse mit **Python (pandas)** automatisiert, die in Excel einen Tag dauerte."
+         },
+         {
+          "id": "exp_logistics",
+          "position": "Praktikum Datenanalyse",
+          "company": "Contoso Logistics",
+          "url": "",
+          "location": "Vor Ort",
+          "start": "2024/07",
+          "end": "2024/12",
+          "current": false,
+          "description": "- Lieferzeiten von 300 Touren mit **SQL** analysiert und die langsamsten Depots in einem **Tableau**-Dashboard markiert.\n- Datenqualitätsprüfungen für Sendungsdaten geschrieben und die Korrekturen mit dem IT-Team dokumentiert."
+         },
+         {
+          "id": "exp_research",
+          "position": "Studentische Hilfskraft, Umfragelabor",
+          "company": "Example University",
+          "url": "",
+          "location": "Hybrid",
+          "start": "2023/10",
+          "end": "2024/06",
+          "current": false,
+          "description": "- Umfragedaten für vier Studien in **R** aufbereitet und die deskriptive Statistik geschrieben."
+         },
+         {
+          "id": "exp_cafe",
+          "position": "Aushilfe im Kundenservice",
+          "company": "Fabrikam Coffee",
+          "url": "",
+          "location": "Teilzeit",
+          "start": "2021/09",
+          "end": "2023/06",
+          "current": false,
+          "description": "- Bestellungen und Reklamationen auf Englisch und Deutsch bearbeitet und drei neue Kolleginnen und Kollegen eingearbeitet."
+         }
+        ]
+       },
+       {
+        "id": "sec_education",
+        "type": "education",
+        "title": "Ausbildung",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "edu_msc",
+          "degree": "M.Sc. Business Analytics",
+          "school": "Example Technical University",
+          "url": "",
+          "location": "Deutschland",
+          "start": "2024/10",
+          "end": "voraussichtlich 2026",
+          "current": false,
+          "description": ""
+         },
+         {
+          "id": "edu_bsc",
+          "degree": "B.Sc. Volkswirtschaftslehre",
+          "school": "Example University",
+          "url": "",
+          "location": "",
+          "start": "2020/10",
+          "end": "2024/09",
+          "current": false,
+          "description": "**_Relevante Kurse_:** Ökonometrie, Statistik, Datenbanken, Marketing Analytics."
+         }
+        ]
+       },
+       {
+        "id": "sec_projects",
+        "type": "projects",
+        "title": "Projekte",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lib_reporting",
+          "name": "Bestands-Reporting-Pipeline",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Nächtliche Bestandsexporte in PostgreSQL geladen und Dashboards zu Lagerbeständen gebaut; die Zahlen mit dem Lagerteam abgeglichen.",
+          "hidden": false
+         },
+         {
+          "id": "prj_churn",
+          "name": "Dashboard zur Kundenabwanderung",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Power-BI-Bericht, der die Abwanderung nach Kohorte und Region verfolgt, auf einem Sternschema in PostgreSQL.",
+          "hidden": false
+         },
+         {
+          "id": "prj_forecast",
+          "name": "Absatzprognose für den Handel",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Wöchentliche Absatzprognose für 40 Filialen aus zwei Jahren Verkaufsdaten in Python (scikit-learn); 18 % weniger Fehler als die naive Basislinie.",
+          "hidden": false
+         }
+        ]
+       },
+       {
+        "id": "sec_languages",
+        "type": "languages",
+        "title": "Sprachen",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lang_en",
+          "name": "Englisch",
+          "level": "Muttersprache",
+          "rating": 5
+         },
+         {
+          "id": "lang_de",
+          "name": "Deutsch",
+          "level": "B1",
+          "rating": 3
+         },
+         {
+          "id": "lang_es",
+          "name": "Spanisch",
+          "level": "B1",
+          "rating": 3
+         }
+        ]
+       },
+       {
+        "id": "sec_skills",
+        "type": "skills",
+        "title": "Technische Kenntnisse",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "it_5p5t4u1n2m43",
+          "name": "Daten & Analyse",
+          "details": "SQL, Python (pandas, NumPy), Power BI (DAX, Power Query), ETL-Pipelines, KPI-Reporting, Tableau.",
+          "level": 0
+         },
+         {
+          "id": "it_3k4d4s4g125o",
+          "name": "Data Engineering & Tools",
+          "details": "PostgreSQL, Datenmodellierung, Datenbereinigung, Git, Excel (fortgeschritten).",
+          "level": 0
+         }
+        ]
+       },
+       {
+        "id": "sec_certs",
+        "type": "certifications",
+        "title": "Zertifikate",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "cert_pl300",
+          "name": "Power BI Data Analyst (PL-300)",
+          "issuer": "Microsoft",
+          "date": "",
+          "url": ""
+         },
+         {
+          "id": "cert_gda",
+          "name": "Google Data Analytics Certificate",
+          "issuer": "Google",
+          "date": "",
+          "url": ""
+         }
+        ]
+       }
+      ]
+     },
+     "fr": {
+      "personal": {
+       "name": "Alex Morgan",
+       "headline": "Emploi étudiant Data Analytics · SQL, Python, Power BI",
+       "contacts": [
+        {
+         "id": "c_email",
+         "type": "email",
+         "value": "alex.morgan@example.com",
+         "url": "mailto:alex.morgan@example.com"
+        },
+        {
+         "id": "c_phone",
+         "type": "phone",
+         "value": "+49 170 0000000",
+         "url": "tel:+491700000000"
+        },
+        {
+         "id": "c_location",
+         "type": "location",
+         "value": "Essen, Allemagne",
+         "url": ""
+        },
+        {
+         "id": "c_linkedin",
+         "type": "linkedin",
+         "value": "linkedin.com/in/example",
+         "url": "https://linkedin.com/in/example"
+        },
+        {
+         "id": "c_github",
+         "type": "github",
+         "value": "github.com/example",
+         "url": "https://github.com/example"
+        }
+       ]
+      },
+      "sections": [
+       {
+        "id": "sec_summary",
+        "type": "summary",
+        "title": "Profil",
+        "visible": true,
+        "placement": "full",
+        "text": "Master en Business Analytics avec deux ans d'expérience à temps partiel en analyse commerciale et logistique. Construit des modèles de données SQL, des rapports Power BI et des analyses Python sur des données métier peu structurées. Anglais langue maternelle, allemand et espagnol niveau B1."
+       },
+       {
+        "id": "sec_experience",
+        "type": "experience",
+        "title": "Expérience professionnelle",
+        "visible": true,
+        "placement": "main",
+        "items": [
+         {
+          "id": "exp_sales",
+          "position": "Emploi étudiant, analyse des ventes",
+          "company": "Northwind Traders",
+          "url": "",
+          "location": "Hybride",
+          "start": "2025/04",
+          "end": "",
+          "current": true,
+          "description": "- Rapports de ventes **Power BI** pour 12 responsables régionaux, sur un modèle de données **SQL** actualisé chaque nuit.\n- Nettoyage et rapprochement de **plus de 80 000 fiches clients** issues de deux CRM avant une migration.\n- Automatisation en **Python (pandas)** d'une analyse hebdomadaire des marges qui prenait une journée sous Excel."
+         },
+         {
+          "id": "exp_logistics",
+          "position": "Stage en analyse de données",
+          "company": "Contoso Logistics",
+          "url": "",
+          "location": "Sur site",
+          "start": "2024/07",
+          "end": "2024/12",
+          "current": false,
+          "description": "- Analyse des délais de livraison de 300 tournées en **SQL** et repérage des dépôts les plus lents dans un tableau de bord **Tableau**.\n- Contrôles de qualité des données d'expédition, avec les corrections documentées pour l'équipe IT."
+         },
+         {
+          "id": "exp_research",
+          "position": "Assistanat de recherche, laboratoire d'enquêtes",
+          "company": "Example University",
+          "url": "",
+          "location": "Hybride",
+          "start": "2023/10",
+          "end": "2024/06",
+          "current": false,
+          "description": "- Préparation des données d'enquête de quatre études en **R** et rédaction des statistiques descriptives."
+         },
+         {
+          "id": "exp_cafe",
+          "position": "Service client",
+          "company": "Fabrikam Coffee",
+          "url": "",
+          "location": "Temps partiel",
+          "start": "2021/09",
+          "end": "2023/06",
+          "current": false,
+          "description": "- Commandes et réclamations traitées en anglais et en allemand ; formation de trois nouvelles recrues."
+         }
+        ]
+       },
+       {
+        "id": "sec_education",
+        "type": "education",
+        "title": "Formation",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "edu_msc",
+          "degree": "M.Sc. Business Analytics",
+          "school": "Example Technical University",
+          "url": "",
+          "location": "Allemagne",
+          "start": "2024/10",
+          "end": "Fin prévue en 2026",
+          "current": false,
+          "description": ""
+         },
+         {
+          "id": "edu_bsc",
+          "degree": "Licence en économie",
+          "school": "Example University",
+          "url": "",
+          "location": "",
+          "start": "2020/10",
+          "end": "2024/09",
+          "current": false,
+          "description": "**_Cours suivis_ :** économétrie, statistique, bases de données, marketing analytique."
+         }
+        ]
+       },
+       {
+        "id": "sec_projects",
+        "type": "projects",
+        "title": "Projets",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lib_reporting",
+          "name": "Pipeline de reporting des stocks",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Exports de stock chargés chaque nuit dans PostgreSQL et tableaux de bord des niveaux de stock ; chiffres rapprochés avec l'équipe de l'entrepôt.",
+          "hidden": false
+         },
+         {
+          "id": "prj_churn",
+          "name": "Tableau de bord d'attrition client",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Rapport Power BI qui suit l'attrition par cohorte et par région, sur un schéma en étoile dans PostgreSQL.",
+          "hidden": false
+         },
+         {
+          "id": "prj_forecast",
+          "name": "Prévision de la demande en magasin",
+          "subtitle": "",
+          "url": "",
+          "start": "",
+          "end": "",
+          "description": "Prévision hebdomadaire de la demande pour 40 magasins à partir de deux ans de ventes, en Python (scikit-learn) ; 18 % d'erreur en moins que la référence naïve.",
+          "hidden": false
+         }
+        ]
+       },
+       {
+        "id": "sec_languages",
+        "type": "languages",
+        "title": "Langues",
+        "visible": true,
+        "placement": "side",
+        "items": [
+         {
+          "id": "lang_en",
+          "name": "Anglais",
+          "level": "Langue maternelle",
+          "rating": 5
+         },
+         {
+          "id": "lang_de",
+          "name": "Allemand",
+          "level": "B1",
+          "rating": 3
+         },
+         {
+          "id": "lang_es",
+          "name": "Espagnol",
+          "level": "B1",
+          "rating": 3
+         }
+        ]
+       },
+       {
+        "id": "sec_skills",
+        "type": "skills",
+        "title": "Compétences techniques",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "it_5p5t4u1n2m43",
+          "name": "Données & analyse",
+          "details": "SQL, Python (pandas, NumPy), Power BI (DAX, Power Query), pipelines ETL, reporting KPI, Tableau.",
+          "level": 0
+         },
+         {
+          "id": "it_3k4d4s4g125o",
+          "name": "Data engineering & outils",
+          "details": "PostgreSQL, modélisation de données, nettoyage de données, Git, Excel avancé.",
+          "level": 0
+         }
+        ]
+       },
+       {
+        "id": "sec_certs",
+        "type": "certifications",
+        "title": "Certifications",
+        "visible": true,
+        "placement": "full",
+        "items": [
+         {
+          "id": "cert_pl300",
+          "name": "Power BI Data Analyst (PL-300)",
+          "issuer": "Microsoft",
+          "date": "",
+          "url": ""
+         },
+         {
+          "id": "cert_gda",
+          "name": "Google Data Analytics Certificate",
+          "issuer": "Google",
+          "date": "",
+          "url": ""
+         }
+        ]
+       }
+      ]
+     }
+    },
+    "translations": {
+     "de": {
+      "sourceHash": "1lktm15",
+      "at": "2026-10-29T10:02:00.000Z"
+     },
+     "fr": {
+      "sourceHash": "1lktm15",
+      "at": "2026-10-29T10:02:00.000Z"
+     }
+    },
+    "job": {
+     "title": "Working Student Data Analytics",
+     "company": "Brightline Energy",
+     "url": "https://careers.brightline-energy.example/jobs/data-analytics",
+     "description": "Working Student Data Analytics (m/f/d), Brightline Energy, Essen\n\nOur analytics team turns meter, grid and customer data into the reports that run the business. You join for 20 hours per week, hybrid in Essen.\n\nWhat you do\n- Write SQL to prepare data for monthly KPI reporting\n- Clean and validate data from our ERP and billing systems\n- Build dashboards in Power BI and keep them up to date\n- Automate recurring analyses with Python (pandas)\n\nWhat you bring\n- Enrolled in a Master's programme in data science, computer science or a related field\n- SQL and Python\n- Experience with messy business data\n- Fluent English; German at B1 level is a plus\n- dbt or Airflow is a plus",
+     "notes": "Strict mode: bullets, projects and education use your original wording; only the headline, summary and skill selection were written by the AI.\n\nFact check: nothing needed correcting.",
+     "matchScore": 86,
+     "analysis": {
+      "title": "Working Student Data Analytics",
+      "company": "Brightline Energy",
+      "location": "Essen",
+      "workMode": "hybrid",
+      "seniority": "student",
+      "yearsRequired": null,
+      "language": "en",
+      "summary": "Reporting and dashboards for an energy company, 20 h/week, hybrid in Essen.",
+      "requirements": [
+       {
+        "id": "r1",
+        "text": "SQL for reporting",
+        "quote": "SQL and Python",
+        "category": "skills",
+        "importance": "must",
+        "knockout": false
+       },
+       {
+        "id": "r2",
+        "text": "Python for data preparation",
+        "quote": "Automate recurring analyses with Python (pandas)",
+        "category": "skills",
+        "importance": "must",
+        "knockout": false
+       },
+       {
+        "id": "r3",
+        "text": "Power BI dashboards",
+        "quote": "Build dashboards in Power BI",
+        "category": "skills",
+        "importance": "must",
+        "knockout": false
+       },
+       {
+        "id": "r4",
+        "text": "Enrolled in a data science or related Master's",
+        "quote": "Enrolled in a Master's programme in data science",
+        "category": "education",
+        "importance": "must",
+        "knockout": true
+       },
+       {
+        "id": "r5",
+        "text": "Cleaning messy business data",
+        "quote": "Experience with messy business data",
+        "category": "experience",
+        "importance": "must",
+        "knockout": false
+       },
+       {
+        "id": "r6",
+        "text": "dbt or Airflow",
+        "quote": "dbt or Airflow is a plus",
+        "category": "skills",
+        "importance": "nice",
+        "knockout": false
+       },
+       {
+        "id": "r7",
+        "text": "Fluent English",
+        "quote": "Fluent English",
+        "category": "languages",
+        "importance": "must",
+        "knockout": false
+       },
+       {
+        "id": "r8",
+        "text": "German at B1",
+        "quote": "German at B1 level is a plus",
+        "category": "languages",
+        "importance": "nice",
+        "knockout": false
+       },
+       {
+        "id": "r9",
+        "text": "20 h/week, hybrid in Essen",
+        "quote": "You join for 20 hours per week, hybrid in Essen",
+        "category": "location",
+        "importance": "must",
+        "knockout": false
+       }
+      ],
+      "keywords": [
+       {
+        "term": "SQL",
+        "alts": []
+       },
+       {
+        "term": "Python",
+        "alts": []
+       },
+       {
+        "term": "Power BI",
+        "alts": [
+         "PowerBI"
+        ]
+       },
+       {
+        "term": "KPI reporting",
+        "alts": [
+         "KPIs"
+        ]
+       },
+       {
+        "term": "ETL",
+        "alts": [
+         "ELT"
+        ]
+       },
+       {
+        "term": "pandas",
+        "alts": []
+       },
+       {
+        "term": "dbt",
+        "alts": []
+       },
+       {
+        "term": "Airflow",
+        "alts": []
+       }
+      ],
+      "model": "sample data",
+      "at": "2026-10-29T10:00:00.000Z"
+     },
+     "score": {
+      "overall": 86,
+      "dimensions": {
+       "skills": 75,
+       "experience": 100,
+       "seniority": null,
+       "education": 100,
+       "languages": 100,
+       "location": 100,
+       "keywords": 75
+      },
+      "cap": null,
+      "keywords": [
+       {
+        "term": "SQL",
+        "found": true
+       },
+       {
+        "term": "Python",
+        "found": true
+       },
+       {
+        "term": "Power BI",
+        "found": true
+       },
+       {
+        "term": "KPI reporting",
+        "found": true
+       },
+       {
+        "term": "ETL",
+        "found": true
+       },
+       {
+        "term": "pandas",
+        "found": true
+       },
+       {
+        "term": "dbt",
+        "found": false
+       },
+       {
+        "term": "Airflow",
+        "found": false
+       }
+      ],
+      "requirements": [
+       {
+        "id": "r1",
+        "verdict": "met",
+        "evidence": "Built Power BI sales reports for 12 regional managers on a SQL data model refreshed every night",
+        "reason": "SQL data model behind live reports"
+       },
+       {
+        "id": "r2",
+        "verdict": "partial",
+        "evidence": "Automated a weekly margin analysis in Python (pandas)",
+        "reason": "Python for one weekly analysis, mostly SQL and Power BI"
+       },
+       {
+        "id": "r3",
+        "verdict": "met",
+        "evidence": "Built Power BI sales reports for 12 regional managers",
+        "reason": "Builds Power BI reports at work"
+       },
+       {
+        "id": "r4",
+        "verdict": "met",
+        "evidence": "M.Sc. Business Analytics",
+        "reason": "Business analytics Master's, a related field"
+       },
+       {
+        "id": "r5",
+        "verdict": "met",
+        "evidence": "Cleaned and matched 80k+ customer records from two CRM systems",
+        "reason": "Cleaned CRM data before a migration"
+       },
+       {
+        "id": "r6",
+        "verdict": "missing",
+        "evidence": "",
+        "reason": "No dbt or Airflow in the CV"
+       },
+       {
+        "id": "r7",
+        "verdict": "met",
+        "evidence": "English",
+        "reason": "Native English"
+       },
+       {
+        "id": "r8",
+        "verdict": "met",
+        "evidence": "German",
+        "reason": "German B1, as the posting hopes"
+       },
+       {
+        "id": "r9",
+        "verdict": "met",
+        "evidence": "Essen, Germany",
+        "reason": "Lives in Essen"
+       }
+      ],
+      "lang": "en",
+      "contentHash": "1lktm15",
+      "model": "sample data",
+      "at": "2026-10-29T10:01:00.000Z"
+     },
+     "location": "Essen, Germany"
+    },
+    "createdAt": "2026-10-30T15:25:56.807Z",
+    "updatedAt": "2026-10-31T10:09:19.284Z"
+   },
+   "created_at": "2026-10-30T15:25:56.807Z",
+   "updated_at": "2026-10-31T10:09:19.284Z"
+  }
+ ],
+ "applications": [
+  {
+   "id": "app_1k736r3b5x1w",
+   "data": {
+    "stage": "draft",
+    "order": 1,
+    "title": "Working Student Data Analytics",
+    "company": "Brightline Energy",
+    "logo": "",
+    "url": "https://careers.brightline-energy.example/jobs/data-analytics",
+    "location": "Essen",
+    "salary": "",
+    "resumeId": "cv_0y5j6g150f64",
+    "lang": "en",
+    "appliedOn": "",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "Working Student Data Analytics (m/f/d), Brightline Energy, Essen\n\nOur analytics team turns meter, grid and customer data into the reports that run the business. You join for 20 hours per week, hybrid in Essen.\n\nWhat you do\n- Write SQL to prepare data for monthly KPI reporting\n- Clean and validate data from our ERP and billing systems\n- Build dashboards in Power BI and keep them up to date\n- Automate recurring analyses with Python (pandas)\n\nWhat you bring\n- Enrolled in a Master's programme in data science, computer science or a related field\n- SQL and Python\n- Experience with messy business data\n- Fluent English; German at B1 level is a plus\n- dbt or Airflow is a plus",
+    "history": [
+     {
+      "stage": "draft",
+      "at": "2026-10-30T15:25:56.854Z"
+     }
+    ],
+    "source": "LinkedIn",
+    "german": "B1, nice to have",
+    "employment": "Working student · 20 h/week",
+    "workMode": "Hybrid",
+    "postedOn": "2026-10-27",
+    "fit": {
+     "score": 86,
+     "summary": "SQL, Power BI and CRM data cleaning match. Python is lighter, no dbt or Airflow."
+    },
+    "aiChecks": [
+     {
+      "doc": "letter",
+      "lang": "en",
+      "tool": "GPTZero",
+      "aiPercent": 41,
+      "at": "2026-10-29T10:40:00.000Z",
+      "note": "first draft"
+     },
+     {
+      "doc": "cv",
+      "lang": "en",
+      "tool": "GPTZero",
+      "aiPercent": 12,
+      "at": "2026-10-29T10:50:00.000Z"
+     },
+     {
+      "doc": "letter",
+      "lang": "en",
+      "tool": "AI or Not",
+      "aiPercent": 4,
+      "at": "2026-10-29T11:05:00.000Z",
+      "note": "after one rewrite"
+     }
+    ],
+    "formAnswers": [
+     {
+      "question": "Earliest start date",
+      "answer": "1 December 2026"
+     },
+     {
+      "question": "How many hours per week can you work?",
+      "answer": "20 hours during the semester, up to 40 in the semester break"
+     },
+     {
+      "question": "Why are you interested in this role?",
+      "answer": "I want to work on reporting with real business data, and the mix of SQL, Python and Power BI is what I already use."
+     },
+     {
+      "question": "Salary expectation (EUR per hour)",
+      "answer": "",
+      "note": "Your choice"
+     }
+    ],
+    "letters": {
+     "en": {
+      "subject": "Application for the Working Student Data Analytics position",
+      "recipient": "Brightline Energy\nAnalytics Team\nEssen",
+      "body": "Dear Hiring Team,\n\nYour analytics team turns meter and customer data into monthly reports, and that is the work I want to do next to my M.Sc. in Business Analytics.\n\nAt Northwind Traders I build the Power BI sales reports that 12 regional managers open every Monday, on a SQL data model that refreshes each night. Before our CRM migration I cleaned and matched more than 80,000 customer records from two systems, and I automated a weekly margin analysis in Python that used to take a day in Excel. During my internship at Contoso Logistics I analysed delivery times for 300 routes in SQL.\n\nI can work 20 hours a week and I live in Essen, so the hybrid setup suits me well. I would be glad to show you some of my reports in an interview.\n\nKind regards,",
+      "date": "2026-10-29",
+      "notes": "",
+      "layout": "modern",
+      "updatedAt": "2026-10-30T15:27:20.697Z"
+     }
+    },
+    "id": "app_1k736r3b5x1w",
+    "createdAt": "2026-10-30T15:25:56.854Z",
+    "updatedAt": "2026-10-30T15:27:23.955Z",
+    "letterStyle": {
+     "accent": "#0f766e"
+    }
+   },
+   "created_at": "2026-10-30T15:25:56.854Z",
+   "updated_at": "2026-10-30T15:27:23.955Z"
+  },
+  {
+   "id": "app_1g45335q2147",
+   "data": {
+    "stage": "draft",
+    "order": 2,
+    "title": "Working Student CRM Data",
+    "company": "Orbit Freight",
+    "logo": "",
+    "url": "",
+    "location": "Duisburg",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "draft",
+      "at": "2026-10-30T15:25:56.869Z"
+     }
+    ],
+    "source": "Company site",
+    "employment": "Working student",
+    "workMode": "On-site",
+    "fit": {
+     "score": 81,
+     "summary": "CRM clean-up and SQL match."
+    },
+    "id": "app_1g45335q2147",
+    "createdAt": "2026-10-30T15:25:56.869Z",
+    "updatedAt": "2026-10-30T15:25:56.869Z"
+   },
+   "created_at": "2026-10-30T15:25:56.869Z",
+   "updated_at": "2026-10-30T15:25:56.869Z"
+  },
+  {
+   "id": "app_3s3c2u4r0y5s",
+   "data": {
+    "stage": "saved",
+    "order": 1,
+    "title": "Junior BI Developer",
+    "company": "Kestrel Mobility",
+    "logo": "",
+    "url": "",
+    "location": "Düsseldorf",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "saved",
+      "at": "2026-10-30T15:25:56.886Z"
+     }
+    ],
+    "source": "StepStone",
+    "employment": "Full-time",
+    "workMode": "Hybrid",
+    "fit": {
+     "score": 64,
+     "summary": "Power BI fits, asks for 2 years of experience."
+    },
+    "id": "app_3s3c2u4r0y5s",
+    "createdAt": "2026-10-30T15:25:56.886Z",
+    "updatedAt": "2026-10-30T15:25:56.886Z"
+   },
+   "created_at": "2026-10-30T15:25:56.886Z",
+   "updated_at": "2026-10-30T15:25:56.886Z"
+  },
+  {
+   "id": "app_1p273i08446v",
+   "data": {
+    "stage": "saved",
+    "order": 2,
+    "title": "Data Engineering Intern",
+    "company": "Meridian Bank",
+    "logo": "",
+    "url": "",
+    "location": "Remote",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "saved",
+      "at": "2026-10-30T15:25:56.900Z"
+     }
+    ],
+    "source": "Indeed",
+    "employment": "Internship · 6 months",
+    "workMode": "Remote",
+    "id": "app_1p273i08446v",
+    "createdAt": "2026-10-30T15:25:56.900Z",
+    "updatedAt": "2026-10-30T15:25:56.900Z"
+   },
+   "created_at": "2026-10-30T15:25:56.900Z",
+   "updated_at": "2026-10-30T15:25:56.900Z"
+  },
+  {
+   "id": "app_215l486m091p",
+   "data": {
+    "stage": "col_applied_4n6e6u6w1l0c",
+    "order": 2,
+    "title": "Student Assistant Business Intelligence",
+    "company": "Lumen Retail",
+    "logo": "",
+    "url": "",
+    "location": "Essen",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-23",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "applied",
+      "at": "2026-10-30T15:25:56.917Z"
+     },
+     {
+      "stage": "col_applied_4n6e6u6w1l0c",
+      "at": "2026-10-30T15:29:11.030Z"
+     }
+    ],
+    "source": "LinkedIn",
+    "fit": {
+     "score": 78,
+     "summary": ""
+    },
+    "id": "app_215l486m091p",
+    "createdAt": "2026-10-30T15:25:56.917Z",
+    "updatedAt": "2026-10-30T15:29:11.642Z"
+   },
+   "created_at": "2026-10-30T15:25:56.917Z",
+   "updated_at": "2026-10-30T15:29:11.642Z"
+  },
+  {
+   "id": "app_4y370r6c6j5l",
+   "data": {
+    "stage": "applied",
+    "order": 2,
+    "title": "Working Student IT Systems",
+    "company": "Harbor & Finch",
+    "logo": "",
+    "url": "",
+    "location": "Bochum",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-21",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "applied",
+      "at": "2026-10-30T15:25:56.923Z"
+     }
+    ],
+    "source": "Company site",
+    "id": "app_4y370r6c6j5l",
+    "createdAt": "2026-10-30T15:25:56.923Z",
+    "updatedAt": "2026-10-30T15:25:56.923Z"
+   },
+   "created_at": "2026-10-30T15:25:56.923Z",
+   "updated_at": "2026-10-30T15:25:56.923Z"
+  },
+  {
+   "id": "app_1u5z3r4f036c",
+   "data": {
+    "stage": "col_applied_4n6e6u6w1l0c",
+    "order": 1,
+    "title": "Data Analyst Intern",
+    "company": "Vela Health",
+    "logo": "",
+    "url": "",
+    "location": "Cologne",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-18",
+    "nextStep": "Call with HR",
+    "nextDate": "2026-11-01",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "col_applied_4n6e6u6w1l0c",
+      "at": "2026-10-30T15:25:56.932Z"
+     }
+    ],
+    "source": "LinkedIn",
+    "id": "app_1u5z3r4f036c",
+    "createdAt": "2026-10-30T15:25:56.932Z",
+    "updatedAt": "2026-10-30T15:25:56.932Z"
+   },
+   "created_at": "2026-10-30T15:25:56.932Z",
+   "updated_at": "2026-10-30T15:25:56.932Z"
+  },
+  {
+   "id": "app_2d3k681p234w",
+   "data": {
+    "stage": "interview",
+    "order": 1,
+    "title": "Working Student Data Engineering",
+    "company": "Acme Logistics",
+    "logo": "",
+    "url": "",
+    "location": "Essen",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-14",
+    "nextStep": "Technical interview",
+    "nextDate": "2026-11-02",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "interview",
+      "at": "2026-10-30T15:25:56.947Z"
+     }
+    ],
+    "source": "Arbeitsagentur",
+    "id": "app_2d3k681p234w",
+    "createdAt": "2026-10-30T15:25:56.947Z",
+    "updatedAt": "2026-10-30T15:25:56.947Z"
+   },
+   "created_at": "2026-10-30T15:25:56.947Z",
+   "updated_at": "2026-10-30T15:25:56.947Z"
+  },
+  {
+   "id": "app_2v6m50534434",
+   "data": {
+    "stage": "offer",
+    "order": 1,
+    "title": "Student Assistant Process Automation",
+    "company": "Aurora Insurance",
+    "logo": "",
+    "url": "",
+    "location": "Bochum",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-06",
+    "nextStep": "Answer the offer",
+    "nextDate": "2026-11-04",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "offer",
+      "at": "2026-10-30T15:25:56.963Z"
+     }
+    ],
+    "source": "",
+    "id": "app_2v6m50534434",
+    "createdAt": "2026-10-30T15:25:56.963Z",
+    "updatedAt": "2026-10-30T15:25:56.963Z"
+   },
+   "created_at": "2026-10-30T15:25:56.963Z",
+   "updated_at": "2026-10-30T15:25:56.963Z"
+  },
+  {
+   "id": "app_5c1q2451034q",
+   "data": {
+    "stage": "rejected",
+    "order": 1,
+    "title": "Junior Data Scientist",
+    "company": "Pioneer Retail",
+    "logo": "",
+    "url": "",
+    "location": "Essen",
+    "salary": "",
+    "resumeId": null,
+    "lang": null,
+    "appliedOn": "2026-10-10",
+    "nextStep": "",
+    "nextDate": "",
+    "contact": "",
+    "notes": "",
+    "description": "",
+    "history": [
+     {
+      "stage": "rejected",
+      "at": "2026-10-30T15:25:56.978Z"
+     }
+    ],
+    "source": "",
+    "id": "app_5c1q2451034q",
+    "createdAt": "2026-10-30T15:25:56.978Z",
+    "updatedAt": "2026-10-30T15:25:56.978Z"
+   },
+   "created_at": "2026-10-30T15:25:56.978Z",
+   "updated_at": "2026-10-30T15:25:56.978Z"
+  }
+ ],
+ "settings": {
+  "board_columns": [
+   {
+    "id": "col_applied_4n6e6u6w1l0c",
+    "label": "Phone screen"
+   }
+  ],
+  "library": {
+   "projects": [
+    {
+     "id": "lib_reporting",
+     "name": "Inventory Reporting Pipeline",
+     "subtitle": "",
+     "url": "",
+     "start": "",
+     "end": "",
+     "description": "Loaded nightly inventory exports into PostgreSQL and built stock-level dashboards; reconciled the counts with the warehouse team."
+    },
+    {
+     "id": "lib_prices",
+     "name": "Competitor Price Monitor",
+     "subtitle": "Python, Playwright",
+     "url": "",
+     "start": "03/2025",
+     "end": "05/2025",
+     "description": "Collected daily prices for 500 products from three shops and flagged changes over 5%."
+    },
+    {
+     "id": "lib_invoices",
+     "name": "Invoice Check",
+     "subtitle": "Python, Tesseract OCR",
+     "url": "",
+     "start": "",
+     "end": "",
+     "description": "Read supplier invoices with OCR and flagged totals that did not match the purchase order."
+    },
+    {
+     "id": "lib_abtest",
+     "name": "Newsletter A/B Test",
+     "subtitle": "R",
+     "url": "",
+     "start": "",
+     "end": "",
+     "description": "Analysed an A/B test with 20,000 newsletter recipients and wrote a one-page readout for marketing."
+    }
+   ],
+   "skills": [
+    {
+     "id": "lib_sk_bi",
+     "name": "BI & Visualization",
+     "details": "Power BI (DAX, Power Query), Tableau, matplotlib, plotly",
+     "level": 0
+    },
+    {
+     "id": "lib_sk_dm",
+     "name": "Data Management",
+     "details": "PostgreSQL, ETL pipelines, data modeling, data cleaning",
+     "level": 0
+    },
+    {
+     "id": "lib_sk_prog",
+     "name": "Programming",
+     "details": "Python (pandas, NumPy, scikit-learn), R, SQL, Git",
+     "level": 0
+    },
+    {
+     "id": "lib_sk_office",
+     "name": "Office",
+     "details": "Advanced Excel, PowerPoint",
+     "level": 0
+    }
+   ],
+   "experience": [
+    {
+     "id": "lib_tutor",
+     "position": "Student Tutor, Statistics",
+     "company": "Example University",
+     "url": "",
+     "location": "Hybrid",
+     "start": "10/2022",
+     "end": "02/2023",
+     "current": false,
+     "description": "- Ran weekly exercise groups for 25 students.\n- Wrote R examples for regression and hypothesis tests."
+    }
+   ],
+   "certifications": [
+    {
+     "id": "lib_cert_tableau",
+     "name": "Tableau Desktop Specialist",
+     "issuer": "Tableau",
+     "date": "2024",
+     "url": ""
+    },
+    {
+     "id": "lib_cert_sql",
+     "name": "SQL for Data Analysis",
+     "issuer": "Example Academy",
+     "date": "2023",
+     "url": ""
+    }
+   ],
+   "notes": "Sales reports: used by 12 regional managers every Monday.\nCRM clean-up: 80k+ records from 2 source systems, 3 test imports before the switch.\nCourses: Econometrics, Machine Learning, Databases."
+  },
+  "search_profile": {
+   "roles": "Working student roles in data analytics, BI and data engineering: SQL, Python and Power BI on real business data.",
+   "country": "Germany",
+   "locations": "Essen, Düsseldorf, Duisburg; remote within Germany",
+   "radiusKm": 40,
+   "jobTypes": [
+    "working_student",
+    "student_assistant",
+    "internship"
+   ],
+   "workModes": [
+    "onsite",
+    "hybrid",
+    "remote"
+   ],
+   "germanLevel": "B1",
+   "germanLimit": "B1",
+   "availability": "20 h/week in the semester, up to 40 in the break",
+   "start": "December 2026",
+   "salary": "€16–18 per hour",
+   "workPermit": "EU citizen, no permit needed",
+   "targets": "Energy, logistics and retail analytics; teams that work in English",
+   "sites": "LinkedIn Jobs: https://www.linkedin.com/jobs/ (roles in English)\nStepStone: https://www.stepstone.de/ (Werkstudent)",
+   "avoid": "Temp agencies, call centres, night shifts",
+   "docLangs": "posting",
+   "maxAiPercent": 10,
+   "perRun": 3,
+   "minFit": 65,
+   "notes": "Teams with English as the working language first.",
+   "cvRules": "No photo.\nDates as MM/YYYY.",
+   "letterHideContacts": [],
+   "updatedAt": "2026-10-30T15:25:56.778Z"
+  }
+ }
+}

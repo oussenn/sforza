@@ -625,7 +625,11 @@ export const USERNAME_PATTERN = /^[a-z0-9_-]{2,32}$/
 export const PASSWORD_MIN = 15
 const PASSWORD_MAX = 256
 
+/** Names no account may take: "demo" signs in to the public demo (worker/demo.ts). */
+const RESERVED_USERNAMES = new Set(['demo'])
+
 export function usernameProblem(username: string): string | null {
+  if (RESERVED_USERNAMES.has(username)) return 'That username is reserved. Pick another one.'
   return USERNAME_PATTERN.test(username) ? null : 'A username has 2 to 32 characters: a-z, 0-9, _ and -.'
 }
 

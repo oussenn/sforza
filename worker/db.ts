@@ -2,6 +2,7 @@ import { blankMaster } from '@shared/seed'
 import type { Application, BoardColumn, ChangeStamps, Library, Resume, SearchProfile } from '@shared/types'
 import { applicationWithoutEmDashes, cleanBoardColumns, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, uid } from '@shared/utils'
 import { primaryUser } from './auth'
+import { DEMO_SCHEMA, isDemoOwner } from './demo'
 
 /**
  * Every read and write is scoped to one account: pass the request's env, which carries the signed-in user
@@ -76,6 +77,8 @@ const SCHEMA = [
     created_at TEXT NOT NULL,
     expires_at INTEGER NOT NULL
   )`,
+  // Demo sandboxes: one per demo sign-in, deleted after two hours (see demo.ts)
+  ...DEMO_SCHEMA,
 ]
 
 // Rows from before accounts existed belong to the primary account.
@@ -123,7 +126,8 @@ const started = new Set<string>()
 /** Gives a new account an empty master CV on its first request (checked once per isolate). */
 export async function ensureAccount(s: Store): Promise<void> {
   const owner = ownerOf(s)
-  if (started.has(owner)) return
+  // A sandbox starts with the sample data; once it is purged, nothing may bring it back.
+  if (started.has(owner) || isDemoOwner(owner)) return
   const row = await s.DB.prepare('SELECT COUNT(*) AS n FROM resumes WHERE owner = ?').bind(owner).first<{ n: number }>()
   if (row && row.n === 0) await insertStatement(s.DB, owner, blankMaster(uid('cv'), new Date().toISOString())).run()
   started.add(owner)

@@ -6,6 +6,16 @@ Score your CV against a job description, then build a tailored CV and cover lett
 
 ![Board, application, match score and cover letter](.github/readme/tour.gif)
 
+## Try the demo
+
+Open [sforza.oussenn.com](https://sforza.oussenn.com) and sign in with:
+
+| Username | Password |
+|---|---|
+| `demo` | `sforza-demo` |
+
+Every sign-in gets its own copy of the sample data (a fictional applicant), deleted after two hours. Nobody else sees what you change. The demo has no AI, PDF export, uploads or MCP connector; your own copy of Sforza has all of them.
+
 ## Match score
 
 Every requirement in the posting is checked against your CV, with the line that proves it.
@@ -83,6 +93,7 @@ Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 - Command palette (Ctrl+K), light and dark mode
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
+- Optional public demo: each visitor gets a private copy of sample data that deletes itself
 
 ![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
 
@@ -146,6 +157,7 @@ The editor, board and job readers work without any API key. AI features need an 
 | `OPENAI_API_KEY` | no | OpenAI, used when no Anthropic key is set |
 | `MCP_TOKEN` | no | Enables the MCP server. At least 24 characters |
 | `AIORNOT_API_KEY` | no | Server-side AI-text detection |
+| `DEMO_PASSWORD` | no | Turns on the public demo: `demo` with this password (8+ characters) opens a private two-hour copy of the sample data. Remove it to end the demo and every demo session |
 | `CANONICAL_HOST` | no | Main host name in production. Visitors on another address of the Worker move there, and links and connector addresses use it |
 
 Models and the daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`).

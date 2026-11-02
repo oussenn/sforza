@@ -37,5 +37,7 @@
   // Keep variables added in the dashboard across deploys (secrets are always kept)
   "keep_vars": true,
   "preview_urls": false,
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Deletes the data of demo sandboxes that ran out (worker/demo.ts)
+  "triggers": { "crons": ["*/30 * * * *"] }
 }
