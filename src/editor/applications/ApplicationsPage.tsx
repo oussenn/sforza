@@ -96,11 +96,11 @@ export default function ApplicationsPage({ appId }: { appId: string | null }) {
       <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-end gap-3 px-4 pt-6 pb-4 sm:px-6">
         <div className="mr-auto">
           <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
-          <p className="text-muted-foreground text-sm">
-            {items.length
-              ? `${items.length} tracked · ${drafts} to review · ${active} in progress. Drag cards between stages, click one for details.`
-              : 'Every job you apply to, from “Saved” to “Offer”.'}
-          </p>
+          {items.length > 0 && (
+            <p className="text-muted-foreground text-sm">
+              {items.length} tracked · {drafts} to review · {active} in progress
+            </p>
+          )}
         </div>
         {items.length > 0 && (
           <div className="relative w-full sm:w-56">

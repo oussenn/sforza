@@ -20,17 +20,14 @@ import KnowledgeBase from './KnowledgeBase'
 
 const MODE_LABELS = { onsite: 'On-site', hybrid: 'Hybrid', remote: 'Remote' } as const
 
-function Section({ icon: Icon, title, subtitle, children }: { icon: typeof Search; title: string; subtitle: ReactNode; children: ReactNode }) {
+function Section({ icon: Icon, title, children }: { icon: typeof Search; title: string; children: ReactNode }) {
   return (
     <section>
-      <div className="mb-4 flex items-start gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <div className="bg-card ring-hairline grid size-10 shrink-0 place-items-center rounded-xl shadow-sm ring-1">
           <Icon className="size-5" />
         </div>
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-          <p className="text-muted-foreground max-w-2xl text-sm">{subtitle}</p>
-        </div>
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       </div>
       <div className="bg-card ring-hairline rounded-2xl p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 sm:p-5">{children}</div>
     </section>
@@ -333,8 +330,8 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
     <div className="grid gap-4">
       <ol className="text-muted-foreground grid list-decimal gap-1.5 pl-5 text-sm">
         <li>
-          Once: in Claude, <span className="text-foreground">Settings → Connectors → Add custom connector</span>, and paste your connector address
-          below. It is yours alone and works in this account only. Keep it private: it gives full access to your CVs and board.
+          Once: add a custom MCP connector in your agent (in Claude: <span className="text-foreground">Settings → Connectors → Add custom connector</span>)
+          and paste your connector address below. It is yours alone and works in this account only. Keep it private: it gives full access to your CVs and board.
           <ConnectorAddress />
         </li>
         <li>In Claude Desktop, turn on the connector and open the built-in browser (Ctrl+Shift+B). Sign in there once to LinkedIn, Indeed, StepStone, GPTZero and Pangram.</li>
@@ -365,32 +362,19 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
 }
 
 export const PANELS = {
-  jobsearch: {
-    icon: Search,
-    label: 'Job search',
-    subtitle: 'Your wishes and limits. Claude searches, filters and writes with them.',
-  },
-  knowledge: {
-    icon: Library,
-    label: 'Knowledge base',
-    subtitle:
-      'Everything beyond your master CV: projects, skills, experience, certificates and facts. Tailored CVs and letters pick from it; nothing here goes on a CV as-is.',
-  },
-  mcp: {
-    icon: Bot,
-    label: 'MCP',
-    subtitle: 'Connect Claude Desktop or another AI client to this site (MCP connector) to find jobs and prepare drafts.',
-  },
-} satisfies Record<PanelPage, { icon: typeof Search; label: string; subtitle: string }>
+  jobsearch: { icon: Search, label: 'Job search', heading: 'Job search' },
+  knowledge: { icon: Library, label: 'Knowledge base', heading: 'Knowledge base' },
+  mcp: { icon: Bot, label: 'MCP', heading: 'Connect your agent' },
+} satisfies Record<PanelPage, { icon: typeof Search; label: string; heading: string }>
 
 /** One of the three panels about you: job search, knowledge base or MCP. */
 export default function ProfilePage({ panel }: { panel: PanelPage }) {
   const profile = useEditor((s) => s.searchProfile)
-  const { icon, label, subtitle } = PANELS[panel]
+  const { icon, heading } = PANELS[panel]
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto flex max-w-5xl flex-col px-4 py-8 sm:px-6">
-        <Section icon={icon} title={label} subtitle={subtitle}>
+        <Section icon={icon} title={heading}>
           {panel === 'jobsearch' && profile && <SearchProfileForm profile={profile} />}
           {panel === 'knowledge' && <KnowledgeBase />}
           {panel === 'mcp' && profile && <ClaudeSection profile={profile} />}

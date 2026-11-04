@@ -58,6 +58,7 @@ import {
   type TailorJob,
 } from './service'
 import { corpusOf, systemPrompt, TAILOR_SCHEMA, tailoringMaterial, type TailorOutput } from './tailor'
+import { VERSION } from '@shared/version'
 
 /**
  * MCP server (Streamable HTTP, stateless JSON responses) so an agent such as Claude Desktop can run the job
@@ -1987,7 +1988,7 @@ async function dispatch(env: Env, msg: RpcRequest, origin: string): Promise<unkn
       return {
         protocolVersion: typeof msg.params?.protocolVersion === 'string' ? msg.params.protocolVersion : PROTOCOL,
         capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } },
-        serverInfo: { name: 'sforza', title: 'Sforza', version: '1.1.0' },
+        serverInfo: { name: 'sforza', title: 'Sforza', version: VERSION },
         instructions: INSTRUCTIONS,
       }
     case 'ping':

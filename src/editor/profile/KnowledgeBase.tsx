@@ -57,14 +57,17 @@ export default function KnowledgeBase() {
   if (!library) return null
   return (
     <Tabs defaultValue="projects">
-      <TabsList className="mb-4 flex-wrap">
+      {/* Wraps on phones: the bar grows with its rows instead of keeping one row's height. */}
+      <TabsList className="mb-4 h-auto! max-w-full flex-wrap justify-start">
         {LIBRARY_TABS.map((t) => (
-          <TabsTrigger key={t.key} value={t.key}>
+          <TabsTrigger key={t.key} value={t.key} className="h-7 flex-none">
             {t.label}
             <span className="text-muted-foreground ml-1 text-xs tabular-nums">{library[t.key].length}</span>
           </TabsTrigger>
         ))}
-        <TabsTrigger value="notes">Notes &amp; knowledge</TabsTrigger>
+        <TabsTrigger value="notes" className="h-7 flex-none">
+          Notes &amp; knowledge
+        </TabsTrigger>
       </TabsList>
       {LIBRARY_TABS.map((t) => (
         <TabsContent key={t.key} value={t.key}>
@@ -72,10 +75,6 @@ export default function KnowledgeBase() {
         </TabsContent>
       ))}
       <TabsContent value="notes">
-        <p className="text-muted-foreground mb-2 text-sm">
-          Anything true about you that is not on your master CV: courses and university projects, results with numbers per job, tools you
-          have used, languages, volunteering, context. The writers may quote it on CVs and letters, so keep it factual.
-        </p>
         <RichTextarea
           value={library.notes}
           minRows={10}

@@ -3,6 +3,7 @@ import { Backdrop } from '@/components/Backdrop'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { api, type DemoSession } from '@/lib/api'
+import { VERSION } from '@shared/version'
 import Editor from './Editor'
 import Login, { type LoginMode } from './Login'
 import { navigate } from './router'
@@ -77,6 +78,9 @@ export default function EditorRoot() {
       {auth === 'out' && joinCode === null && <Login mode={mode} onSuccess={signedIn} demoAvailable={demoAvailable} />}
       {inEditor && <Editor onLogout={signedOut} user={user} demo={demo} />}
       <Toaster position="bottom-center" richColors closeButton />
+      <span className="text-foreground pointer-events-none fixed right-2 bottom-1 z-50 text-[10px] tabular-nums opacity-35 select-none print:hidden" aria-hidden>
+        v{VERSION}
+      </span>
     </TooltipProvider>
   )
 }

@@ -48,7 +48,7 @@ Each CV can have all three.
 
 ## Board
 
-Your own columns between the stages. Drag a card to move it.
+Your own columns between the stages, for your account only. Drag a card to move it.
 
 ![Cards dragged between board columns](.github/readme/board.gif)
 
@@ -65,7 +65,7 @@ Tailored CVs and letters pick from the knowledge base. The MCP prompts are built
 
 ## MCP
 
-Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
+Connect your agent to find jobs and prepare drafts.
 
 ![MCP prompt for one job link](.github/readme/mcp.gif)
 
@@ -94,6 +94,7 @@ Connect Claude Desktop or any MCP client to find jobs and prepare drafts.
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
+- Version number at the bottom right of every page: 0.1, then 0.11, 0.12 and so on, and 0.2 for a big change
 
 ![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
 

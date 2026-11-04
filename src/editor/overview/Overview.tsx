@@ -47,9 +47,6 @@ export default function Overview() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">My CVs</h1>
-              <p className="text-muted-foreground text-sm">
-                The CV marked <Star className="inline size-3.5 fill-amber-400 text-amber-400" /> is your main CV: the default for downloads and new tailored CVs.
-              </p>
             </div>
             <Button onClick={newTailored} className="gap-2">
               <Plus /> New tailored CV

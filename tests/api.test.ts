@@ -154,6 +154,18 @@ describe('accounts never see each other\'s data', () => {
     expect(((await (await call('/api/library', { as: 'bob' })).json()) as { notes: string }).notes).toBe('')
   })
 
+  it('board columns', async () => {
+    const add = (as: string, label: string) =>
+      call('/api/board-columns', { method: 'PUT', as, json: { columns: [{ id: `col_applied_${as}1`, label }] } })
+    expect((await add('bob', 'Phone screen')).status).toBe(200)
+    const columns = async (as: string) => ((await (await call('/api/board-columns', { as })).json()) as { label: string }[]).map((c) => c.label)
+    expect(await columns('alice')).toEqual([])
+    expect(await columns('bob')).toEqual(['Phone screen'])
+    await add('alice', 'Take-home task')
+    expect(await columns('alice')).toEqual(['Take-home task'])
+    expect(await columns('bob')).toEqual(['Phone screen'])
+  })
+
   it('print tokens only open the CV of the account they were signed for', async () => {
     const own = await call(`/api/print-data?id=${aliceCv}&token=${encodeURIComponent(await signPrintToken(env, 'alice', aliceCv))}`)
     expect(own.status).toBe(200)
