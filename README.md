@@ -197,7 +197,7 @@ Set `MCP_TOKEN`, sign in, and open MCP in the top bar (`/connector`) to copy you
 
 ![MCP panel: connector address and setup steps](.github/readme/mcp-setup.png)
 
-Claude Desktop or claude.ai: Settings, Connectors, Add custom connector, name it Sforza, paste the address.
+In your agent, add a custom connector named Sforza and paste the address (in Claude Desktop or claude.ai: Settings, Connectors, Add custom connector).
 
 Other clients can call `https://<host>/mcp` with `Authorization: Bearer <token>`, for example through `mcp-remote`:
 

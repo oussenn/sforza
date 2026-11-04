@@ -623,7 +623,7 @@ function AiChecks({ app, cvLangs }: { app: Application; cvLangs: Lang[] }) {
         })}
       </ul>
       {!detector && (
-        <p className="text-muted-foreground text-[11px]">Claude records the scores of the detector it used in the browser (GPTZero, ZeroGPT…).</p>
+        <p className="text-muted-foreground text-[11px]">Your agent records the scores of the detector it used in the browser (GPTZero, ZeroGPT…).</p>
       )}
     </div>
   )
@@ -665,7 +665,7 @@ function FormAnswers({ app }: { app: Application }) {
       </div>
       {answers.length === 0 && (
         <p className="text-muted-foreground text-xs">
-          Claude saves the answers to the form&apos;s questions here (save_form_answers), ready to copy. You can also add them yourself.
+          Your agent saves the answers to the form&apos;s questions here (save_form_answers), ready to copy. You can also add them yourself.
         </p>
       )}
       {answers.map((a, i) => (

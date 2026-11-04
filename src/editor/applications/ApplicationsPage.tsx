@@ -149,7 +149,7 @@ function EmptyState({ unlinked, importing, onAdd, onImport }: { unlinked: number
         <h2 className="text-lg font-semibold">Track your job applications</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           Paste a job link to add a card with the company logo, then move it from “Saved” to “Offer”. CVs tailored to a job, by you or by
-          Claude, land in “Draft” automatically.
+          your agent, land in “Draft” automatically.
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Button onClick={onAdd}>

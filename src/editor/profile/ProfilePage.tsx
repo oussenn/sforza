@@ -96,7 +96,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
 
   return (
     <div className="grid gap-5">
-      <Field label="Roles and fields" hint="Job titles, fields and keywords, in your own words. Claude turns them into search terms in the languages of the job market.">
+      <Field label="Roles and fields" hint="Job titles, fields and keywords, in your own words. Your agent turns them into search terms in the languages of the job market.">
         <Textarea {...text('roles')} rows={3} placeholder="Data analyst, BI developer, junior data engineer…" />
       </Field>
 
@@ -104,7 +104,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         <Field label="Country" hint="The job market to search. Left empty, the search uses Germany and its job boards.">
           <Input {...text('country')} placeholder="Germany" />
         </Field>
-        <Field label="Where" hint="Cities, regions or remote. Claude searches these places first.">
+        <Field label="Where" hint="Cities, regions or remote. Your agent searches these places first.">
           <Input {...text('locations')} placeholder="Berlin; remote within the country" />
         </Field>
         <Field label="Radius (km)" hint="Distance around each place.">
@@ -124,7 +124,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
           <Field label="My German" hint="Your level, e.g. B1. Shown only when the search is in Germany.">
             <Input {...text('germanLevel')} placeholder="B1" />
           </Field>
-          <Field label="Apply when the German required is" hint="Claude skips postings that ask for more and lists them with the reason.">
+          <Field label="Apply when the German required is" hint="Your agent skips postings that ask for more and lists them with the reason.">
             <Select value={profile.germanLimit} onValueChange={(v) => set('germanLimit', v as GermanLimit)}>
               <SelectTrigger className="w-full">
                 <SelectValue />
@@ -168,7 +168,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
 
       <Field
         label="Job sites, searched first"
-        hint="One per line: name, link, what it is good for. Claude starts with these in this order, then follows anything relevant it finds (company career pages)."
+        hint="One per line: name, link, what it is good for. Your agent starts with these in this order, then follows anything relevant it finds (company career pages)."
       >
         <Textarea {...text('sites')} rows={8} className="font-mono text-base md:text-xs" placeholder="LinkedIn Jobs: https://www.linkedin.com/jobs/ (roles in English)" />
       </Field>
@@ -188,7 +188,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="AI detector target (max %)" hint="Highest AI-text detector score allowed per CV or letter. Claude rewrites a document that scores higher once, keeping every fact.">
+        <Field label="AI detector target (max %)" hint="Highest AI-text detector score allowed per CV or letter. Your agent rewrites a document that scores higher once, keeping every fact.">
           <Input {...num('maxAiPercent', 0, 100)} />
         </Field>
         <Field label="Drafts per search" hint="How many drafts one search run prepares at most.">
@@ -199,13 +199,13 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         </Field>
       </div>
 
-      <Field label="Anything else Claude should know" hint="Free text. Claude reads it before every search.">
+      <Field label="Anything else your agent should know" hint="Free text. Your agent reads it before every search.">
         <Textarea {...text('notes')} rows={3} placeholder="Commute by public transport only; skip companies I applied to this year…" />
       </Field>
 
       <Field
         label="My rules for CVs and letters"
-        hint="Your own preferences for every CV and letter, on top of the common rules below. Claude and the site's AI follow both."
+        hint="Your own preferences for every CV and letter, on top of the common rules below. Your agent and the site's AI follow both."
       >
         <Textarea {...text('cvRules')} rows={3} placeholder="Keep the summary to two sentences; list certifications before education; sign letters with my first name…" />
         <Disclosure title={<span className="text-xs">Common rules every CV follows</span>}>
@@ -217,7 +217,7 @@ function SearchProfileForm({ profile }: { profile: SearchProfile }) {
         </Disclosure>
       </Field>
 
-      <p className="text-muted-foreground text-xs">Saved automatically. Claude reads this with get_profile, and the prompts below are built from it.</p>
+      <p className="text-muted-foreground text-xs">Saved automatically. Your agent reads this with get_profile, and the prompts below are built from it.</p>
     </div>
   )
 }
@@ -334,9 +334,9 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
           and paste your connector address below. It is yours alone and works in this account only. Keep it private: it gives full access to your CVs and board.
           <ConnectorAddress />
         </li>
-        <li>In Claude Desktop, turn on the connector and open the built-in browser (Ctrl+Shift+B). Sign in there once to LinkedIn, Indeed, StepStone, GPTZero and Pangram.</li>
+        <li>Turn on the connector. If your agent has a browser (in Claude Desktop: Ctrl+Shift+B), sign in there once to LinkedIn, Indeed, StepStone, GPTZero and Pangram.</li>
         <li>
-          Start a chat with one of these prompts: copy it here, or pick it in Claude under <span className="text-foreground">+ → Sforza</span>.
+          Start a chat with one of these prompts: copy it here, or pick it from your agent's prompt list (in Claude: <span className="text-foreground">+ → Sforza</span>).
           Drafts land in Applications under “Draft”.
         </li>
       </ol>
@@ -347,7 +347,7 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
           </>
         ) : (
           <>
-            AI-text checks: Claude checks drafts with GPTZero and the final letter once with Pangram in the browser, on their free plans. For checks without the browser, create a free
+            AI-text checks: your agent checks drafts with GPTZero and the final letter once with Pangram in the browser, on their free plans. For checks without the browser, create a free
             API key at aiornot.com and set it with <code className="font-mono">wrangler secret put AIORNOT_API_KEY</code>.
           </>
         )}
