@@ -64,6 +64,8 @@ function PrintLetter() {
   useEffect(() => {
     if (!data) return
     ;(async () => {
+      // The logo and the signature are part of the page: measure and print only once they are decoded.
+      await Promise.all(Array.from(document.images, (img) => img.decode().catch(() => undefined)))
       await document.fonts.ready
       await nextFrame()
       await sleep(100)
@@ -77,7 +79,7 @@ function PrintLetter() {
   document.title = [data.personal.name, DOC_WORD.letter[data.lang]].filter(Boolean).join(' – ')
   return createPortal(
     <div id="print-root">
-      <LetterDocument letter={data.letter} personal={data.personal} style={data.style} lang={data.lang} />
+      <LetterDocument letter={data.letter} personal={data.personal} style={data.style} lang={data.lang} logo={data.logo} signature={data.signature} />
     </div>,
     document.body,
   )

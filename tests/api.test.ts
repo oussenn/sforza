@@ -436,6 +436,28 @@ describe('MCP connector', () => {
     expect(saved.letters.en.body).toContain('I build dashboards, and I check the data behind them.')
   })
 
+  it('the signed letter template: an agent saves the signature once and is told what a card still lacks', async () => {
+    const card = await asAlice('save_application', { title: 'Data Steward', company: 'Acme Hotels', stage: 'draft' })
+    await asAlice('save_motivation_letter', { application_id: card.id, lang: 'en', subject: 'Application', body: 'Dear Hiring Team,\n\nI keep data clean.\n\nKind regards,', enclosures: 'none' })
+    const bare = await asAlice('design_letter', { application_id: card.id, lang: 'en', template: 'signed' })
+    expect(bare.letter_pictures).toContain('no company logo')
+    expect(bare.letter_pictures).toContain('set_signature')
+
+    // A 1×1 PNG, as an agent passes a file it was given.
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    const saved = await asAlice('set_signature', { image_base64: `data:image/png;base64,${png}` })
+    expect(saved.signature).toMatch(/^\/api\/assets\/img_/)
+    expect((await asAlice('get_profile')).search_profile.signature).toBe(saved.signature)
+    expect(await aliceError('set_signature', { image_base64: 'PHN2Zz48L3N2Zz4=', mime_type: 'image/svg+xml' })).toContain('Only PNG, JPEG or WebP')
+
+    const signed = await asAlice('design_letter', { application_id: card.id, style: { show_logo: false } })
+    expect(signed.letter_pictures).toBeUndefined()
+    expect((await asAlice('get_application', { id: card.id })).letters.en.template).toBe('signed')
+    expect((await asAlice('set_signature', { remove: true })).removed).toBe(true)
+    // Bob's account never sees Alice's signature.
+    expect((await asUser('bob', 'get_profile')).search_profile.signature).toBe('')
+  })
+
   it('fit_cv_to_page says when the page cannot be rendered instead of guessing', async () => {
     expect(await aliceError('fit_cv_to_page', { resume_id: 'master' })).toContain('The page fit is unavailable right now')
   })

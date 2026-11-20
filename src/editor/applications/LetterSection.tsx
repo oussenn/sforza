@@ -327,6 +327,7 @@ export function LetterSheet({ app, letter, lang }: { app: Application; letter: C
 
   const content = cv ? (cv.content[lang] ?? cv.content[cv.sourceLang]) : undefined
   const hidden = useEditor((s) => s.searchProfile?.letterHideContacts)
+  const signature = useEditor((s) => s.searchProfile?.signature)
   const scale = width ? width / SHEET_WIDTH : 0
 
   return (
@@ -334,7 +335,14 @@ export function LetterSheet({ app, letter, lang }: { app: Application; letter: C
       {content && cv && scale > 0 && (
         <div style={{ height: Math.max(height, (SHEET_WIDTH * 297) / 210) * scale }} className="overflow-hidden rounded-sm bg-white shadow-md">
           <div ref={sheet} style={{ transform: `scale(${scale})`, transformOrigin: 'top left', width: SHEET_WIDTH }}>
-            <LetterDocument letter={letter} personal={letterPersonal(content.personal, hidden)} style={letterStyleOf(cv.style, app.letterStyle, letterLayoutOf(letter, lang))} lang={lang} />
+            <LetterDocument
+              letter={letter}
+              personal={letterPersonal(content.personal, hidden)}
+              style={letterStyleOf(cv.style, app.letterStyle, letterLayoutOf(letter, lang))}
+              lang={lang}
+              logo={app.logo}
+              signature={signature}
+            />
           </div>
         </div>
       )}

@@ -85,7 +85,7 @@ export const api = {
   connector: () => request<{ url: string }>('/api/connector'),
 
   printLetter: (id: string, lang: string, token: string) =>
-    request<{ letter: CoverLetter; lang: Lang; personal: Personal; style: LetterStyle; title: string }>(
+    request<{ letter: CoverLetter; lang: Lang; personal: Personal; style: LetterStyle; title: string; logo: string; signature: string }>(
       `/api/print-letter?id=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}&token=${encodeURIComponent(token)}`,
     ),
   printData: (id: string, token: string) =>

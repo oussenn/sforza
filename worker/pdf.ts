@@ -3,7 +3,7 @@ import { encodeCuts, type Cut, type Move } from '@shared/shrink'
 import type { Application, Lang, Resume, ResumeStyle } from '@shared/types'
 import { letterFileName, pdfFileName } from '@shared/utils'
 import { signPrintToken } from './auth'
-import { ownerOf, type Store } from './db'
+import { getSearchProfile, ownerOf, type Store } from './db'
 
 export class PdfError extends Error {}
 
@@ -58,8 +58,8 @@ export function checkLayout(env: Env & Store, origin: string, resume: Resume, la
 }
 
 /** How many pages the letter prints on, measured like the CV; its PDF is cached for the download too. */
-export function checkLetterFit(env: Env & Store, origin: string, application: Application, cv: Resume, lang: Lang): Promise<LetterFit> {
-  const print = letterPrint(env, origin, application, cv, lang)
+export async function checkLetterFit(env: Env & Store, origin: string, application: Application, cv: Resume, lang: Lang): Promise<LetterFit> {
+  const print = await letterPrint(env, origin, application, cv, lang)
   return measure<LetterFit>(env, print.url, print.cacheUrl, print.cacheUrl.replace('/__pdf-cache/', '/__layout-cache/'))
 }
 
@@ -82,18 +82,19 @@ async function measure<T>(env: Env, url: () => Promise<string>, pdfCacheUrl: str
 
 /** The motivation letter of an application, styled like the CV it goes with. */
 export async function renderLetterPdf(env: Env & Store, origin: string, application: Application, cv: Resume, lang: Lang): Promise<Response> {
-  const print = letterPrint(env, origin, application, cv, lang)
+  const print = await letterPrint(env, origin, application, cv, lang)
   return printToPdf(env, print.url, print.cacheUrl, print.fileName)
 }
 
-function letterPrint(env: Env & Store, origin: string, application: Application, cv: Resume, lang: Lang) {
+async function letterPrint(env: Env & Store, origin: string, application: Application, cv: Resume, lang: Lang) {
   const letter = application.letters?.[lang]
   if (!letter) throw new PdfError('This application has no letter in that language.')
   const build = env.CF_VERSION_METADATA?.id ?? 'dev'
   const url = async () =>
     `${origin}/print?letter=${encodeURIComponent(application.id)}&lang=${lang}&token=${encodeURIComponent(await signPrintToken(env, ownerOf(env), `letter:${application.id}`))}`
-  // The card's letter style is part of the version: a new font or colour is a new PDF.
-  const version = encodeURIComponent(`${letter.updatedAt}|${cv.updatedAt}|${JSON.stringify(application.letterStyle ?? {})}`)
+  // The card's letter style, its logo and the user's signature are part of the version: a new one is a new PDF.
+  const { signature } = await getSearchProfile(env)
+  const version = encodeURIComponent(`${letter.updatedAt}|${cv.updatedAt}|${JSON.stringify(application.letterStyle ?? {})}|${application.logo}|${signature}`)
   const name = cv.content[lang]?.personal.name ?? cv.content[cv.sourceLang]?.personal.name ?? ''
   return { url, cacheUrl: `${origin}/__pdf-cache/${build}/letter/${application.id}/${lang}/${version}`, fileName: letterFileName(name, lang) }
 }

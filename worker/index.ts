@@ -888,8 +888,8 @@ app.get('/api/print-letter', async (c) => {
   const cv = await letterCv(env, application)
   const content = cv.content[lang] ?? cv.content[cv.sourceLang]!
   const style = letterStyleOf(cv.style, application.letterStyle, letterLayoutOf(letter, lang))
-  const { letterHideContacts } = await db.getSearchProfile(env)
-  return c.json({ letter, lang, personal: letterPersonal(content.personal, letterHideContacts), style, title: application.title })
+  const { letterHideContacts, signature } = await db.getSearchProfile(env)
+  return c.json({ letter, lang, personal: letterPersonal(content.personal, letterHideContacts), style, title: application.title, logo: application.logo, signature })
 })
 
 /** Signed download links handed to an agent: /api/share/cv/<id>?lang=de&t=… and /api/share/letter/<id>?lang=de&t=… */

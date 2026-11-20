@@ -1,6 +1,6 @@
 import type { Context } from 'hono'
 import type { AiCheck, Application, BoardColumn, ContactType, CoverLetter, Lang, LetterLayout, LetterStyle, Library, Resume, ResumeContent, ResumeStyle, SectionItem, SectionType, Stage } from '@shared/types'
-import { LANG_LABELS, LANGS, LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUTS, STAGES } from '@shared/types'
+import { LANG_LABELS, LANGS, LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUTS, LETTER_LOGO_LAYOUTS, STAGES } from '@shared/types'
 import { CLAUDE_PROMPTS, type PromptContext } from '@shared/prompts'
 import { FONTS, TEMPLATE_MAP, TEMPLATES } from '@shared/templates'
 import {
@@ -44,6 +44,7 @@ import { linkedInAgeDays, matchesKeywords, searchArbeitnow, searchLinkedIn, sear
 import { firstPlace, profilePlaces, screenPosting } from './screen'
 import { fullNameSalutation, gapSentences, letterIssues, letterRules } from './letter'
 import { findLogo } from './logo'
+import { fetchPublic, readCapped } from './net'
 import { formAnswersField, readApplicationForm, type ApplicationForm } from './forms'
 import { checkLayout, checkLetterFit, fitLayout, type FitReport } from './pdf'
 import { applyCuts, applyMoves, cutOrder } from '@shared/shrink'
@@ -119,6 +120,8 @@ const LETTER_STYLE_NAMES = {
   margin_x: 'marginX',
   margin_y: 'marginY',
   paragraph_gap: 'paragraphGap',
+  show_logo: 'showLogo',
+  show_signature: 'showSignature',
 } as const satisfies Record<string, keyof LetterStyle>
 
 /** A card's own letter style in design_letter's names; {} means every letter follows the linked CV. */
@@ -411,6 +414,21 @@ function draftTodo(app: Application): { problems: string[]; todo: string[] } {
   return { problems, todo }
 }
 
+/** For the templates that print the company logo and the signature: what the card or the account still lacks. */
+function letterPictures(app: Application, lang: Lang, signature: string): Json {
+  const letter = app.letters?.[lang]
+  if (!letter || !LETTER_LOGO_LAYOUTS.includes(letterLayoutOf(letter, lang))) return {}
+  const style = { showLogo: true, showSignature: true, ...cleanLetterStyle(app.letterStyle) }
+  const missing = [
+    ...(style.showLogo && !app.logo ? ["no company logo on the card: save_application with logo (read_job_posting finds it), or design_letter show_logo false"] : []),
+    ...(style.showSignature && !signature ? ['no signature saved: ask the user for an image of their signature and call set_signature, or design_letter show_signature false'] : []),
+  ]
+  return missing.length ? { letter_pictures: `The ${lang} letter uses the signed template, but there is ${missing.join(', and ')}.` } : {}
+}
+
+/** Image types an uploaded signature may have, as the website's uploads. */
+const IMAGE_TYPES = /^image\/(jpeg|png|webp)$/
+
 async function needApplication(env: Env, id: unknown): Promise<Application> {
   const app = typeof id === 'string' ? await db.getApplication(env, id) : null
   if (!app) throw new ToolError(`Application "${String(id)}" not found. list_applications lists them.`)
@@ -445,6 +463,8 @@ function applicationSummary(a: Application, origin: string, columns: BoardColumn
     stage_label: stageLabel(a.stage, columns),
     title: a.title,
     company: a.company,
+    // the company logo (board icon, and the signed letter template); '' when none was found
+    logo: a.logo ? new URL(a.logo, origin).href : '',
     location: a.location,
     url: a.url,
     apply_url: a.applyUrl ?? '',
@@ -1920,7 +1940,12 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'what is attached, comma-separated, e.g. "Lebenslauf, Immatrikulationsbescheinigung"; "none" for no enclosures line (default: kept from the previous version, else the CV)',
         },
-        layout: { type: 'string', enum: [...LETTER_LAYOUTS], description: 'the template: din5008 (German standard, default for German), modern (default otherwise), classic, banner or sidebar; design_letter changes fonts and colours' },
+        layout: {
+          type: 'string',
+          enum: [...LETTER_LAYOUTS],
+          description:
+            "the template: din5008 (German standard, default for German), modern (default otherwise), classic, banner, sidebar, or signed (the company's logo beside the date, justified text, the user's handwritten signature, contacts along the foot); design_letter changes fonts and colours",
+        },
       },
       ['application_id', 'lang', 'subject', 'body'],
     ),
@@ -1974,15 +1999,60 @@ const TOOLS: Tool[] = [
             .map((s) => `Salutation uses the full name ("${s}"): write title and surname (Ms/Mr, Frau/Herr) when the posting states the title, otherwise the generic salutation, and save again.`),
         ],
         ai_check: await autoCheck(env, saved, lang, profile.maxAiPercent),
+        ...letterPictures(saved, lang, profile.signature),
         layout: await letterFitOf(env, origin, saved, lang),
         pdf: await links(env, origin, 'letter', saved.id, lang),
       }
     },
   },
   {
+    name: 'set_signature',
+    description:
+      "Saves the user's handwritten signature for their letters, once for the account: the signed letter template prints it above the name on every letter (design_letter show_signature turns it off for a card). Pass a public image link, or the image itself in base64 (PNG, JPEG or WebP, at most 1.5 MB; a scan or photo on white paper works, the white disappears on the page). remove: true deletes it. Only the user's own signature, and only when they gave it to you for this.",
+    inputSchema: obj({
+      image_url: { type: 'string', description: 'a public link to the image' },
+      image_base64: { type: 'string', description: 'the image file in base64 (no data: prefix needed)' },
+      mime_type: { type: 'string', enum: ['image/png', 'image/jpeg', 'image/webp'], description: 'with image_base64 (default image/png)' },
+      remove: { type: 'boolean' },
+    }),
+    run: async (env, args) => {
+      const profile = await db.getSearchProfile(env)
+      if (args.remove === true) {
+        await db.saveSearchProfile(env, { ...profile, signature: '', updatedAt: new Date().toISOString() })
+        return { removed: true, next: 'Letters in the signed template now end with the name only.' }
+      }
+      let mime = ''
+      let base64 = ''
+      const raw = str(args.image_base64, 3_000_000).replace(/^data:([^;,]+);base64,/, (_, t: string) => {
+        mime = t
+        return ''
+      })
+      if (raw) {
+        mime = mime || str(args.mime_type, 40) || 'image/png'
+        base64 = raw.replace(/\s+/g, '')
+        if (!/^[A-Za-z0-9+/]+=*$/.test(base64)) throw new ToolError('image_base64 is not base64.')
+      } else if (str(args.image_url, 2000)) {
+        const res = await fetchPublic(str(args.image_url, 2000), { signal: AbortSignal.timeout(15_000) }).catch(() => null)
+        if (!res?.ok) throw new ToolError(`Could not load the image (${res?.status ?? 'no answer'}).`)
+        mime = (res.headers.get('content-type') ?? '').split(';')[0].trim()
+        const { bytes, cut } = await readCapped(res, 1_500_000)
+        if (cut) throw new ToolError('Image too large (max 1.5 MB).')
+        let bin = ''
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+        base64 = btoa(bin)
+      } else throw new ToolError('Pass image_url or image_base64 (or remove: true).')
+      if (!IMAGE_TYPES.test(mime)) throw new ToolError('Only PNG, JPEG or WebP images.')
+      if ((base64.length * 3) / 4 > 1_500_000) throw new ToolError('Image too large (max 1.5 MB).')
+      const id = uid('img')
+      await db.putAsset(env, id, mime, base64)
+      await db.saveSearchProfile(env, { ...profile, signature: `/api/assets/${id}`, updatedAt: new Date().toISOString() })
+      return { saved: true, signature: `/api/assets/${id}`, next: 'Every letter in the signed template now carries it (design_letter template "signed"). Check a letter with check_draft: the signature takes about four lines.' }
+    },
+  },
+  {
     name: 'design_letter',
     description:
-      "Changes how a card's letters look, like the Design panel on the Letters page: the template of one language's letter, and the fonts, colours and spacing that all its letters share. A style field left out keeps its value; whatever was never set follows the linked CV. match_cv: true drops every choice so the letters follow the CV again. Returns each letter's layout: every letter must fit on one page.",
+      "Changes how a card's letters look, like the Design panel on the Letters page: the template of one language's letter, and the fonts, colours and spacing that all its letters share. The signed template prints the card's company logo (save_application logo; found from the posting when the card is saved) and the user's handwritten signature (set_signature, saved once for all letters); show_logo and show_signature turn them off. A style field left out keeps its value; whatever was never set follows the linked CV. match_cv: true drops every choice so the letters follow the CV again. Returns each letter's layout: every letter must fit on one page.",
     inputSchema: obj(
       {
         application_id: { type: 'string' },
@@ -2003,6 +2073,8 @@ const TOOLS: Tool[] = [
           margin_x: { type: 'number', description: `mm, ${LETTER_STYLE_LIMITS.marginX.join('–')} (DIN 5008 keeps its own)` },
           margin_y: { type: 'number', description: `mm, ${LETTER_STYLE_LIMITS.marginY.join('–')} (DIN 5008 keeps its own)` },
           paragraph_gap: { type: 'number', description: `lines between paragraphs, ${LETTER_STYLE_LIMITS.paragraphGap.join('–')}` },
+          show_logo: { type: 'boolean', description: "the signed template: print the card's company logo (default true)" },
+          show_signature: { type: 'boolean', description: "the signed template: print the user's signature (default true)" },
         }),
         match_cv: { type: 'boolean', description: 'forget every style choice: fonts, colours and spacing from the linked CV again' },
       },
@@ -2039,10 +2111,12 @@ const TOOLS: Tool[] = [
       app.updatedAt = new Date().toISOString()
       await db.putApplication(env, app)
       const langs = LANGS.filter((l) => app.letters?.[l])
+      const { signature } = await db.getSearchProfile(env)
       return {
         application_id: app.id,
         changed: changes,
         problems,
+        ...Object.assign({}, ...langs.map((l) => letterPictures(app, l, signature))),
         style: letterStyleView(app.letterStyle),
         layout: Object.fromEntries(await Promise.all(langs.map(async (l) => [l, await letterFitOf(env, origin, app, l)] as const))),
       }

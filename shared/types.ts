@@ -506,16 +506,27 @@ export interface CoverLetter {
 }
 
 /** The letter templates. din5008: the German business-letter standard (window-envelope address field, fold marks). */
-export const LETTER_LAYOUTS = ['din5008', 'modern', 'classic', 'banner', 'sidebar'] as const
+export const LETTER_LAYOUTS = ['din5008', 'modern', 'classic', 'banner', 'sidebar', 'signed'] as const
 export type LetterLayout = (typeof LETTER_LAYOUTS)[number]
-export const LETTER_LAYOUT_LABELS: Record<LetterLayout, string> = { din5008: 'DIN 5008', modern: 'Modern', classic: 'Classic', banner: 'Banner', sidebar: 'Sidebar' }
+export const LETTER_LAYOUT_LABELS: Record<LetterLayout, string> = {
+  din5008: 'DIN 5008',
+  modern: 'Modern',
+  classic: 'Classic',
+  banner: 'Banner',
+  sidebar: 'Sidebar',
+  signed: 'Logo & signature',
+}
 export const LETTER_LAYOUT_DESCRIPTIONS: Record<LetterLayout, string> = {
   din5008: 'The German business-letter standard, with the address where a window envelope shows it.',
   modern: 'Name and contacts as a header over a coloured rule, like the CV.',
   classic: 'Centred name and contacts between thin rules, quiet and formal.',
   banner: 'Name and role on a full-width band in the accent colour.',
   sidebar: 'Name, contacts and date in a tinted column beside the letter.',
+  signed: "The company's logo beside the date, justified text, your handwritten signature and your contacts along the foot.",
 }
+
+/** Templates that print the company logo (the card's logo) and the user's handwritten signature. */
+export const LETTER_LOGO_LAYOUTS: readonly LetterLayout[] = ['signed']
 
 /**
  * A letter's own look, chosen in its Design panel and shared by the card's letters in every language. Each
@@ -536,6 +547,10 @@ export interface LetterStyle {
   marginY: number
   /** space between paragraphs, in lines */
   paragraphGap: number
+  /** the card's company logo on templates that have a place for it */
+  showLogo: boolean
+  /** the user's signature (search profile) on templates that have a place for it */
+  showSignature: boolean
 }
 
 /** NDJSON events streamed by the AI endpoints. */
@@ -628,5 +643,7 @@ export interface SearchProfile {
   cvRules: string
   /** contact lines the letters leave out (the CVs keep them), e.g. ['github'] */
   letterHideContacts: ContactType[]
+  /** the user's handwritten signature for letters (an uploaded image, /api/assets/…), '' when none */
+  signature: string
   updatedAt?: string
 }

@@ -86,7 +86,8 @@ Connect your agent to find jobs and prepare drafts.
 - Job reader for LinkedIn, Greenhouse, Lever, Ashby, SmartRecruiters, Workday and most career pages
 - Match score with quotes from your CV as evidence
 - Tailored CVs and cover letters built only from your own facts
-- 5 letter templates (DIN 5008, Modern, Classic, Banner, Sidebar) with their own fonts, colours and spacing, or the CV's
+- 6 letter templates (DIN 5008, Modern, Classic, Banner, Sidebar, Logo & signature) with their own fonts, colours and spacing, or the CV's
+- Logo & signature letters: the company's logo beside the date (the card's logo, found from the posting) and your handwritten signature, uploaded once in the letter's Design panel and kept for all your letters; either can be turned off per card
 - One-page check: tailored CVs fill one page, letters fit on one
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
@@ -221,7 +222,7 @@ Tools:
 | Profile | `get_profile`, `save_search_profile`, `update_library` |
 | Jobs | `search_jobs`, `triage_jobs`, `check_jobs`, `read_job_posting`, `read_application_form` |
 | CVs | `get_tailoring_material`, `save_tailored_cv`, `get_cv`, `edit_cv`, `fit_cv_to_page`, `check_cv_layout`, `save_cv_translation`, `copy_cv`, `delete_cv`, `score_cv` |
-| Letters | `get_letter_rules`, `save_motivation_letter`, `design_letter` |
+| Letters | `get_letter_rules`, `save_motivation_letter`, `design_letter`, `set_signature` |
 | Checks | `check_draft`, `check_ai_text`, `record_ai_check` |
 | Board | `list_applications`, `get_application`, `save_application`, `save_form_answers`, `delete_application`, `get_download_links` |
 | Site AI | `tailor_cv_with_site_ai`, `translate_cv_with_site_ai`, `write_motivation_letter_with_site_ai` |

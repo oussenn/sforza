@@ -332,6 +332,8 @@ export function letterStyleOf(cv: ResumeStyle, own: Partial<LetterStyle> | undef
     marginY: 18,
     // DIN 5008 leaves one blank line between paragraphs.
     paragraphGap: din ? 1 : 0.55,
+    showLogo: true,
+    showSignature: true,
     ...cleanLetterStyle(own),
   }
   if (din) style.fontSize = Math.max(11, style.fontSize)
@@ -350,6 +352,7 @@ export function cleanLetterStyle(value: unknown): Partial<LetterStyle> {
     const n = v[k]
     if (typeof n === 'number' && Number.isFinite(n)) out[k] = Math.min(max, Math.max(min, Math.round(n * 100) / 100))
   }
+  for (const k of ['showLogo', 'showSignature'] as const) if (typeof v[k] === 'boolean') out[k] = v[k]
   return out
 }
 
@@ -486,6 +489,7 @@ export function defaultSearchProfile(): SearchProfile {
     notes: '',
     cvRules: '',
     letterHideContacts: [],
+    signature: '',
   }
 }
 
@@ -522,6 +526,7 @@ export function cleanSearchProfile(raw: unknown, base: SearchProfile = defaultSe
     notes: text('notes', 8000),
     cvRules: text('cvRules'),
     letterHideContacts: pick('letterHideContacts', CONTACT_TYPES),
+    signature: typeof r.signature === 'string' && /^\/api\/assets\/[\w-]+$/.test(r.signature) ? r.signature : '',
     updatedAt: typeof r.updatedAt === 'string' ? r.updatedAt.slice(0, 40) : base.updatedAt,
   }
 }

@@ -10,18 +10,22 @@ export interface LetterProps {
   /** the resolved look (letterStyleOf): the card's own choices over the linked CV's style */
   style: LetterStyle
   lang: Lang
+  /** the company's logo (the card's logo), for the templates that print it */
+  logo?: string
+  /** the user's handwritten signature (search profile), for the templates that print it */
+  signature?: string
 }
 
 const pt = (v: number) => (v * 96) / 72
 
-/** A motivation letter on A4 in one of the letter templates: DIN 5008, Modern, Classic, Banner or Sidebar. */
+/** A motivation letter on A4 in one of the letter templates: DIN 5008, Modern, Classic, Banner, Sidebar or Logo & signature. */
 export function LetterDocument(props: LetterProps) {
   const { style, letter, lang } = props
   useEffect(() => {
     void ensureFont(style.font)
     if (style.headingFont) void ensureFont(style.headingFont)
   }, [style.font, style.headingFont])
-  const Layout = { din5008: DinLetter, modern: ModernLetter, classic: ClassicLetter, banner: BannerLetter, sidebar: SidebarLetter }[letterLayoutOf(letter, lang)]
+  const Layout = { din5008: DinLetter, modern: ModernLetter, classic: ClassicLetter, banner: BannerLetter, sidebar: SidebarLetter, signed: SignedLetter }[letterLayoutOf(letter, lang)]
   return <Layout {...props} />
 }
 
@@ -75,12 +79,12 @@ function ContactItem({ c, style }: { c: Contact; style?: CSSProperties }) {
   )
 }
 
-function Paragraphs({ letter, gap }: { letter: CoverLetter; gap: number }) {
+function Paragraphs({ letter, gap, justify }: { letter: CoverLetter; gap: number; justify?: boolean }) {
   const paragraphs = paragraphsOf(letter.body)
   return (
     <>
       {paragraphs.map((p, i) => (
-        <p key={i} style={{ margin: i < paragraphs.length - 1 ? `0 0 ${gap}px` : 0, whiteSpace: 'pre-line' }}>
+        <p key={i} style={{ margin: i < paragraphs.length - 1 ? `0 0 ${gap}px` : 0, whiteSpace: 'pre-line', ...(justify && { textAlign: 'justify' }) }}>
           {p}
         </p>
       ))}
@@ -278,6 +282,75 @@ function SidebarLetter(props: LetterProps) {
       <main style={{ flex: 1, minWidth: 0, padding: `${style.marginY}mm ${style.marginX * 0.85}mm ${style.marginY * 0.9}mm 9mm` }}>
         <LetterBody {...props} dateAside={false} />
       </main>
+    </div>
+  )
+}
+
+/** How a contact reads in the foot line: profile links by their site's name, the rest as written. */
+const LINK_LABELS: Partial<Record<Contact['type'], string>> = { linkedin: 'LinkedIn Profile', github: 'GitHub', website: 'Website' }
+
+/**
+ * The date in bold with the company's logo on the right, the subject in bold, justified paragraphs, the closing, the
+ * handwritten signature over the name in bold, and the contacts spread along the foot of the page. The logo is the
+ * card's (found from the posting, or uploaded), the signature the one the user uploaded once; either can be turned off.
+ * Logo and signature boxes have fixed heights, so the page lays out the same before and after the images load.
+ */
+function SignedLetter({ letter, personal, style, lang, logo, signature }: LetterProps) {
+  const { fs, line, gap } = metrics(style)
+  const contacts = personal.contacts.filter((c) => c.value && c.type !== 'location')
+  const showLogo = style.showLogo && !!logo
+  const showSignature = style.showSignature && !!signature
+  return (
+    <div
+      className="letter-sheet letter-signed"
+      style={{ ...sheet(style), padding: `${style.marginY}mm ${style.marginX}mm ${style.marginY * 0.75}mm`, display: 'flex', flexDirection: 'column' }}
+    >
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: fs * 2 }}>
+        <div style={{ minWidth: 0, flex: 1, paddingTop: showLogo ? '9mm' : 0 }}>
+          <div style={{ fontFamily: headingFont(style), fontSize: fs * 1.3, fontWeight: 700, lineHeight: 1.2 }}>{letterDateLine(letter.date, lang, '')}</div>
+          <div style={{ fontFamily: headingFont(style), fontSize: fs * 1.2, fontWeight: 700, lineHeight: 1.25, marginTop: fs * 1.6 }}>{letter.subject}</div>
+        </div>
+        {showLogo && (
+          <div style={{ width: '30mm', height: '27mm', flexShrink: 0, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+            {/* multiply drops a logo's white box onto the page colour */}
+            <img src={logo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+          </div>
+        )}
+      </header>
+      {letter.recipient.trim() && <div style={{ whiteSpace: 'pre-line', marginTop: fs * 1.2 }}>{letter.recipient}</div>}
+      <div style={{ marginTop: fs * 1.3 }}>
+        <Paragraphs letter={letter} gap={gap} justify />
+      </div>
+      <div style={{ marginTop: line * 0.4 }}>{personal.name}</div>
+      {showSignature ? (
+        <div style={{ height: '17mm', margin: `${line * 0.3}px 0` }}>
+          {/* multiply drops a scanned signature's white paper onto the page colour */}
+          <img src={signature} alt="" style={{ height: '100%', maxWidth: '60mm', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+        </div>
+      ) : (
+        <div style={{ height: line * 1.2 }} />
+      )}
+      <div style={{ fontFamily: headingFont(style), fontWeight: 700 }}>{personal.name}</div>
+      <Enclosures letter={letter} lang={lang} gap={line} />
+      {contacts.length > 0 && (
+        <footer style={{ marginTop: 'auto', paddingTop: fs * 1.6, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', columnGap: fs * 1.5 }}>
+          {contacts.map((c) => {
+            const label = LINK_LABELS[c.type]
+            const style_: CSSProperties = label
+              ? { color: style.accent }
+              : c.type === 'email'
+                ? { textDecoration: 'underline' }
+                : {}
+            return c.url ? (
+              <a key={c.id} href={c.url} style={{ color: 'inherit', textDecoration: 'none', ...style_ }}>
+                {label ?? c.value}
+              </a>
+            ) : (
+              <span key={c.id}>{c.value}</span>
+            )
+          })}
+        </footer>
+      )}
     </div>
   )
 }
