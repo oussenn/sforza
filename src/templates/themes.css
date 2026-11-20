@@ -577,6 +577,27 @@
   text-align: center;
 }
 
+/* With a photo: name and contacts on the left, the photo on the right */
+.lx-header-photo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2em;
+  text-align: left;
+}
+
+.lx-header-photo .lx-id {
+  min-width: 0;
+  flex: 1;
+}
+
+.lx-photo {
+  flex-shrink: 0;
+  width: var(--photo);
+  height: var(--photo);
+  object-fit: cover;
+}
+
 .lx-name {
   margin: 0;
   font-size: 2.18em;

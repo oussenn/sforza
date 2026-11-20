@@ -1,33 +1,38 @@
 import { Fragment, type ReactNode } from 'react'
 import { InlineText, RichText } from '@/lib/markdown'
 import type { Contact, Lang, Section } from '@shared/types'
-import { LinkedText, MaybeLink, contactHref, dateRange, sectionTitle, visibleItems, visibleSections, type TemplateProps } from './shared'
+import { LinkedText, MaybeLink, Photo, contactHref, dateRange, sectionTitle, visibleItems, visibleSections, type TemplateProps } from './shared'
 
 /**
  * LaTeX Classic: the widespread LaTeX résumé (Jake Gutierrez's template) in Computer Modern. Centred header
  * with " | " separated contacts, small-caps headings over a full-width rule, and two-row entries whose right
  * column holds the place (top) and the dates (bottom). Languages are one bold-labelled line, not a block.
+ * With a photo the header turns left-aligned with the photo on the right, as in the LaTeX CVs that carry one.
  */
-export default function Latex({ content, lang }: TemplateProps) {
+export default function Latex({ content, style, photo, lang }: TemplateProps) {
   const { personal } = content
   const contacts = personal.contacts.filter((c) => c.value)
+  const withPhoto = style.showPhoto && !!photo
   return (
     <div className="lx">
-      <header className="lx-header" data-block="">
-        <h1 className="lx-name">{personal.name}</h1>
-        {personal.headline && <div className="lx-headline">{personal.headline}</div>}
-        {contacts.length > 0 && (
-          <div className="lx-contacts">
-            {contacts.map((c, i) => (
-              <Fragment key={c.id}>
-                {i > 0 && <span className="lx-sep"> | </span>}
-                <MaybeLink href={contactHref(c)} className={underlined(c) ? 'lx-link' : undefined}>
-                  {c.value}
-                </MaybeLink>
-              </Fragment>
-            ))}
-          </div>
-        )}
+      <header className={withPhoto ? 'lx-header lx-header-photo' : 'lx-header'} data-block="">
+        <div className="lx-id">
+          <h1 className="lx-name">{personal.name}</h1>
+          {personal.headline && <div className="lx-headline">{personal.headline}</div>}
+          {contacts.length > 0 && (
+            <div className="lx-contacts">
+              {contacts.map((c, i) => (
+                <Fragment key={c.id}>
+                  {i > 0 && <span className="lx-sep"> | </span>}
+                  <MaybeLink href={contactHref(c)} className={underlined(c) ? 'lx-link' : undefined}>
+                    {c.value}
+                  </MaybeLink>
+                </Fragment>
+              ))}
+            </div>
+          )}
+        </div>
+        {withPhoto && <Photo src={photo} className="lx-photo" />}
       </header>
       {visibleSections(content).map((section) => (
         <LxSection key={section.id} section={section} lang={lang} />
