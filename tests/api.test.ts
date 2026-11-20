@@ -444,7 +444,17 @@ describe('MCP connector', () => {
     const card = await asAlice('save_application', { title: 'Data Analyst', company: 'Acme Freight', stage: 'draft' })
     const bare = await asAlice('check_draft', { application_id: card.id })
     expect(bare.ready).toBe(false)
-    expect(bare.problems).toEqual([expect.stringContaining('No CV on the card'), expect.stringContaining('No motivation letter yet')])
+    expect(bare.problems).toEqual([
+      expect.stringContaining('No CV on the card'),
+      expect.stringContaining('No motivation letter yet'),
+      expect.stringContaining('No cv_language'),
+    ])
+    // What a finished draft usually also has is listed, without blocking.
+    expect(bare.todo).toEqual(expect.arrayContaining([expect.stringContaining('No form answers'), expect.stringContaining('No fit score')]))
+
+    // A card that links a job board needs the real application form.
+    const board = await asAlice('save_application', { title: 'BI Analyst', company: 'Acme Freight', url: 'https://www.linkedin.com/jobs/view/4400000001', stage: 'draft' })
+    expect((await asAlice('check_draft', { application_id: board.id })).problems).toEqual(expect.arrayContaining([expect.stringContaining('No apply_url')]))
 
     // Without a browser the page layout cannot be measured, and an unmeasured draft is never reported as ready.
     const { resume_id } = await asAlice('get_cv', { resume_id: 'master' })

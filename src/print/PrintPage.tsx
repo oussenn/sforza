@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { TEMPLATE_MAP } from '@shared/templates'
-import type { Lang, Resume, ResumeStyle } from '@shared/types'
+import { decodeCuts } from '@shared/shrink'
+import type { Lang, Resume, ResumeContent, ResumeStyle } from '@shared/types'
 import type { LetterProps } from '@/resume/LetterDocument'
 import { LetterDocument } from '@/resume/LetterDocument'
 import { api } from '@/lib/api'
 import { loadFont } from '@/lib/fonts'
-import { fitToPage, type FitResult } from '@/resume/fit'
+import { fitToPage, shrinkToPage, type FitResult, type ShrinkResult } from '@/resume/fit'
 import { measureLayout, measureLetter, type LayoutReport, type LetterFit } from '@/resume/layout'
 import { ResumeDocument } from '@/resume/ResumeDocument'
 
@@ -22,8 +23,8 @@ declare global {
     __PDF_ERROR?: string
     /** how the CV or letter sits on its pages, read by the server's layout check */
     __LAYOUT?: LayoutReport | LetterFit
-    /** with ?fit=1: the style that fills one page best, read by the server's fit_cv_to_page */
-    __FIT?: FitResult
+    /** with ?fit=1: the style that fills one page best, read by the server's fit_cv_to_page (with &shrink=1 also the moves and cuts) */
+    __FIT?: FitResult | ShrinkResult
   }
 }
 
@@ -84,8 +85,8 @@ function PrintLetter() {
 
 function PrintResume() {
   const [resume, setResume] = useState<Resume | null>(null)
-  // ?fit=1 renders one candidate style after another (src/resume/fit.ts) and reports the best.
-  const [trial, setTrial] = useState<ResumeStyle | null>(null)
+  // ?fit=1 renders one candidate style (and with &shrink=1 content) after another (src/resume/fit.ts) and reports the best.
+  const [trial, setTrial] = useState<{ style: ResumeStyle; content?: ResumeContent } | null>(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -110,15 +111,20 @@ function PrintResume() {
       await nextFrame()
       await sleep(150)
       const sheet = () => document.querySelector<HTMLElement>('#print-root .resume-sheet')
-      if (new URLSearchParams(window.location.search).get('fit')) {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('fit')) {
         const layout = TEMPLATE_MAP[resume.template]?.layout ?? 'mixed'
         const opts = { columns: layout !== 'single', ratioIsSide: layout === 'sidebar', maxLineHeight: layout === 'single' ? 1.4 : 1.25 }
-        window.__FIT = await fitToPage(resume.style, opts, async (style) => {
+        const measure = async (style: ResumeStyle, content?: ResumeContent) => {
           // Pagination runs in a layout effect, so the trial is paginated as soon as this render commits.
-          flushSync(() => setTrial(style))
+          flushSync(() => setTrial({ style, content }))
           await nextFrame()
           return measureLayout(sheet()!)
-        })
+        }
+        const content = resume.content[pickLang(resume)]!
+        window.__FIT = params.get('shrink')
+          ? await shrinkToPage(resume.style, content, opts, measure, decodeCuts(params.get('cuts') ?? ''))
+          : await fitToPage(resume.style, opts, (style) => measure(style))
       } else if (sheet()) window.__LAYOUT = measureLayout(sheet()!)
       window.__PDF_READY = true
     })().catch((err: Error) => {
@@ -134,7 +140,7 @@ function PrintResume() {
   document.title = [content.personal.name, DOC_WORD.resume[lang]].filter(Boolean).join(' – ')
   return createPortal(
     <div id="print-root">
-      <ResumeDocument template={resume.template} style={trial ?? resume.style} photo={resume.photo} content={content} lang={lang} />
+      <ResumeDocument template={resume.template} style={trial?.style ?? resume.style} photo={resume.photo} content={trial?.content ?? content} lang={lang} />
     </div>,
     document.body,
   )

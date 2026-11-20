@@ -236,7 +236,7 @@ async function workersAiJson<T>(env: Env, model: string, opts: CallOpts): Promis
 
 /** Model text, with non-breaking hyphens and narrow spaces normalised so they match the source material. */
 export const text = (v: unknown) =>
-  typeof v === 'string' ? v.replace(/[‐‑]/g, '-').replace(/[  ]/g, ' ').trim() : ''
+  typeof v === 'string' ? v.replace(/(?:\\r)?\\n/g, '\n').replace(/[‐‑]/g, '-').replace(/[  ]/g, ' ').trim() : ''
 
 export const list = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : [])
 

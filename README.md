@@ -230,7 +230,9 @@ Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_k
 
 The job search defaults to Germany. Set a country in the job search profile to search another market.
 
-`edit_cv` can change everything the editor can (template, fonts, colours, spacing, placement, order, items). `fit_cv_to_page` tries font sizes, spacing and column widths on the real print page and keeps the fullest single page.
+`edit_cv` can change everything the editor can (template, fonts, colours, spacing, placement, order, items). `fit_cv_to_page` tries font sizes, spacing and column widths on the real print page and keeps the fullest single page. If spacing alone can't fit the page, it moves a section into the column that has room. On a tailored CV it then hides the content least relevant to the posting and lists what it hid. It never hides a role, a degree, the languages or the summary, and every role keeps its best bullet.
+
+Agents don't have to remember the page fit. Whenever `save_tailored_cv`, `edit_cv` or `save_cv_translation` leave a page that isn't full or runs over, they run the fit themselves. `check_draft` also checks the card, not just the documents: the send language, and the real application form when the posting is on a job board. It lists what a finished draft usually also has: form answers, an AI check, a fit score and the posting date.
 
 Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
 

@@ -1,4 +1,5 @@
 import puppeteer, { type BrowserWorker, type Page } from '@cloudflare/puppeteer'
+import { encodeCuts, type Cut, type Move } from '@shared/shrink'
 import type { Application, Lang, Resume, ResumeStyle } from '@shared/types'
 import { letterFileName, pdfFileName } from '@shared/utils'
 import { signPrintToken } from './auth'
@@ -43,6 +44,9 @@ export interface FitReport {
   layout: LayoutReport
   status: 'fits' | 'too_long' | 'too_short'
   tries: number
+  /** with shrink: sections moved to the other column, and what was hidden (src/resume/fit.ts shrinkToPage) */
+  moves?: Move[]
+  cuts?: Cut[]
 }
 
 /**
@@ -115,18 +119,21 @@ async function printToPdf(env: Env, url: () => Promise<string>, cacheUrl: string
 
 /**
  * Finds the font size, spacing and column width that fill one page best for one language of the CV, by trying
- * them on the print page itself. Nothing is saved or cached: the CV keeps its style until the caller saves one.
+ * them on the print page itself. With `shrink`, a CV still too long at the tightest spacing may also have a section
+ * moved to the other column and, with `cuts` (in that order), the fewest of them hidden. Nothing is saved or cached:
+ * the CV keeps its style and content until the caller saves them.
  */
-export function fitLayout(env: Env & Store, origin: string, resume: Resume, lang: Lang): Promise<FitReport> {
+export function fitLayout(env: Env & Store, origin: string, resume: Resume, lang: Lang, shrink?: { cuts: Cut[] }): Promise<FitReport> {
+  const extra = shrink ? `&shrink=1&cuts=${encodeURIComponent(encodeCuts(shrink.cuts))}` : ''
   return onPrintPage(
     env,
-    async () => `${await cvPrintUrl(env, origin, resume, lang)()}&fit=1`,
+    async () => `${await cvPrintUrl(env, origin, resume, lang)()}&fit=1${extra}`,
     async (page) => {
       const fit = (await page.evaluate('window.__FIT || null')) as FitReport | null
       if (!fit) throw new PdfError('The print page did not report a fit.')
       return fit
     },
-    45_000,
+    60_000,
   )
 }
 
