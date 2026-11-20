@@ -286,7 +286,10 @@ export function letterFileName(name: string, lang: Lang): string {
 
 /** The city of the CV's location contact ("Berlin, Germany" → "Berlin"). */
 export function cityOf(content: Pick<ResumeContent, 'personal'>): string {
-  return (content.personal.contacts.find((c) => c.type === 'location')?.value ?? '').split(/[,/·]/)[0].trim()
+  const parts = (content.personal.contacts.find((c) => c.type === 'location')?.value ?? '').split(/[,/·|]/).map((p) => p.trim())
+  // "Neuer Graben 128, 44137 Dortmund, Germany": the street has a house number, the city may carry a postcode.
+  const places = parts.map((p) => p.replace(/^\d{4,6}\s+|\s+\d{4,6}$/, '').trim()).filter(Boolean)
+  return places.find((p) => !/\d/.test(p)) ?? places[0] ?? ''
 }
 
 /** "Berlin, 12. Oktober 2026" / "Berlin, le 12 octobre 2026" / "Berlin, 12 October 2026" */

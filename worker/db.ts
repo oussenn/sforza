@@ -265,6 +265,24 @@ export async function saveBoardColumns(s: Store, columns: BoardColumn[]): Promis
   await putSetting(s, 'board_columns', JSON.stringify(columns))
 }
 
+/**
+ * Job listings the account's searches have already shown, by "source:id", with the day first seen, so the next search
+ * can tell what is new. Kept for 45 days and at most 5000 listings.
+ */
+export async function getSeenJobs(s: Store): Promise<Record<string, string>> {
+  const raw = await getSetting(s, 'jobs_seen')
+  return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+}
+
+export async function saveSeenJobs(s: Store, seen: Record<string, string>): Promise<void> {
+  const cutoff = new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10)
+  const kept = Object.entries(seen)
+    .filter(([, day]) => day >= cutoff)
+    .sort((a, b) => (a[1] < b[1] ? 1 : -1))
+    .slice(0, 5000)
+  await putSetting(s, 'jobs_seen', JSON.stringify(Object.fromEntries(kept)))
+}
+
 /* Images are shared between accounts: photo ids are random and logo ids are content hashes. */
 
 export async function getAsset(s: Store, id: string) {

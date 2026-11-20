@@ -40,9 +40,11 @@ import { aiSpend } from './budget'
 import * as db from './db'
 import { detectAi, detectorName } from './detect'
 import { findOnBa, searchBa } from './jobsearch'
+import { linkedInAgeDays, matchesKeywords, searchArbeitnow, searchLinkedIn, searchStellenwerk, searchStepStone, STELLENWERK_CITIES, type LinkedInSearch, type Listing } from './boards'
+import { firstPlace, profilePlaces, screenPosting } from './screen'
 import { fullNameSalutation, gapSentences, letterIssues, letterRules } from './letter'
 import { findLogo } from './logo'
-import { formAnswersField, readApplicationForm } from './forms'
+import { formAnswersField, readApplicationForm, type ApplicationForm } from './forms'
 import { checkLayout, checkLetterFit, fitLayout, type FitReport } from './pdf'
 import { applyCuts, applyMoves, cutOrder } from '@shared/shrink'
 import { linkedInJobId, readJobPage, type JobPage } from './scrape'
@@ -77,9 +79,10 @@ const PROTOCOL = '2025-06-18'
 const INSTRUCTIONS = `Sforza, the user's resume builder: their CVs (EN/FR/DE), a knowledge base (library) of extra projects, skills and facts, a job-search profile, and an applications board (kanban: Saved → Draft → Applied → Interview → Offer → Rejected, plus any columns the user added).
 
 Job-search workflow (the prompts "job_hunt" and "draft_application" of this connector spell it out). When the user just pastes a job link (LinkedIn or any other), that means: prepare a complete draft for it, as in "draft_application": read it, check_jobs, judge the fit, then CV, letter, AI check, card fields and the application form's answers, all left in "Draft"; never apply.
+When the user asks to find jobs or for a list of jobs (without asking for drafts): search_jobs with several keyword variants of the profile's roles (German and English), triage_jobs on its candidates and checks (it reads each ad in full and its application form), then report every listing as a table: company, role, place, posted, language and German asked, verdict with the reason, your fit (0–100) for the candidates, and what each candidate's form asks (number of questions, account needed or not, the form link). The dropped listings follow in short with their reasons. Offer to prepare drafts for the best ones.
 1. get_profile once per session: CV, knowledge base, search profile (country, roles, places, German limit, document languages, AI-detector target) and board. Each account is a different person: use only this account's profile, CV and board, never another user's places or rules. If it returns cv_setup_needed, build the master CV with the user first. If it returns setup_needed, ask the user those questions and save_search_profile before any search. A thin knowledge base (few projects or skills) limits what a CV can say: offer to fill it (the prompt "build_knowledge_base": GitHub, courses, achievements) with update_library.
-2. Find postings in the profile's country and places (country empty = Germany). Germany: search_jobs (Bundesagentur für Arbeit) and, in the browser, LinkedIn, Indeed, StepStone and company career pages. Any other country: search_jobs does not cover it; use web search and the browser on that country's boards (e.g. UK: LinkedIn, Indeed UK, Reed, Totaljobs, CV-Library, the university's careers service) and company career pages. Rule: only postings first published in the last 7 days; check each posting's date and skip older ones (also old ads reposted or re-dated). check_jobs drops the ones already on the board.
-3. Read each posting (read_job_posting, or the text in the browser when a site blocks it) and judge the fit honestly against the search profile, above all the language requirement against the user's languages (in Germany: the German requirement against their German level and germanLimit). Skip poor fits and say why.
+2. Find postings in the profile's country and places (country empty = Germany). Germany: search_jobs searches the Bundesagentur für Arbeit, LinkedIn, StepStone, Arbeitnow and (around Dortmund and Bochum) Stellenwerk at once and screens every listing; add in the browser what it cannot read: Indeed, XING, the profile's own sites and company career pages. Any other country: search_jobs covers LinkedIn there; use web search and the browser on that country's other boards (e.g. UK: LinkedIn, Indeed UK, Reed, Totaljobs, CV-Library, the university's careers service) and company career pages. Rule: only postings first published in the last 7 days; check each posting's date and skip older ones (also old ads reposted or re-dated). check_jobs drops the ones already on the board.
+3. Read each posting (triage_jobs reads up to 10 at once with their forms; read_job_posting one; the text in the browser when a site blocks it) and judge the fit honestly against the search profile, above all the language requirement against the user's languages (in Germany: the German requirement against their German level and germanLimit). Skip poor fits and say why.
 4. Tailored CV: get_tailoring_material, write it yourself, save_tailored_cv with the card fields (new cards go to "Draft"). Other languages: get_cv + save_cv_translation.
    Its rules hold the common-sense rules every CV follows (adapt it to the posting, only facts from the CV and knowledge base, titles and dates as stated, one full page) and this user's own rules for CVs and letters (search profile cvRules, also in get_letter_rules). Follow both; when the user states a lasting preference for their CVs or letters, add it to cvRules with save_search_profile.
    Layout rule for every tailored CV: exactly one page, completely filled: every section whole, no empty space at the bottom of the page or under a column. The server fits it: whenever save_tailored_cv, edit_cv or save_cv_translation leave a layout that is not ok, they run the page fit themselves (page_fit in the answer): font size, spacing and column width, a section moved into a column that ends early, and on a tailored CV still too long, the content least relevant to the posting hidden (page_fit hidden and removed_bullets). Read what it hid: bring back anything the posting asks for (edit_cv items with hidden: false) and hide something less relevant instead. Never set spacing, font size or column width by hand; fit_cv_to_page runs the same fit on demand (after edits made with fit: false). Still too short, or a column that ends early: add a relevant bullet or project, or move a section to the other column, with edit_cv. A tailored CV is ready only when its layout says "ok": true. Only the master CV may have two pages, and it is never rewritten for one job: a CV for a job is a tailored CV (save_tailored_cv, or copy_cv then edit_cv on the copy). Check translations too (they run longer). For style and layout (font size, spacing, columns, full-width sections), hiding or editing single items, or any change to an existing CV, the master CV included, use edit_cv: it keeps the translations. A new tailored CV takes the master CV's design (template, colours, fonts, section placement); when the user restyles the master and wants older CVs to follow, edit_cv design_from "master" on each unsent one, then fit_cv_to_page. A new card that duplicates one already on the board: delete_application. A tailored CV no card uses: delete_cv.
@@ -690,6 +693,81 @@ async function linkedInApply(page: JobPage) {
   }
 }
 
+/** What read_application_form answers: the form's fields, or why none were found and what to do instead. */
+type FormLookup = ({ found: true; via?: string; next: string } & ApplicationForm) | { found: false; next: string; apply_on?: string; same_job_elsewhere?: unknown }
+
+/** read_application_form, also used by triage_jobs. */
+async function applicationForm(env: Env, url: string, company: string): Promise<FormLookup> {
+  // LinkedIn shows a sign-in wall instead of the form: go to the company's posting when it can be found.
+  let li: URL | null = null
+  try {
+    li = linkedInJobId(new URL(url)) ? new URL(url) : null
+  } catch {
+    /* not a link: the reader says so */
+  }
+  if (li) {
+    const page = await readJobPage(env, url, async () => undefined).catch(() => null)
+    const apply = page ? await linkedInApply(page) : null
+    const target = apply?.same_job_elsewhere?.company_posting
+    const form = target ? await readApplicationForm(target, page?.company ?? '', env).catch(() => null) : null
+    if (form?.questions.length) {
+      return { found: true, ...form, via: 'the same job on the Arbeitsagentur board, which links the company posting', next: "Check that this is the same job, then save url as the card's apply_url and save_form_answers with these questions in this order. Skip name, e-mail, phone and file uploads." }
+    }
+    return { found: false, apply_on: apply?.apply_on ?? 'unknown', same_job_elsewhere: apply?.same_job_elsewhere ?? null, next: apply?.next ?? "LinkedIn hides the form from signed-out readers: find the posting on the company's careers page and pass that page here." }
+  }
+  const form = await readApplicationForm(url, company, env).catch((err: Error) => {
+    if (err instanceof AiError) throw err
+    console.error('Form reader failed', err)
+    return null
+  })
+  if (!form) return { found: false, next: 'No form fields found (login wall, bot check or an e-mail application): open the Apply button in your browser and read the fields there.' }
+  // The Apply button of a board's ad may only lead to the board's own pages (its search box, its sign-in): not the form.
+  const host = (u: string) => {
+    try {
+      return new URL(u).hostname
+    } catch {
+      return ''
+    }
+  }
+  if (JOB_BOARDS.test(host(form.url)))
+    return {
+      found: false,
+      next: `The Apply button stays on ${host(form.url)} (its own application with an account, or a search page), so there is no company form to read. Find the same job on ${company || 'the company'}'s careers page and pass that page here; if the board's application is the only way, the user applies there.`,
+    }
+  return {
+    found: true,
+    ...form,
+    next: 'Save url as the card\'s apply_url, then save_form_answers with these questions in this order (empty answers on a "saved" card; answers from the CV, knowledge base and search profile when preparing). Skip name, e-mail, phone and file uploads.',
+  }
+}
+
+/** Forms triage_jobs reads in one call (each may take a headless browser up to a minute). */
+const FORMS_PER_CALL = 5
+
+/** The promise, or an error after `ms`. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([p, new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`The form did not load within ${Math.round(ms / 1000)} s.`)), ms))])
+}
+
+/** Runs `fn` on every item, at most `limit` at a time, keeping the order. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length)
+  let next = 0
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++
+        out[i] = await fn(items[i])
+      }
+    }),
+  )
+  return out
+}
+
+/** The boards search_jobs reads. */
+const JOB_SOURCES = ['arbeitsagentur', 'linkedin', 'stepstone', 'arbeitnow', 'stellenwerk'] as const
+type JobSource = (typeof JOB_SOURCES)[number]
+
 const TOOLS: Tool[] = [
   {
     name: 'get_profile',
@@ -820,51 +898,156 @@ const TOOLS: Tool[] = [
   {
     name: 'search_jobs',
     description:
-      "Searches the Bundesagentur für Arbeit job board (Germany's largest; also lists many company and board postings) and marks the results already on the board. For LinkedIn, Indeed and StepStone use the browser. Free.",
+      "Searches the job boards at once and screens every listing against the search profile, like the daily job runs. Germany: the Bundesagentur für Arbeit (Germany's largest board, also many company postings), LinkedIn (guest search, also remote across Germany), StepStone (all ads, and its English-ad filter), Arbeitnow and, around Dortmund and Bochum, Stellenwerk (the universities' student jobs); another country: LinkedIn there (then search that country's boards in the browser). " +
+      'Each listing has screen: candidate (read it), check (a rule could not tell) or drop with the reason (older than 7 days, an old LinkedIn ad shown with a new date, Ausbildung, thesis, outside your places); seen_before when an earlier search already showed it (only_new hides those); on_board and cv_at_company. ' +
+      'Report every listing with its verdict, never drop one silently. Then triage_jobs on the candidates and checks: it reads each ad in full (German asked, language, job kind) and the application form. Free.',
     inputSchema: obj(
       {
-        what: { type: 'string', description: 'keywords, e.g. "Werkstudent Data Engineering" (try German and English variants)' },
+        what: { type: 'string', description: 'keywords; several searches separated by ";", e.g. "Werkstudent Data; Working Student Data Analyst; Werkstudent Business Intelligence" (German and English variants, at most 6)' },
         where: { type: 'string', description: 'city or postcode (default: the city on the CV)' },
         radius_km: { type: 'number', description: 'default from the search profile' },
-        kind: { type: 'string', enum: ['any', 'job', 'internship'], description: 'job = regular jobs; internship = internships, trainee and many working-student ads' },
-        part_time: { type: 'boolean' },
-        days: { type: 'number', description: 'first published within the last N days (default 7)' },
-        page: { type: 'number' },
-        size: { type: 'number', description: 'results per page, max 50 (default 25)' },
+        days: { type: 'number', description: 'first published within the last N days (default 7, the rule)' },
+        sources: {
+          type: 'array',
+          items: { type: 'string', enum: [...JOB_SOURCES] },
+          description: 'boards to search (default: all that cover the country)',
+        },
+        remote: { type: 'boolean', description: "also LinkedIn's remote jobs across the country (default: when the search profile takes remote work)" },
+        only_new: { type: 'boolean', description: 'leave out listings an earlier search already showed' },
+        kind: { type: 'string', enum: ['any', 'job', 'internship'], description: 'Arbeitsagentur only: job = regular jobs; internship = internships, trainee and many working-student ads' },
+        part_time: { type: 'boolean', description: 'Arbeitsagentur only' },
       },
       ['what'],
     ),
     run: async (env, args) => {
-      if (!str(args.what, 200)) throw new Error('"what" is required: the keywords to search for, e.g. "Werkstudent Data Analyst".')
-      const [profile, master, apps] = await Promise.all([db.getSearchProfile(env), masterResume(env), db.listApplications(env)])
-      if (!searchesGermany(profile))
-        throw new ToolError(
-          `search_jobs searches the German Bundesagentur board only, and this user's job search is in ${profile.country.trim()}. Search the web and the browser instead (LinkedIn Jobs, Indeed and the country's job boards, the university's careers service, company career pages).`,
-        )
+      const keywords = str(args.what, 600)
+        .split(/[;\n]/)
+        .map((k) => k.trim())
+        .filter(Boolean)
+        .slice(0, 6)
+      if (!keywords.length) throw new ToolError('"what" is required: the keywords to search for, e.g. "Werkstudent Data Analyst; Working Student Data".')
+      const [profile, master, apps, seen] = await Promise.all([db.getSearchProfile(env), masterResume(env), db.listApplications(env), db.getSeenJobs(env)])
+      const germany = searchesGermany(profile)
       const num = (v: unknown, fallback: number, min: number, max: number) =>
         typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, Math.round(v))) : fallback
-      const result = await searchBa({
-        what: str(args.what, 200),
-        where: str(args.where, 100) || cityOf(master.content[master.sourceLang]!) || 'Berlin',
-        radiusKm: num(args.radius_km, profile.radiusKm || 50, 0, 200),
-        kind: args.kind === 'job' || args.kind === 'internship' ? args.kind : 'any',
-        partTime: args.part_time === true,
-        days: num(args.days, 7, 1, 100),
-        page: num(args.page, 1, 1, 50),
-        size: num(args.size, 25, 1, 50),
+      const days = num(args.days, 7, 1, 30)
+      const radius = num(args.radius_km, profile.radiusKm || 50, 0, 200)
+      const where = str(args.where, 100) || firstPlace(profile.locations) || cityOf(master.content[master.sourceLang]!) || (germany ? 'Berlin' : '')
+      const country = germany ? 'Germany' : profile.country.trim()
+      const available: JobSource[] = germany ? [...JOB_SOURCES] : ['linkedin']
+      const asked = list<string>(args.sources).filter((s): s is JobSource => (JOB_SOURCES as readonly string[]).includes(s))
+      const sources = asked.length ? asked.filter((s) => available.includes(s)) : available
+      const remote = typeof args.remote === 'boolean' ? args.remote : profile.workModes.includes('remote') || /remote/i.test(profile.locations)
+
+      // Every board and keyword at once; a board that fails is reported and the others still answer.
+      const report: Record<string, { listings: number; errors: string[] }> = Object.fromEntries(sources.map((s) => [s, { listings: 0, errors: [] }]))
+      const found: Listing[] = []
+      const run = async (source: JobSource, task: () => Promise<Listing[]>) => {
+        try {
+          const got = await task()
+          report[source].listings += got.length
+          found.push(...got)
+        } catch (err) {
+          report[source].errors.push((err as Error).message)
+        }
+      }
+      const since = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10)
+      const tasks: Promise<void>[] = []
+      const linkedIn: LinkedInSearch[] = []
+      for (const kw of keywords) {
+        if (sources.includes('arbeitsagentur'))
+          tasks.push(
+            run('arbeitsagentur', async () => {
+              const r = await searchBa({ what: kw, where, radiusKm: radius, kind: args.kind === 'job' || args.kind === 'internship' ? args.kind : 'any', partTime: args.part_time === true, days, page: 1, size: 50 })
+              // The board's own date filter goes by the last change: keep the ones first published within the window.
+              return r.jobs
+                .filter((j) => !j.first_published || j.first_published >= since)
+                .map((j) => ({ source: 'Arbeitsagentur', id: j.ref, title: j.title, company: j.company, location: j.location, posted_on: j.first_published, url: j.url, external_url: j.external_url || undefined, distance_km: j.distance_km, hours: j.hours, remote: !!j.remote }))
+            }),
+          )
+        if (sources.includes('linkedin')) {
+          linkedIn.push({ keywords: kw, location: where ? `${where}, ${country}` : country })
+          if (remote) linkedIn.push({ keywords: kw, location: country, remote: true, pages: 1 })
+        }
+        if (sources.includes('stepstone')) {
+          tasks.push(run('stepstone', () => searchStepStone(kw, where, radius, days)))
+          tasks.push(run('stepstone', () => searchStepStone(kw, where, radius, days, true)))
+        }
+      }
+      if (sources.includes('arbeitnow')) tasks.push(run('arbeitnow', async () => (await searchArbeitnow(days)).filter((l) => matchesKeywords(l, keywords))))
+      // Stellenwerk: the student jobs of the region's universities, all of them (its titles rarely use the search words).
+      const places = [...profilePlaces(profile.locations), where.toLowerCase()]
+      if (sources.includes('stellenwerk') && STELLENWERK_CITIES.some((c) => places.includes(c))) tasks.push(run('stellenwerk', () => searchStellenwerk(places, days)))
+      else delete report.stellenwerk
+      // LinkedIn throttles bursts: its searches run one after the other, beside the other boards.
+      if (linkedIn.length)
+        tasks.push(
+          searchLinkedIn(linkedIn, days).then(({ listings, errors }) => {
+            report.linkedin.listings += listings.length
+            report.linkedin.errors.push(...errors)
+            found.push(...listings)
+          }),
+        )
+      await Promise.all(tasks)
+
+      // One row per job: the same job on several boards (or found by several keywords) is merged.
+      const key = (l: Listing) => `${titleKey(l.title)}|${companyKey(l.company)}`
+      const rows = new Map<string, Listing & { also_on: { source: string; url: string }[] }>()
+      for (const l of found) {
+        const k = key(l)
+        const row = rows.get(k)
+        if (!row) rows.set(k, { ...l, also_on: [] })
+        else {
+          if (l.english) row.english = true
+          if (l.source !== row.source && !row.also_on.some((a) => a.url === l.url)) row.also_on.push({ source: l.source, url: l.url })
+          if (!row.external_url && l.external_url) row.external_url = l.external_url
+          if (l.posted_on && (!row.posted_on || l.posted_on < row.posted_on)) row.posted_on = l.posted_on
+        }
+      }
+      const all = [...rows.values()]
+      const today = new Date().toISOString().slice(0, 10)
+      const order = { candidate: 0, check: 1, drop: 2 } as const
+      const listed = all
+        .map((l) => {
+          const seenOn = seen[`${l.source}:${l.id}`]
+          const known = findOnBoard(apps, { url: l.url, title: l.title, company: l.company }) ?? (l.external_url ? findOnBoard(apps, { url: l.external_url }) : undefined)
+          const screen = screenPosting({ title: l.title, location: l.location, text: l.text, posted_on: l.posted_on, remote: l.remote, distance_km: l.distance_km, age_days: linkedInAgeDays(l, found) }, profile)
+          return { l, seenOn, known, screen }
+        })
+        .filter((r) => !(args.only_new === true && r.seenOn))
+        .sort((a, b) => order[a.screen.verdict] - order[b.screen.verdict] || (b.l.posted_on || '').localeCompare(a.l.posted_on || ''))
+      for (const l of all) seen[`${l.source}:${l.id}`] ??= today
+      await db.saveSeenJobs(env, seen)
+
+      const row = ({ l, seenOn, known, screen }: (typeof listed)[number]) => ({
+        source: l.source,
+        title: l.title,
+        company: l.company,
+        location: l.location,
+        posted_on: l.posted_on || null,
+        url: l.url,
+        ...(l.external_url && { external_url: l.external_url }),
+        ...(l.also_on.length && { also_on: l.also_on }),
+        ...(l.english && { english_ad: true }),
+        ...(typeof l.distance_km === 'number' && { distance_km: l.distance_km }),
+        ...(l.hours && { hours: l.hours }),
+        ...(seenOn && seenOn !== today && { seen_before: seenOn }),
+        on_board: known ? { id: known.id, stage: known.stage } : null,
+        ...(companyCv(cvAtCompany(apps, l.company, '', known?.id)) && { cv_at_company: companyCv(cvAtCompany(apps, l.company, '', known?.id)) }),
+        screen,
       })
-      // The board's own date filter goes by the last change, so old ads that were edited come back: keep the ones first published within the window.
-      const since = new Date(Date.now() - num(args.days, 7, 1, 100) * 86_400_000).toISOString().slice(0, 10)
-      const fresh = result.jobs.filter((j) => !j.first_published || j.first_published >= since)
+      const keep = listed.filter((r) => r.screen.verdict !== 'drop')
+      const dropped = listed.filter((r) => r.screen.verdict === 'drop')
       return {
-        total: result.total,
-        page: result.page,
-        dropped_as_older: result.jobs.length - fresh.length,
-        jobs: fresh.map((j) => {
-          const known = findOnBoard(apps, { url: j.url, title: j.title, company: j.company }) ?? (j.external_url ? findOnBoard(apps, { url: j.external_url }) : undefined)
-          return { ...j, on_board: known ? { id: known.id, stage: known.stage } : null, cv_at_company: companyCv(cvAtCompany(apps, j.company, '', known?.id)) }
-        }),
-        next: 'read_job_posting(url) gives the full text (external_url is the original posting when there is one).',
+        searched: { keywords, where, radius_km: radius, days, country, sources: report },
+        counts: { listings: listed.length, candidates: keep.filter((r) => r.screen.verdict === 'candidate').length, checks: keep.filter((r) => r.screen.verdict === 'check').length, dropped: dropped.length },
+        listings: keep.map(row),
+        // Dropped listings in short: still part of the report, each with its reason.
+        dropped: dropped.map(({ l, screen }) => ({ source: l.source, title: l.title, company: l.company, location: l.location, posted_on: l.posted_on || null, url: l.url, reason: screen.reason })),
+        next:
+          'Report every listing with its verdict (the dropped ones with their reason too; reopen any drop that looks wrong). Then triage_jobs with the candidates and checks not on the board (10 per call, each with its posted_on and external_url): it reads each ad in full and the application forms of the candidates.' +
+          (Object.values(report).some((r) => r.errors.length) ? ' A board failed (sources.*.errors): search it in the browser, or try again later.' : '') +
+          (germany ? '' : ` Only LinkedIn covers ${country} here: also search that country's boards and company career pages in the browser.`),
       }
     },
   },
@@ -916,7 +1099,84 @@ const TOOLS: Tool[] = [
         description_is_whole_page: !page.clean,
         logo: await findLogo(env, page.url, page.html),
         source: jobSource(page.url),
+        // The same rule-based screen as search_jobs and triage_jobs, now with the whole text.
+        screen: screenPosting({ title: page.title, location: page.location, text: page.description }, await db.getSearchProfile(env)),
         ...(await linkedInApply(page)),
+      }
+    },
+  },
+  {
+    name: 'triage_jobs',
+    description:
+      'Reads up to 10 postings in full at once and screens each against the search profile with its whole text: the language of the ad, the German it asks for (in the clause it says it), job kind and hours, place, the 7-day rule; checks the board; and with forms (default true) opens the application form of each candidate and lists its fields like read_application_form (the form link for apply_url, the questions, whether it needs an account). ' +
+      'One row per posting with verdict and reason, for the job list you report. It is a screen: judge each candidate yourself (fit 0–100 against the CV and profile) before preparing a draft. Free; takes up to two minutes.',
+    inputSchema: obj(
+      {
+        jobs: {
+          type: 'array',
+          items: obj(
+            {
+              url: { type: 'string' },
+              posted_on: { type: 'string', description: 'the date the search showed, YYYY-MM-DD' },
+              external_url: { type: 'string', description: "the company's own posting, when search_jobs gave one (its form is read instead of the board's page)" },
+            },
+            ['url'],
+          ),
+          description: 'postings from search_jobs (or any links), at most 10',
+        },
+        forms: { type: 'boolean', description: 'also read the application form of each candidate (default true)' },
+      },
+      ['jobs'],
+    ),
+    run: async (env, args) => {
+      const jobs = list<Json>(args.jobs)
+        .map((j) => ({ url: str(j.url, 2000), posted_on: isDate(j.posted_on) ? (j.posted_on as string) : '', company_url: str(j.external_url, 2000) }))
+        .filter((j) => j.url)
+      if (!jobs.length) throw new ToolError('jobs must be a list of { url, posted_on? }')
+      if (jobs.length > 10) throw new ToolError('At most 10 postings per call: split the list.')
+      const [profile, apps] = await Promise.all([db.getSearchProfile(env), db.listApplications(env)])
+      const rows = await mapLimit(jobs, 4, async (j) => {
+        const page = await readJobPage(env, j.url, async () => undefined).catch((err: Error) => err)
+        if (page instanceof Error) return { url: j.url, verdict: 'check' as const, reason: `Could not read it (${page.message}). Open it in the browser.` }
+        const known = findOnBoard(apps, { url: page.url, title: page.title, company: page.company })
+        const screen = screenPosting({ title: page.title, location: page.location, text: page.description, posted_on: j.posted_on }, profile)
+        const li = await linkedInApply(page)
+        return {
+          url: page.url,
+          title: page.title,
+          company: page.company,
+          location: page.location,
+          posted_on: j.posted_on || null,
+          ...screen,
+          on_board: known ? { id: known.id, stage: known.stage } : null,
+          ...(li && { apply_on: li.apply_on, ...(li.same_job_elsewhere && { same_job_elsewhere: li.same_job_elsewhere }) }),
+          ...((j.company_url || page.companyUrl) && { company_url: j.company_url || page.companyUrl }),
+          short_text: page.description.length < 1200,
+        }
+      })
+      // Forms of the candidates not yet on the board: most open a headless browser (up to a minute each), so three at a
+      // time, at most FORMS_PER_CALL per call, each with a time limit. A job board's page is not the form: the company's
+      // own posting is opened when the board links one.
+      if (args.forms !== false) {
+        type Read = Extract<(typeof rows)[number], { title: string }>
+        const wanted = rows.filter((r): r is Read => r.verdict !== 'drop' && 'title' in r && !r.on_board)
+        await mapLimit(wanted.slice(0, FORMS_PER_CALL), 3, async (r) => {
+          const target = r.company_url ?? r.same_job_elsewhere?.company_posting ?? r.url
+          const form = await withTimeout(applicationForm(env, target, r.company ?? ''), 75_000).catch(
+            (err: Error): FormLookup => ({ found: false, next: `${err.message} Run read_application_form on it, or open it in the browser.` }),
+          )
+          Object.assign(r, {
+            form: form.found
+              ? { url: form.url, ats: form.ats, questions: form.questions.map((q) => `${q.question}${q.required ? ' *' : ''} (${q.type})`), ...(form.note && { note: form.note }) }
+              : { found: false, next: form.next },
+          })
+        })
+        for (const r of wanted.slice(FORMS_PER_CALL)) Object.assign(r, { form: { found: false, next: `Not read (${FORMS_PER_CALL} forms per call): read_application_form, or triage_jobs again with fewer postings.` } })
+      }
+      return {
+        rows,
+        counts: { candidates: rows.filter((r) => r.verdict === 'candidate').length, checks: rows.filter((r) => r.verdict === 'check').length, dropped: rows.filter((r) => r.verdict === 'drop').length },
+        next: 'Report every posting with its verdict and reason. For each candidate, judge the fit (0–100) against the CV and search profile; when the user wants drafts, prepare the best ones (draft_application steps) and save the form questions with save_form_answers. Never apply.',
       }
     },
   },
@@ -1857,37 +2117,7 @@ const TOOLS: Tool[] = [
       },
       ['url'],
     ),
-    run: async (env, args) => {
-      const url = str(args.url, 2000)
-      // LinkedIn shows a sign-in wall instead of the form: go to the company's posting when it can be found.
-      let li: URL | null = null
-      try {
-        li = linkedInJobId(new URL(url)) ? new URL(url) : null
-      } catch {
-        /* not a link: the reader says so */
-      }
-      if (li) {
-        const page = await readJobPage(env, url, async () => undefined).catch(() => null)
-        const apply = page ? await linkedInApply(page) : null
-        const target = apply?.same_job_elsewhere?.company_posting
-        const form = target ? await readApplicationForm(target, page?.company ?? '', env).catch(() => null) : null
-        if (form?.questions.length) {
-          return { found: true, ...form, via: 'the same job on the Arbeitsagentur board, which links the company posting', next: "Check that this is the same job, then save url as the card's apply_url and save_form_answers with these questions in this order. Skip name, e-mail, phone and file uploads." }
-        }
-        return { found: false, apply_on: apply?.apply_on ?? 'unknown', same_job_elsewhere: apply?.same_job_elsewhere ?? null, next: apply?.next ?? "LinkedIn hides the form from signed-out readers: find the posting on the company's careers page and pass that page here." }
-      }
-      const form = await readApplicationForm(url, str(args.company, 200), env).catch((err: Error) => {
-        if (err instanceof AiError) throw err
-        console.error('Form reader failed', err)
-        return null
-      })
-      if (!form) return { found: false, next: 'No form fields found (login wall, bot check or an e-mail application): open the Apply button in your browser and read the fields there.' }
-      return {
-        found: true,
-        ...form,
-        next: 'Save url as the card\'s apply_url, then save_form_answers with these questions in this order (empty answers on a "saved" card; answers from the CV, knowledge base and search profile when preparing). Skip name, e-mail, phone and file uploads.',
-      }
-    },
+    run: async (env, args) => applicationForm(env, str(args.url, 2000), str(args.company, 200)),
   },
   {
     name: 'save_form_answers',

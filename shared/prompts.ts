@@ -73,9 +73,9 @@ ${JOB_KIND_RULES}`
 /** Where to search when the profile lists no sites of its own. */
 function defaultSources(p: SearchProfile): string {
   if (searchesGermany(p))
-    return 'search_jobs (Bundesagentur für Arbeit) with several German and English keyword variants for my roles, then in the browser LinkedIn Jobs, Indeed (de.indeed.com), StepStone and the career pages of companies that fit'
+    return 'search_jobs (it searches the Bundesagentur für Arbeit, LinkedIn, StepStone, Arbeitnow and, around Dortmund and Bochum, Stellenwerk at once) with several German and English keyword variants for my roles, then in the browser what it cannot read: Indeed (de.indeed.com), XING and the career pages of companies that fit'
   const uk = /^(uk|gb|united kingdom|great britain|england|scotland|wales|northern ireland)$/i.test(p.country.trim())
-  return `web search and the browser (search_jobs covers Germany only, do not use it): LinkedIn Jobs and Indeed for ${p.country.trim()}${
+  return `search_jobs (LinkedIn in ${p.country.trim()}), then web search and the browser: Indeed for ${p.country.trim()}${
     uk ? ", Reed, Totaljobs, CV-Library, StudentJob UK and my university's careers service" : ", the country's main job boards and my university's careers service"
   }, plus the career pages of companies that fit, with several keyword variants for my roles`
 }
@@ -158,8 +158,8 @@ export const CLAUDE_PROMPTS: ClaudePrompt[] = [
               .map((l) => `   - ${l.trim()}`)
               .join('\n')}`
           : `2. Search broadly: ${defaultSources(p)}. Only postings first published in the last 7 days (strict: check the posting date, skip older ones and reposts of old ads) that are still open.`,
-        '3. Call check_jobs with the candidates (with company and department) and drop the ones already on my board. Note cv_at_company for the others.',
-        `4. Read each remaining posting in full (read_job_posting, or the text in the browser when the site blocks it) and judge the fit honestly: language requirement, degree and semester status, experience asked for, location and commute, job type, work-permit limits. Score the fit 0–100 and skip anything below ${p.minFit} or outside my language rule. Keep the skipped ones with the reason.`,
+        '3. search_jobs already screens each listing and marks the ones on my board (on_board) and cv_at_company; for listings from the browser call check_jobs (with company and department) and drop the ones already on my board.',
+        `4. Read each remaining posting in full (triage_jobs: 10 at a time, with the German asked, the language and the application form; read_job_posting for one; the text in the browser when the site blocks it). The screen is a rule, not a decision: reopen any drop that looks wrong. Judge the fit honestly: language requirement, degree and semester status, experience asked for, location and commute, job type, work-permit limits. Score the fit 0–100 and skip anything below ${p.minFit} or outside my language rule. Keep the skipped ones with the reason.`,
         `5. Take the best ${count} and prepare each one, saving each card as soon as it is ready (if this chat gets long, stop after a finished card and tell me how many are left):`,
         PREPARE(ctx),
         byEmail

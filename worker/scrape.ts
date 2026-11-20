@@ -19,6 +19,8 @@ export interface JobPage extends Omit<ScrapedJob, 'logo'> {
   html?: string
   /** LinkedIn: where the Apply button leads, its own Easy Apply form or the company's site */
   applyOn?: 'easy_apply' | 'company_site'
+  /** a job board's link to the company's own posting (the Arbeitsagentur's external link) */
+  companyUrl?: string
 }
 
 export const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
@@ -339,7 +341,8 @@ async function arbeitsagentur(url: URL): Promise<Omit<JobPage, 'url'> | null> {
   const ref = baRef(url)
   const job = ref ? await baPosting(ref) : null
   if (!job) return null
-  return { title: job.title, company: job.company, location: job.location, description: job.description, clean: true, source: 'Bundesagentur für Arbeit' }
+  const companyUrl = job.external_url || job.website
+  return { title: job.title, company: job.company, location: job.location, description: job.description, clean: true, source: 'Bundesagentur für Arbeit', ...(companyUrl && { companyUrl }) }
 }
 
 /* ------------------------------------------------------------------ */

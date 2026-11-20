@@ -105,7 +105,7 @@ Connect your agent to find jobs and prepare drafts.
 | Frontend | React 19, Vite 8, TypeScript, Tailwind CSS 4, shadcn/ui (Radix UI), Zustand, Immer, cmdk, Sonner, Lucide and Font Awesome icons, Fontsource fonts |
 | Backend | Cloudflare Workers, Hono, D1 (SQLite), Browser Rendering with `@cloudflare/puppeteer` for PDFs |
 | AI | Anthropic SDK, OpenAI API, Workers AI (free fallback), AI or Not API (optional detector) |
-| Integrations | MCP (JSON-RPC over HTTP), Bundesagentur für Arbeit job search API, ATS public APIs |
+| Integrations | MCP (JSON-RPC over HTTP), Bundesagentur für Arbeit job search API, LinkedIn guest job search, StepStone, Arbeitnow API, Stellenwerk, ATS public APIs |
 | Tooling | Wrangler, `@cloudflare/vite-plugin`, Vitest, jsdom |
 
 ## Project layout
@@ -219,7 +219,7 @@ Tools:
 | Group | Tools |
 |---|---|
 | Profile | `get_profile`, `save_search_profile`, `update_library` |
-| Jobs | `search_jobs`, `check_jobs`, `read_job_posting`, `read_application_form` |
+| Jobs | `search_jobs`, `triage_jobs`, `check_jobs`, `read_job_posting`, `read_application_form` |
 | CVs | `get_tailoring_material`, `save_tailored_cv`, `get_cv`, `edit_cv`, `fit_cv_to_page`, `check_cv_layout`, `save_cv_translation`, `copy_cv`, `delete_cv`, `score_cv` |
 | Letters | `get_letter_rules`, `save_motivation_letter`, `design_letter` |
 | Checks | `check_draft`, `check_ai_text`, `record_ai_check` |
@@ -229,6 +229,14 @@ Tools:
 Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_knowledge_base`.
 
 The job search defaults to Germany. Set a country in the job search profile to search another market.
+
+Ask your agent for a list of jobs and it works like a daily job run. `search_jobs` searches the Bundesagentur für Arbeit, LinkedIn, StepStone, Arbeitnow and (around Dortmund and Bochum) Stellenwerk at once and merges the same job found on several boards. It screens every listing against your job search profile and remembers what earlier searches showed. The screen checks:
+
+- posted within the last 7 days, and not an old LinkedIn ad shown with a new date
+- not an Ausbildung or a thesis
+- in your places
+
+`triage_jobs` then reads up to 10 ads in full. It checks the German each ad asks for against your limit, the ad's language, the hours and student status. It also opens each candidate's application form and lists its questions. Every listing comes back with a verdict and a reason, so the agent can report all of them, dropped ones included. Outside Germany, `search_jobs` covers LinkedIn in that country.
 
 `edit_cv` can change everything the editor can (template, fonts, colours, spacing, placement, order, items). `fit_cv_to_page` tries font sizes, spacing and column widths on the real print page and keeps the fullest single page. If spacing alone can't fit the page, it moves a section into the column that has room. On a tailored CV it then hides the content least relevant to the posting and lists what it hid. It never hides a role, a degree, the languages or the summary, and every role keeps its best bullet.
 
