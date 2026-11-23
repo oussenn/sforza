@@ -3,6 +3,7 @@ import { cityOf, cleanSearchProfile } from '../shared/utils'
 import type { SearchProfile } from '../shared/types'
 import { linkedInAgeDays, matchesKeywords, parseLinkedInCards, parseStellenwerk, parseStepStone, slug, type Listing } from '../worker/boards'
 import { firstPlace, germanAsked, inFields, profilePlaces, screenPosting } from '../worker/screen'
+import { overlap } from '../worker/jobsearch'
 
 const EN = 'You will join our team and work with our data. We offer flexible hours and you will learn a lot with us. '
 const DE = 'Du unterstützt unser Team und arbeitest mit Daten. Wir bieten dir flexible Arbeitszeiten und die Möglichkeit, mit uns zu wachsen. '
@@ -76,6 +77,15 @@ describe('screening a posting against the search profile', () => {
     expect(profilePlaces(base.locations)).not.toContain('remote')
     expect(inFields('Werkstudent Datenanalyse (m/w/d)', base.roles)).toBe(true)
     expect(inFields('Werkstudent Marketing (m/w/d)', base.roles)).toBe(false)
+  })
+})
+
+describe('the same job on another board', () => {
+  it('never matches two jobs by the word Werkstudent alone', () => {
+    expect(overlap('Werkstudent KI (m/w/d)', 'Werkstudent Personalentwicklung (m/w/d)')).toBe(0)
+    expect(overlap('Werkstudent KI (m/w/d)', 'Werkstudent KI (w/m/d)')).toBe(1)
+    expect(overlap('Werkstudent AI Platform Builder', 'Werkstudent AI Platform Builder (m/w/d)')).toBe(1)
+    expect(overlap('Werkstudent (m/w/d)', 'Werkstudent (m/w/d)')).toBe(1)
   })
 })
 

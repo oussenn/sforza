@@ -127,17 +127,24 @@ export async function baPosting(ref: string): Promise<(JobHit & { description: s
   return { ...hit({ ...job, referenznummer: str(job.referenznummer) || ref }), description, website: str(job.allianzpartnerUrl) }
 }
 
+/** Two-letter words that name a field ("Werkstudent KI" is not "Werkstudent HR"). */
+const SHORT_FIELDS = new Set(['ki', 'ai', 'it', 'bi', 'hr', 'ux', 'ui', 'qa', 'ml', 'pr'])
+
 const words = (s: string) =>
   s
     .toLowerCase()
     .replace(/\((?:[mwfdx]\s*[/|,]\s*)+[mwfdx]\)|\b[mwfdx]\/[mwfdx]\/[mwfdx]\b|all genders|w\/m\/d|m\/w\/d|d\/w\/m/g, ' ')
     .split(/[^a-z0-9äöüß]+/)
-    .filter((w) => w.length > 2)
+    .filter((w) => w.length > 2 || SHORT_FIELDS.has(w))
 
-/** Share of the posting's title words that the other title has too. */
-function overlap(title: string, other: string): number {
-  const mine = new Set(words(title))
-  if (!mine.size) return 0
+/** Words of a job title that say nothing about the job itself: a match on them alone is no match. */
+const GENERIC = new Set(['werkstudent', 'werkstudentin', 'werkstudierende', 'working', 'student', 'studentische', 'hilfskraft', 'praktikum', 'praktikant', 'praktikantin', 'intern', 'internship', 'aushilfe', 'minijob', 'trainee', 'junior', 'senior', 'mitarbeiter', 'mitarbeiterin', 'bereich', 'der', 'die', 'das', 'und', 'and', 'for', 'the', 'mit', 'für', 'als', 'zur', 'zum', 'im'])
+
+/** Share of the posting's title words that the other title has too; 0 when only generic words match. */
+export function overlap(title: string, other: string): number {
+  const all = new Set(words(title))
+  const mine = new Set([...all].filter((w) => !GENERIC.has(w)))
+  if (!mine.size) return words(title).join(' ') === words(other).join(' ') ? 1 : 0
   const theirs = new Set(words(other))
   return [...mine].filter((w) => theirs.has(w)).length / mine.size
 }
@@ -150,7 +157,7 @@ export async function findOnBa(title: string, company: string): Promise<JobHit |
   const firm = words(company).filter((w) => !['gmbh', 'ag', 'se', 'kg', 'group', 'the', 'und'].includes(w))
   if (!firm.length || !title.trim()) return null
   const sameFirm = (hit: JobHit) => firm.some((w) => words(hit.company).includes(w))
-  const queries = [`${company} ${words(title)[0] ?? ''}`.trim(), company]
+  const queries = [`${company} ${words(title).find((w) => !GENERIC.has(w)) ?? ''}`.trim(), company]
   let best: { hit: JobHit; score: number } | null = null
   for (const what of queries) {
     const { jobs } = await searchBa({ what, where: '', radiusKm: 0, kind: 'any', partTime: false, days: 60, page: 1, size: 50 }).catch(() => ({ jobs: [] as JobHit[] }))

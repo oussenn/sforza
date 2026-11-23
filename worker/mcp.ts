@@ -469,11 +469,19 @@ function sevenDayRule(app: Application): Json {
  * The document-language rule: a German posting gets German documents written in German (and English ones too when
  * the profile asks for posting+en), an English posting English only; "en" and "all" profiles as they say.
  */
+/** The languages a card's documents are needed in, from the posting's language and the profile; [] when the posting's language is unclear. */
+function documentLanguages(app: Application, docLangs: SearchProfile['docLangs']): Lang[] {
+  const text = app.description ?? ''
+  const posting = text.length > 400 ? adLanguage(text) : null
+  if (!posting || posting === 'mixed') return []
+  return docLangs === 'en' ? ['en'] : docLangs === 'all' ? ['en', 'de', 'fr'] : posting === 'de' ? (docLangs === 'posting+en' ? ['de', 'en'] : ['de']) : ['en']
+}
+
 function documentLanguageProblems(app: Application, cv: Resume | null, docLangs: SearchProfile['docLangs']): string[] {
   const text = app.description ?? ''
   const posting = text.length > 400 ? adLanguage(text) : null
   if (!posting || posting === 'mixed') return []
-  const want: Lang[] = docLangs === 'en' ? ['en'] : docLangs === 'all' ? ['en', 'de', 'fr'] : posting === 'de' ? (docLangs === 'posting+en' ? ['de', 'en'] : ['de']) : ['en']
+  const want = documentLanguages(app, docLangs)
   const sendIn: Lang = docLangs === 'en' ? 'en' : posting
   const out: string[] = []
   for (const l of want) {
@@ -975,7 +983,7 @@ const TOOLS: Tool[] = [
   {
     name: 'search_jobs',
     description:
-      "Searches the job boards at once and screens every listing against the search profile, like the daily job runs. Germany: the Bundesagentur für Arbeit (Germany's largest board, also many company postings), LinkedIn (guest search, also remote across Germany), StepStone (all ads, and its English-ad filter), Arbeitnow and, around Dortmund and Bochum, Stellenwerk (the universities' student jobs); another country: LinkedIn there (then search that country's boards in the browser). " +
+      "Searches the job boards at once and screens every listing against the search profile, like the daily job runs. Germany: the Bundesagentur für Arbeit (Germany's largest board, also many company postings), LinkedIn (guest search, also remote across Germany), StepStone, Arbeitnow and, around Dortmund and Bochum, Stellenwerk (the universities' student jobs); another country: LinkedIn there (then search that country's boards in the browser). " +
       'Each listing has screen: candidate (read it), check (a rule could not tell) or drop with the reason (older than 7 days, an old LinkedIn ad shown with a new date, Ausbildung, thesis, outside your places); seen_before when an earlier search already showed it (only_new hides those); on_board and cv_at_company. ' +
       'Report every listing with its verdict, never drop one silently. Then triage_jobs on the candidates and checks: it reads each ad in full (German asked, language, job kind) and the application form. Free.',
     inputSchema: obj(
@@ -1047,8 +1055,8 @@ const TOOLS: Tool[] = [
           if (remote) linkedIn.push({ keywords: kw, location: country, remote: true, pages: 1 })
         }
         if (sources.includes('stepstone')) {
+          // StepStone's ad-language filter no longer filters (November 2026): one request, the language comes from the ad.
           tasks.push(run('stepstone', () => searchStepStone(kw, where, radius, days)))
-          tasks.push(run('stepstone', () => searchStepStone(kw, where, radius, days, true)))
         }
       }
       if (sources.includes('arbeitnow')) tasks.push(run('arbeitnow', async () => (await searchArbeitnow(days)).filter((l) => matchesKeywords(l, keywords))))
@@ -1905,12 +1913,19 @@ const TOOLS: Tool[] = [
       const unchecked = (what: string, error?: string) => `${what}: layout check unavailable${error ? ` (${error})` : ''}; try again in a minute`
       const cv = app.resumeId ? await db.getResume(env, app.resumeId) : null
       const cvLayouts: Json = {}
+      const notSent: string[] = []
+      const profile = await db.getSearchProfile(env)
       if (!cv) problems.push('No CV on the card: save_tailored_cv, or save_application with the resume_id of the CV to send.')
       else {
+        // Only the languages this card is sent in must fill their page; another one (e.g. the English source of a CV sent
+        // in German) is measured and reported, but does not block the draft.
+        const needed = new Set<Lang>([...(app.lang ? [app.lang] : []), ...documentLanguages(app, profile.docLangs)])
         for (const lang of availableLangs(cv)) {
           const l = await layoutOf(env, origin, cv, lang)
           cvLayouts[lang] = l
-          problems.push(...(l.checked ? (l.problems ?? []).map((p) => `CV ${lang}: ${p}`) : [unchecked(`CV ${lang}`, l.error)]))
+          const found = l.checked ? (l.problems ?? []).map((p) => `CV ${lang}: ${p}`) : [unchecked(`CV ${lang}`, l.error)]
+          if (needed.size && !needed.has(lang)) notSent.push(...found)
+          else problems.push(...found)
         }
         if (app.lang && !cv.content[app.lang]) problems.push(`The card is to be sent in ${LANG_LABELS[app.lang].name}, but the CV has no ${LANG_LABELS[app.lang].name} version: save_cv_translation.`)
       }
@@ -1924,12 +1939,13 @@ const TOOLS: Tool[] = [
         problems.push(...(l.checked ? (l.problems ?? []).map((p) => `Letter ${lang}: ${p}`) : [unchecked(`Letter ${lang}`, l.error)]))
       }
       const todo = draftTodo(app)
-      problems.push(...todo.problems, ...documentLanguageProblems(app, cv, (await db.getSearchProfile(env)).docLangs))
+      problems.push(...todo.problems, ...documentLanguageProblems(app, cv, profile.docLangs))
       return {
         application_id: app.id,
         ready: !problems.length,
         problems,
         ...(todo.todo.length ? { todo: todo.todo } : {}),
+        ...(notSent.length ? { not_sent_languages: notSent } : {}),
         cv: cvLayouts,
         letters: letterLayouts,
         next: problems.length

@@ -250,6 +250,8 @@ The tools also check the writing rules as they save:
 - a card for a posting first published more than 7 days earlier
 - documents in the wrong language: German postings get German documents (plus English when the profile asks for it), English postings English only
 
+`check_draft` holds only the languages a card is sent in to the one-full-page rule. The English source of a CV sent in German is still measured, but doesn't block the draft.
+
 Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
 
 ## Deploy
