@@ -436,6 +436,24 @@ describe('MCP connector', () => {
     expect(saved.letters.en.body).toContain('I build dashboards, and I check the data behind them.')
   })
 
+  it('tells an agent when it breaks the writing rules: letter length and language, form style, the 7-day rule, document language', async () => {
+    const posting = 'We are looking for a working student in data engineering. You will build pipelines with Python and SQL and work with our team in English. '.repeat(5)
+    const card = await asAlice('save_application', { title: 'Data Engineer', company: 'Acme Data', stage: 'draft', description: posting, posted_on: '2026-01-02' })
+    expect(card.rule_7_days).toContain('7 days')
+
+    const short = await asAlice('save_motivation_letter', { application_id: card.id, lang: 'de', subject: 'Bewerbung', body: 'Dear Hiring Team,\n\nI build pipelines with Python and SQL and I would like to join your team in English. '.repeat(3) + '\n\nKind regards,' })
+    expect(short.warnings.join(' ')).toContain('words: a letter has 220–320')
+    expect(short.warnings.join(' ')).toContain('the text is in English')
+
+    const form = await asAlice('save_form_answers', { application_id: card.id, answers: [{ question: 'Why us?', answer: 'Two reasons: your data team; your product.' }] })
+    expect(form.warnings.join(' ')).toContain('semicolon')
+    expect(form.warnings.join(' ')).toContain('colon')
+
+    const draft = await asAlice('check_draft', { application_id: card.id })
+    expect(draft.problems.join(' ')).toContain('English posting: English only')
+    expect(draft.problems.join(' ')).toContain('needs an English letter')
+  })
+
   it('the signed letter template: an agent saves the signature once and is told what a card still lacks', async () => {
     const card = await asAlice('save_application', { title: 'Data Steward', company: 'Acme Hotels', stage: 'draft' })
     await asAlice('save_motivation_letter', { application_id: card.id, lang: 'en', subject: 'Application', body: 'Dear Hiring Team,\n\nI keep data clean.\n\nKind regards,', enclosures: 'none' })

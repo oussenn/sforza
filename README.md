@@ -243,6 +243,13 @@ Ask your agent for a list of jobs and it works like a daily job run. `search_job
 
 Agents don't have to remember the page fit. Whenever `save_tailored_cv`, `edit_cv` or `save_cv_translation` leave a page that isn't full or runs over, they run the fit themselves. `check_draft` also checks the card, not just the documents: the send language, and the real application form when the posting is on a job board. It lists what a finished draft usually also has: form answers, an AI check, a fit score and the posting date.
 
+The tools also check the writing rules as they save:
+
+- a letter outside 220–320 words, or not written in the language it is saved under
+- form answers with semicolons or colons, or that run long
+- a card for a posting first published more than 7 days earlier
+- documents in the wrong language: German postings get German documents (plus English when the profile asks for it), English postings English only
+
 Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
 
 ## Deploy

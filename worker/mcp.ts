@@ -1,5 +1,5 @@
 import type { Context } from 'hono'
-import type { AiCheck, Application, BoardColumn, ContactType, CoverLetter, Lang, LetterLayout, LetterStyle, Library, Resume, ResumeContent, ResumeStyle, SectionItem, SectionType, Stage } from '@shared/types'
+import type { AiCheck, Application, BoardColumn, ContactType, CoverLetter, FormAnswer, SearchProfile, Lang, LetterLayout, LetterStyle, Library, Resume, ResumeContent, ResumeStyle, SectionItem, SectionType, Stage } from '@shared/types'
 import { LANG_LABELS, LANGS, LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUTS, LETTER_LOGO_LAYOUTS, STAGES } from '@shared/types'
 import { CLAUDE_PROMPTS, type PromptContext } from '@shared/prompts'
 import { FONTS, TEMPLATE_MAP, TEMPLATES } from '@shared/templates'
@@ -41,7 +41,7 @@ import * as db from './db'
 import { detectAi, detectorName } from './detect'
 import { findOnBa, searchBa } from './jobsearch'
 import { linkedInAgeDays, matchesKeywords, searchArbeitnow, searchLinkedIn, searchStellenwerk, searchStepStone, STELLENWERK_CITIES, type LinkedInSearch, type Listing } from './boards'
-import { firstPlace, profilePlaces, screenPosting } from './screen'
+import { adLanguage, firstPlace, profilePlaces, screenPosting } from './screen'
 import { fullNameSalutation, gapSentences, letterIssues, letterRules } from './letter'
 import { findLogo } from './logo'
 import { fetchPublic, readCapped } from './net'
@@ -428,6 +428,63 @@ function letterPictures(app: Application, lang: Lang, signature: string): Json {
 
 /** Image types an uploaded signature may have, as the website's uploads. */
 const IMAGE_TYPES = /^image\/(jpeg|png|webp)$/
+
+/** A letter outside the length the rules ask for, or written in another language than the one it is saved as. */
+function letterRuleWarnings(letter: CoverLetter, lang: Lang): string[] {
+  const words = letter.body.split(/\s+/).filter(Boolean).length
+  const out: string[] = []
+  if (words < 200) out.push(`${words} words: a letter has 220–320; add a supported detail from the CV or knowledge base and save again.`)
+  if (words > 340) out.push(`${words} words: a letter has 220–320; tighten it and save again.`)
+  const written = words > 60 ? adLanguage(letter.body) : null
+  if (written && written !== 'mixed' && (lang === 'de' || lang === 'en') && written !== lang)
+    out.push(`Saved as the ${LANG_LABELS[lang].name} letter, but the text is in ${written === 'de' ? 'German' : 'English'}: save it under its own language, and write each language's letter directly in that language.`)
+  return out
+}
+
+/** The form-answer style: short, plain sentences in the user's own voice, no semicolons or colons. */
+function formAnswerWarnings(answers: FormAnswer[]): string[] {
+  const out: string[] = []
+  for (const a of answers) {
+    if (!a.answer.trim()) continue
+    const q = a.question.length > 60 ? `${a.question.slice(0, 57)}…` : a.question
+    if (/;/.test(a.answer)) out.push(`"${q}": a semicolon; write two plain sentences.`)
+    // A colon inside a time or a link is fine.
+    if (/:(?!\/\/|\d)/.test(a.answer)) out.push(`"${q}": a colon; write it as a plain sentence.`)
+    const words = a.answer.split(/\s+/).filter(Boolean).length
+    if (words > 130) out.push(`"${q}": ${words} words; form answers stay short (about 40–120 words).`)
+  }
+  return out
+}
+
+/** The 7-day rule: a card for a posting first published more than a week before the card was made. */
+function sevenDayRule(app: Application): Json {
+  if (!app.postedOn || !isDate(app.postedOn)) return {}
+  const age = Math.floor((new Date(app.createdAt).getTime() - new Date(`${app.postedOn}T00:00:00Z`).getTime()) / 86_400_000)
+  return age > 7
+    ? { rule_7_days: `Posted ${app.postedOn}, ${age} days before this card: only postings first published in the last 7 days get a draft. Check the date (a refreshed old ad?) and delete the card if it is older.` }
+    : {}
+}
+
+/**
+ * The document-language rule: a German posting gets German documents written in German (and English ones too when
+ * the profile asks for posting+en), an English posting English only; "en" and "all" profiles as they say.
+ */
+function documentLanguageProblems(app: Application, cv: Resume | null, docLangs: SearchProfile['docLangs']): string[] {
+  const text = app.description ?? ''
+  const posting = text.length > 400 ? adLanguage(text) : null
+  if (!posting || posting === 'mixed') return []
+  const want: Lang[] = docLangs === 'en' ? ['en'] : docLangs === 'all' ? ['en', 'de', 'fr'] : posting === 'de' ? (docLangs === 'posting+en' ? ['de', 'en'] : ['de']) : ['en']
+  const sendIn: Lang = docLangs === 'en' ? 'en' : posting
+  const out: string[] = []
+  for (const l of want) {
+    if (!app.letters?.[l]) out.push(`The ${posting === 'de' ? 'German' : 'English'} posting needs ${l === 'en' ? 'an' : 'a'} ${LANG_LABELS[l].name} letter (document language rule): save_motivation_letter, written directly in ${LANG_LABELS[l].name}.`)
+    if (cv && !cv.content[l]) out.push(`The CV has no ${LANG_LABELS[l].name} version, which this posting needs: save_cv_translation (written in ${LANG_LABELS[l].name}).`)
+  }
+  if (posting === 'en' && docLangs !== 'all')
+    for (const l of LANGS) if (l !== 'en' && app.letters?.[l]) out.push(`English posting: English only, but the card has a ${LANG_LABELS[l].name} letter. Remove it in the editor or leave it out when sending.`)
+  if (app.lang && app.lang !== sendIn) out.push(`cv_language is ${app.lang}, but this ${posting === 'de' ? 'German' : 'English'} posting is sent in ${LANG_LABELS[sendIn].name}: save_application cv_language "${sendIn}".`)
+  return out
+}
 
 async function needApplication(env: Env, id: unknown): Promise<Application> {
   const app = typeof id === 'string' ? await db.getApplication(env, id) : null
@@ -1320,6 +1377,7 @@ const TOOLS: Tool[] = [
         layout,
         page_fit: pageFit,
         application: saved ? applicationSummary(saved, origin) : null,
+        ...(saved ? sevenDayRule(saved) : {}),
         board:
           saved && saved.resumeId !== resume.id
             ? `This posting is already on the board as "${stageLabel(saved.stage)}" with another CV, so this CV was not attached. To attach it: save_application { id: "${saved.id}", resume_id: "${resume.id}" }.`
@@ -1866,7 +1924,7 @@ const TOOLS: Tool[] = [
         problems.push(...(l.checked ? (l.problems ?? []).map((p) => `Letter ${lang}: ${p}`) : [unchecked(`Letter ${lang}`, l.error)]))
       }
       const todo = draftTodo(app)
-      problems.push(...todo.problems)
+      problems.push(...todo.problems, ...documentLanguageProblems(app, cv, (await db.getSearchProfile(env)).docLangs))
       return {
         application_id: app.id,
         ready: !problems.length,
@@ -1997,6 +2055,7 @@ const TOOLS: Tool[] = [
           ...[fullNameSalutation(letter.body)]
             .filter(Boolean)
             .map((s) => `Salutation uses the full name ("${s}"): write title and surname (Ms/Mr, Frau/Herr) when the posting states the title, otherwise the generic salutation, and save again.`),
+          ...letterRuleWarnings(letter, lang),
         ],
         ai_check: await autoCheck(env, saved, lang, profile.maxAiPercent),
         ...letterPictures(saved, lang, profile.signature),
@@ -2225,7 +2284,7 @@ const TOOLS: Tool[] = [
       await db.putApplication(env, app)
       return {
         saved: app.formAnswers.length,
-        warnings: gaps.map((s) => `Points out a missing skill, remove it and save again: "${s}"`),
+        warnings: [...gaps.map((s) => `Points out a missing skill, remove it and save again: "${s}"`), ...formAnswerWarnings(app.formAnswers)],
         to_decide: app.formAnswers.filter((a) => a.note || !a.answer.trim()).map((a) => a.question),
         edit_url: `${origin}/applications/${app.id}`,
       }
@@ -2349,6 +2408,7 @@ const TOOLS: Tool[] = [
       const other = app.resumeId ? cvAtCompany(await db.listApplications(env), app.company, app.department, app.id) : undefined
       return {
         ...applicationSummary(app, origin, columns),
+        ...sevenDayRule(app),
         warning:
           other && other.resumeId !== app.resumeId
             ? `"${other.title}" at the same company${other.department ? ` (${other.department})` : ''} uses another CV (resume_id "${other.resumeId}"). Use one CV per department unless this one is clearly different.`
