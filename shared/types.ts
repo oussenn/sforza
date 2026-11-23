@@ -563,11 +563,12 @@ export type AiEvent =
 
 /* ------------------------------ job search ------------------------------ */
 
-export const JOB_TYPES = ['working_student', 'student_assistant', 'internship', 'thesis', 'part_time', 'full_time', 'trainee'] as const
+export const JOB_TYPES = ['working_student', 'minijob', 'student_assistant', 'internship', 'thesis', 'part_time', 'full_time', 'trainee'] as const
 export type JobType = (typeof JOB_TYPES)[number]
 
 export const JOB_TYPE_LABELS: Record<JobType, string> = {
   working_student: 'Working student (Werkstudent)',
+  minijob: 'Minijob (geringfügige Beschäftigung)',
   student_assistant: 'Student assistant (HiWi)',
   internship: 'Internship (Praktikum)',
   thesis: 'Thesis (Abschlussarbeit)',

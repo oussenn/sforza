@@ -51,6 +51,18 @@ describe('screening a posting against the search profile', () => {
     })
   }
 
+  it('keeps only Werkstudent and Minijob jobs when that is all the profile takes', () => {
+    const strict = cleanSearchProfile({ ...base, germanLimit: 'C1', jobTypes: ['working_student', 'minijob'] }) as SearchProfile
+    const s = (title: string, text?: string) => screenPosting({ title, location: 'Dortmund', ...(text && { text }) }, strict, today)
+    expect(s('Werkstudent Data Analytics (m/w/d)', DE.repeat(3) + 'Werkstudent, 20 Stunden.').verdict).toBe('candidate')
+    expect(s('Aushilfe im Büro (m/w/d)', DE.repeat(3) + 'Minijob auf 556-Euro-Basis.').verdict).not.toBe('drop')
+    expect(s('Praktikum Data Intelligence').reason).toContain('Praktikum, not a job type you take')
+    expect(s('Praktikum / Werkstudent IT-Beratung').verdict).not.toBe('drop')
+    expect(s('Mitarbeiter:in Campusmanagement für Reporting (w/m/d)', DE.repeat(3) + 'Teilzeit (50 %), TV-L E11, befristet.').reason).toContain('regular part-time job')
+    expect(s('Data Analyst (m/w/d)', DE.repeat(3) + 'Du analysierst Daten mit Python und SQL, 20 Stunden pro Woche.').reason).toContain('names no Werkstudent or Minijob')
+    expect(s('Studentische Hilfskraft (m/w/d)').reason).toContain('student assistant')
+  })
+
   it('drops listings older than 7 days and old LinkedIn ads shown as new', () => {
     expect(screenPosting({ title: 'Working Student Data', location: 'Dortmund', posted_on: '2026-10-20' }, english, today).reason).toContain('more than 7 days')
     expect(screenPosting({ title: 'Working Student Data', location: 'Dortmund', posted_on: '2026-11-04', age_days: 40 }, english, today).reason).toContain('older ad')

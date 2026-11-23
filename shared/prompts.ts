@@ -59,7 +59,7 @@ function wishes(p: SearchProfile, focus?: string): string {
     .join('\n')
 }
 
-const JOB_KIND_RULES = `Job kinds: an "Ausbildung" is a full-time vocational apprenticeship of 2 to 3 years with vocational school in German, not a student job; "Werkstudent", "studentische Hilfskraft" / "HiWi" and "Praktikum" are. Full-time roles and apprenticeships break a 20 h/week student permit.`
+const JOB_KIND_RULES = `Job kinds: an "Ausbildung" is a full-time vocational apprenticeship of 2 to 3 years with vocational school in German, not a student job; "Werkstudent", "studentische Hilfskraft" / "HiWi", "Minijob" and "Praktikum" are. Full-time roles and apprenticeships break a 20 h/week student permit. Take only the job types listed above: when they are Werkstudent and Minijob, skip every Praktikum, HiWi and regular part-time post, however well it fits.`
 
 const GERMAN_RULES = `Reading the German requirement: "fließend", "verhandlungssicher", "sehr gute Deutschkenntnisse", C1 or C2 mean fluent; "gute Deutschkenntnisse" means about B2; "Grundkenntnisse" means A2–B1; "Deutsch wünschenswert" / "von Vorteil" / "nice to have" is not a requirement. A posting written only in German that says nothing about English usually expects at least B2. "Englisch als Arbeitssprache", "English-speaking team" or an English posting at a German company are good signs.`
 

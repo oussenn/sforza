@@ -235,6 +235,7 @@ Ask your agent for a list of jobs and it works like a daily job run. `search_job
 
 - posted within the last 7 days, and not an old LinkedIn ad shown with a new date
 - not an Ausbildung or a thesis
+- one of the job types in your profile (Werkstudent, Minijob, Praktikum…): a profile with only Werkstudent and Minijob drops every other kind
 - in your places
 
 `triage_jobs` then reads up to 10 ads in full. It checks the German each ad asks for against your limit, the ad's language, the hours and student status. It also opens each candidate's application form and lists its questions. Every listing comes back with a verdict and a reason, so the agent can report all of them, dropped ones included. Outside Germany, `search_jobs` covers LinkedIn in that country.

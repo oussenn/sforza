@@ -151,6 +151,44 @@ const STUDENT_TITLE = /werkstudent|working student|student|studi|praktik|intern\
 const STUDENT_TEXT =
   /werkstudent|working student|studierende|students? (enrolled|currently)|eingeschrieben|immatrikul|teilzeit|part[- ]time|minijob|(bis zu |up to |max(imal|\.)? ?)?(1[0-9]|20) ?(std|stunden|hours|h)\b/
 
+const KIND_PATTERNS: [JobType, RegExp][] = [
+  ['working_student', /werk-?student|working student|werkstudierende|werkstudium|student worker/],
+  ['minijob', /mini-?job|minijobber|geringfügig|\b(520|538|556|603) ?(€|euro)/],
+  ['student_assistant', /studentische hilfskraft|wissenschaftliche hilfskraft|\bhiwi\b|\bshk\b|\bwhk\b|student assistant/],
+  ['internship', /praktik|pflichtpraktikum|\bintern\b|internship/],
+  ['thesis', /thesis|abschlussarbeit|masterarbeit|bachelorarbeit/],
+  ['trainee', /trainee|\bausbildung\b|azubi|duales studium|dual study/],
+  ['full_time', /vollzeit|full[- ]time/],
+  ['part_time', /teilzeit|part[- ]time|aushilfe/],
+]
+const KIND_NAMES: Record<JobType, string> = {
+  working_student: 'Werkstudent',
+  minijob: 'Minijob',
+  student_assistant: 'student assistant (HiWi)',
+  internship: 'Praktikum',
+  thesis: 'thesis',
+  part_time: 'regular part-time job',
+  full_time: 'full-time job',
+  trainee: 'trainee or Ausbildung',
+}
+
+/**
+ * The kinds of job a posting is: from its title, or from the ad when the title names none. "Praktikum / Werkstudent"
+ * is both; an "Aushilfe" is a Minijob when the ad says so. Empty when nothing names a kind.
+ */
+export function jobKinds(title: string, text = ''): Set<JobType> {
+  const find = (s: string) => new Set(KIND_PATTERNS.filter(([, re]) => re.test(s)).map(([k]) => k))
+  let kinds = find(title.toLowerCase())
+  if (!kinds.size && text) kinds = find(text.toLowerCase().slice(0, 4000))
+  // A Werkstudent or Minijob post is part-time by nature: "Teilzeit" beside it adds nothing.
+  if (kinds.has('working_student') || kinds.has('minijob')) kinds.delete('part_time')
+  if (kinds.has('part_time') && /mini-?job|geringfügig/.test(text.toLowerCase())) {
+    kinds.delete('part_time')
+    kinds.add('minijob')
+  }
+  return kinds
+}
+
 /** Screens a listing (title, place, date) or a whole posting (with its text) against the search profile. */
 export function screenPosting(f: PostingFacts, p: SearchProfile, today = new Date()): Screen {
   const title = f.title.toLowerCase()
@@ -177,6 +215,13 @@ export function screenPosting(f: PostingFacts, p: SearchProfile, today = new Dat
   if (/\bausbildung\b|azubi|duales studium|dual study/.test(title) && !types.has('trainee')) return out('drop', 'Ausbildung or dual study, not a student job.')
   if (/thesis|abschlussarbeit|masterarbeit|bachelorarbeit/.test(title) && !types.has('thesis')) return out('drop', 'Thesis position, not a job.')
   if (near === false) return out('drop', `Outside your places (${f.location}).`)
+
+  // Job kind: only the kinds the profile takes (e.g. only Werkstudent and Minijob).
+  const kinds = jobKinds(f.title, f.text)
+  if (types.size && kinds.size && ![...kinds].some((k) => types.has(k)))
+    return out('drop', `${[...kinds].map((k) => KIND_NAMES[k]).join(' / ')}, not a job type you take (${[...types].map((t) => KIND_NAMES[t]).join(', ')}).`)
+  if (types.size && !kinds.size && f.text && [...types].every((t) => t === 'working_student' || t === 'minijob'))
+    return out('drop', `The ad names no Werkstudent or Minijob contract (you take only ${[...types].map((t) => KIND_NAMES[t]).join(' and ')}).`)
 
   if (!f.text) {
     if (near === null && f.remote) return out('check', `Listed as remote, office in ${f.location || 'an unnamed place'}: read the ad to see whether it can be done remotely.`)
