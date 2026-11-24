@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
-import type { AiCheck, AiEvent, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Library, Resume, ScrapedJob } from '@shared/types'
-import { LANGS, LETTER_LAYOUTS } from '@shared/types'
+import type { AiCheck, AiEvent, AiProviderId, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Library, Resume, ScrapedJob } from '@shared/types'
+import { AI_PROVIDERS, LANGS, LETTER_LAYOUTS } from '@shared/types'
 import { formAnswersField } from './forms'
 import {
   cleanBoardColumns,
@@ -21,7 +21,9 @@ import {
   uid,
   usernameProblem,
 } from '@shared/utils'
-import { AiError, aiStatus } from './ai'
+import { AiError, aiStatus, type AiEnv } from './ai'
+import { accountAi, aiSettingsView, recheckKey, updateAiSettings, type AiSettingsInput } from './aikeys'
+import { autoFit, pageFitNote } from './pagefit'
 import { analyzeJob } from './match'
 import { findLogo } from './logo'
 import { aiSpend } from './budget'
@@ -482,12 +484,42 @@ app.put('/api/search-profile', async (c) => {
 
 /* ------------------------------------ AI ---------------------------------- */
 
+/** The account's own API keys and model choice, for every request that may call a model (aikeys.ts). */
+app.use('/api/ai/*', async (c, next) => {
+  if (!isDemoOwner(db.ownerOf(c.env))) (c.env as AiEnv).ACCOUNT_AI = await accountAi(c.env).catch(() => null)
+  await next()
+})
+
 app.get('/api/ai/status', async (c) => {
   // The demo has no AI: its buttons stay hidden, like on a site without a provider.
   if (isDemoOwner(db.ownerOf(c.env))) return c.json({ provider: 'none', model: '', spend: null, detector: null } satisfies AiStatus)
   const status = aiStatus(c.env)
-  const paid = status.provider === 'openai' || status.provider === 'anthropic'
+  // Only the site's shared paid models count against its budget; an account's own keys are billed to that account.
+  const paid = status.source === 'site' && (status.provider === 'openai' || status.provider === 'anthropic')
   return c.json({ ...status, spend: paid ? await aiSpend(c.env) : null, detector: detectorName(c.env) } satisfies AiStatus)
+})
+
+/** The account's own AI: whether each key is set (never the key), the model choice and what runs now. */
+app.get('/api/ai/settings', async (c) => c.json(await aiSettingsView(c.env)))
+
+app.put('/api/ai/settings', async (c) => {
+  try {
+    return c.json(await updateAiSettings(c.env, await c.req.json<AiSettingsInput>()))
+  } catch (err) {
+    if (err instanceof AiError) return c.json({ error: err.message }, 422)
+    throw err
+  }
+})
+
+app.post('/api/ai/settings/check', async (c) => {
+  const { provider } = await c.req.json<{ provider?: string }>()
+  if (!(AI_PROVIDERS as readonly unknown[]).includes(provider)) return c.json({ error: 'provider must be anthropic or openai' }, 400)
+  try {
+    return c.json(await recheckKey(c.env, provider as AiProviderId))
+  } catch (err) {
+    if (err instanceof AiError) return c.json({ error: err.message }, 422)
+    throw err
+  }
 })
 
 /** Streams newline-delimited JSON progress events so long AI calls keep the connection alive. */
@@ -616,6 +648,7 @@ app.post('/api/ai/tailor', async (c) => {
         useLibrary: body.useLibrary,
         strict: body.strict !== false,
         letterLang: body.letter ? 'auto' : null,
+        origin: new URL(c.req.url).origin,
       },
       progress,
     )
@@ -631,6 +664,12 @@ app.post('/api/ai/translate', async (c) => {
     await translateInto(c.env, resume, body.targets ?? [], (message) => emit({ type: 'progress', message }))
     resume.updatedAt = new Date().toISOString()
     await db.saveResume(c.env, resume)
+    // A translation runs longer or shorter: one style must keep every language of a tailored CV on one page.
+    if (resume.kind === 'tailored') {
+      await emit({ type: 'progress', message: 'Fitting every language on one page…' })
+      const fit = await autoFit(c.env, new URL(c.req.url).origin, resume).catch((err: Error) => ({ ok: false, error: err.message }))
+      await emit({ type: 'progress', message: pageFitNote(fit) })
+    }
     await emit({ type: 'done', resume })
   })
 })
@@ -838,7 +877,8 @@ app.post('/api/ai/letter', async (c) => {
   if (!isLang(body.lang)) return c.json({ error: 'Unsupported language' }, 400)
   return streamEvents(c, async (emit) => {
     await emit({ type: 'progress', message: 'Writing the letter…' })
-    await emit({ type: 'result', result: await letterForApplication(c.env, application, body.lang) })
+    const progress = (message: string) => emit({ type: 'progress', message })
+    await emit({ type: 'result', result: await letterForApplication(c.env, application, body.lang, new URL(c.req.url).origin, progress) })
   })
 })
 

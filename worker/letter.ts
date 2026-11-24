@@ -6,9 +6,12 @@ import { corpusOf, ownRules, tailoringMaterial } from './tailor'
 
 /**
  * Motivation letters written from the candidate's own material. The model gets the CV sent with the
- * application (plus the master CV and library for extra facts) and the posting; every number and tool-like
- * term of the result must appear in that material or in the posting, otherwise the letter is rewritten once
- * without them, and anything left is listed in the private notes.
+ * application (plus the master CV and library for extra facts) and the posting. Each draft is checked against the
+ * letter rules the agents follow too: every number and tool-like term must appear in that material or the posting,
+ * 220 to 320 words, no sentence that points out a missing skill, no full-name salutation. A draft that breaks one is
+ * written again with what was wrong (twice at most); anything left is listed in the private notes. The one-page
+ * check runs on the rendered letter afterwards (service.ts letterForApplication) and passes its result back in as
+ * feedback.
  */
 
 export interface LetterJob {
@@ -143,6 +146,10 @@ export async function writeLetter(
     facts?: string
     /** the user's own CV and letter rules from the search profile */
     rules?: string
+    /** what was wrong with the last saved version (e.g. it ran past one page), for a rewrite */
+    feedback?: string
+    /** the last saved version, rewritten with the feedback */
+    previous?: Pick<CoverLetter, 'subject' | 'recipient' | 'body'>
   },
 ): Promise<CoverLetter> {
   const { lang, cv, master, library, job } = input
@@ -166,7 +173,7 @@ ${JSON.stringify(tailoringMaterial(cv, null), null, 1)}
 
 <other_material>
 ${JSON.stringify(tailoringMaterial(master ?? cv, library), null, 1)}
-</other_material>${facts ? `\n\n<candidate_facts>\n${facts}\n</candidate_facts>` : ''}${feedback}`
+</other_material>${facts ? `\n\n<candidate_facts>\n${facts}\n</candidate_facts>` : ''}${input.previous ? `\n\n<previous_draft>\n${input.previous.body}\n</previous_draft>` : ''}${feedback}`
 
   const run = (feedback = '') =>
     generateJson<{ subject: string; recipient: string; body: string; notes: string }>(env, {
@@ -176,13 +183,24 @@ ${JSON.stringify(tailoringMaterial(master ?? cv, library), null, 1)}
       effort: 'medium',
     })
 
-  let out = await run()
+  // What a draft breaks of the letter rules, as feedback for the next one.
+  const broken = (o: { body: string }, unknownTerms: string[]) => {
+    const words = o.body.split(/\s+/).filter(Boolean).length
+    return [
+      ...(unknownTerms.length ? [`It mentions ${unknownTerms.join(', ')}, which the material and the posting do not state: leave them out.`] : []),
+      ...gapSentences(o.body).map((g) => `It points out a missing skill ("${g}"): leave that sentence out, never name what the candidate lacks.`),
+      ...(fullNameSalutation(o.body) ? ['The salutation uses the contact\'s full name: write title and surname (Ms/Mr, Frau/Herr) when the posting gives the title, otherwise the generic salutation.'] : []),
+      ...(words < 220 || words > 320 ? [`It has ${words} words: the letter has 220 to 320 words (body, from salutation to closing).`] : []),
+    ]
+  }
+  const first = input.feedback ? `\n\n<feedback>\nRewrite the previous draft: ${input.feedback}\n</feedback>` : ''
+  let out = await run(first)
   let issues = letterIssues(out, corpus, posting)
-  if (issues.length) {
-    out = await run(
-      `\n\nYour previous draft mentioned ${issues.join(', ')}, which the material and the posting do not state. Write the letter again without them.`,
-    )
+  let problems = broken(out, issues)
+  for (let round = 0; round < 2 && problems.length; round++) {
+    out = await run(`\n\n<feedback>\nYour previous draft broke the letter rules. Write it again, keeping everything else:\n${problems.map((p) => `- ${p}`).join('\n')}${input.feedback ? `\n- ${input.feedback}` : ''}\n</feedback>`)
     issues = letterIssues(out, corpus, posting)
+    problems = broken(out, issues)
   }
   const now = new Date().toISOString()
   return {
@@ -190,7 +208,11 @@ ${JSON.stringify(tailoringMaterial(master ?? cv, library), null, 1)}
     recipient: text(out.recipient),
     body: text(out.body).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n'),
     date: now.slice(0, 10),
-    notes: [text(out.notes), issues.length ? `Check before sending: ${issues.join(', ')} (not found in your material or the posting).` : '']
+    notes: [
+      text(out.notes),
+      issues.length ? `Check before sending: ${issues.join(', ')} (not found in your material or the posting).` : '',
+      problems.filter((p) => !p.startsWith('It mentions')).length ? `Still to fix by hand: ${problems.filter((p) => !p.startsWith('It mentions')).join(' ')}` : '',
+    ]
       .filter(Boolean)
       .join('\n\n'),
     updatedAt: now,

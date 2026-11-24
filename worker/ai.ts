@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { clone, isItemSection } from '@shared/utils'
-import type { AiStatus, Lang, ResumeContent, Section } from '@shared/types'
-import { LANG_LABELS } from '@shared/types'
+import type { AiProviderId, AiStatus, Lang, ResumeContent, Section } from '@shared/types'
+import { AI_PROVIDERS, LANG_LABELS } from '@shared/types'
 import { checkBudget, recordSpend } from './budget'
 
 /** Free on Workers AI's daily allocation: OpenAI's open-weight gpt-oss-120b by default. */
@@ -11,23 +11,64 @@ const workersAiModel = (env: Env) => env.WORKERS_AI_MODEL || DEFAULT_WORKERS_AI_
 type JsonSchema = Record<string, unknown>
 type Effort = 'low' | 'medium' | 'high'
 
-/** Best accuracy per dollar in bench/ (job matching and tailoring); override with the OPENAI_MODEL var. */
-const DEFAULT_OPENAI_MODEL = 'gpt-5.6-luna'
-
-/** Provider priority: Claude (ANTHROPIC_API_KEY) → OpenAI (OPENAI_API_KEY) → free Workers AI. */
-export function aiStatus(env: Env): AiStatus {
-  if (env.ANTHROPIC_API_KEY) return { provider: 'anthropic', model: env.AI_MODEL || 'claude-opus-5' }
-  if (env.OPENAI_API_KEY) return { provider: 'openai', model: env.OPENAI_MODEL || DEFAULT_OPENAI_MODEL }
-  if (env.AI) return { provider: 'workers-ai', model: workersAiModel(env) }
-  return { provider: 'none', model: '' }
-}
+/** The automatic model of each provider: Claude Opus 5.5, and the best accuracy per dollar in bench/ for OpenAI. */
+export const DEFAULT_MODELS: Record<AiProviderId, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-5.6-luna' }
 
 export class AiError extends Error {}
+
+/** The provider could not answer (key rejected, quota, rate limit, outage, unknown model): the next route may. */
+export class ProviderError extends AiError {}
 
 type Provider = Exclude<AiStatus['provider'], 'none'>
 export interface ModelChoice {
   provider: Provider
   model: string
+}
+
+/** An account's own API keys and model choice (aikeys.ts), loaded for the requests that may call a model. */
+export interface AccountAi {
+  anthropic?: string
+  openai?: string
+  mode: 'auto' | 'manual'
+  provider: AiProviderId
+  model: string
+}
+
+/** An env with the account's own AI attached (withAccountAi in index.ts and the connector). */
+export type AiEnv = Env & { ACCOUNT_AI?: AccountAi | null }
+
+/** One way to answer a call: a provider, a model and the key to use. own: the account's key, not the site's. */
+interface Route extends ModelChoice {
+  apiKey?: string
+  own: boolean
+}
+
+/**
+ * The routes a call tries, in order. With the account's own keys: its manual choice first (when that provider has a
+ * key), then every provider with a key in AI_PROVIDERS order (Anthropic, then OpenAI) at its automatic model; the
+ * site's shared AI is never used then, so an account's calls never spend the site's budget. Without own keys: the
+ * site's AI (server keys, then the free Workers AI).
+ */
+export function aiRoutes(env: AiEnv): Route[] {
+  const acc = env.ACCOUNT_AI
+  if (acc && (acc.anthropic || acc.openai)) {
+    const own: Route[] = []
+    if (acc.mode === 'manual' && acc[acc.provider]) own.push({ provider: acc.provider, model: acc.model || DEFAULT_MODELS[acc.provider], apiKey: acc[acc.provider], own: true })
+    for (const p of AI_PROVIDERS) if (acc[p] && !own.some((r) => r.provider === p)) own.push({ provider: p, model: DEFAULT_MODELS[p], apiKey: acc[p], own: true })
+    return own
+  }
+  const site: Route[] = []
+  if (env.ANTHROPIC_API_KEY) site.push({ provider: 'anthropic', model: env.AI_MODEL || DEFAULT_MODELS.anthropic, apiKey: env.ANTHROPIC_API_KEY, own: false })
+  if (env.OPENAI_API_KEY) site.push({ provider: 'openai', model: env.OPENAI_MODEL || DEFAULT_MODELS.openai, apiKey: env.OPENAI_API_KEY, own: false })
+  if (env.AI) site.push({ provider: 'workers-ai', model: workersAiModel(env), own: false })
+  return site
+}
+
+/** What the AI buttons use now and what takes over when a call fails. */
+export function aiStatus(env: AiEnv): AiStatus {
+  const [first, next] = aiRoutes(env)
+  if (!first) return { provider: 'none', model: '', source: 'none', fallback: null }
+  return { provider: first.provider, model: first.model, source: first.own ? 'own' : 'site', fallback: next ? { provider: next.provider, model: next.model } : null }
 }
 
 /** Token counts of one model call. */
@@ -44,32 +85,45 @@ interface CallOpts {
   prompt: string
   schema: JsonSchema
   effort: Effort
-  /** another model than the configured one (benchmarks, per-task models) */
+  /** another model than the configured one (benchmarks, per-task models), on the site's keys */
   model?: ModelChoice
   /** receives the token counts of the call */
   usage?: Usage[]
 }
 
-export async function generateJson<T>(env: Env, opts: CallOpts): Promise<T> {
-  const status = opts.model ?? aiStatus(env)
-  if (status.provider === 'none') {
-    throw new AiError('No AI provider configured. Set the ANTHROPIC_API_KEY secret or bind Workers AI.')
+export async function generateJson<T>(env: AiEnv, opts: CallOpts): Promise<T> {
+  const routes: Route[] = opts.model
+    ? [{ ...opts.model, apiKey: opts.model.provider === 'anthropic' ? env.ANTHROPIC_API_KEY : opts.model.provider === 'openai' ? env.OPENAI_API_KEY : undefined, own: false }]
+    : aiRoutes(env)
+  if (!routes.length) throw new AiError('No AI is set up. Add your own Anthropic or OpenAI API key under AI in the top bar.')
+  for (const [i, route] of routes.entries()) {
+    try {
+      return await callRoute<T>(env, route, opts)
+    } catch (err) {
+      // Only a provider failure moves on; a refusal or a malformed answer would fail the same way on the next route.
+      if (!(err instanceof ProviderError) || i === routes.length - 1) throw err
+      console.warn(`ai fallback: ${route.provider} ${route.model} failed (${err.message}); trying ${routes[i + 1].provider} ${routes[i + 1].model}`)
+    }
   }
-  // Paid models stop at the spending cap (see budget.ts); the free Workers AI model is not counted.
-  const paid = status.provider !== 'workers-ai'
+  throw new AiError('No AI route answered.')
+}
+
+async function callRoute<T>(env: Env, route: Route, opts: CallOpts): Promise<T> {
+  // The site's paid models stop at its spending cap (budget.ts); the account's own keys and Workers AI are not counted.
+  const paid = !route.own && route.provider !== 'workers-ai'
   if (paid) await checkBudget(env)
   const usage: Usage[] = []
   const counted = { ...opts, usage }
   const call =
-    status.provider === 'anthropic'
-      ? anthropicJson<T>(env, status.model, counted)
-      : status.provider === 'openai'
-        ? openaiJson<T>(env, status.model, counted)
-        : workersAiJson<T>(env, status.model, counted)
+    route.provider === 'anthropic'
+      ? anthropicJson<T>(route, counted)
+      : route.provider === 'openai'
+        ? openaiJson<T>(route, counted)
+        : workersAiJson<T>(env, route.model, counted)
   // Never leave the editor waiting forever on a stuck model call.
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new AiError('The AI took too long to answer (4 min). Please retry.')), AI_TIMEOUT_MS)
+    timer = setTimeout(() => reject(new ProviderError('The AI took too long to answer (4 min).')), AI_TIMEOUT_MS)
   })
   try {
     return await Promise.race([call, timeout])
@@ -82,27 +136,30 @@ export async function generateJson<T>(env: Env, opts: CallOpts): Promise<T> {
 
 const AI_TIMEOUT_MS = 4 * 60_000
 
-/** One line per model call in Workers Logs, to keep an eye on token spend. */
+/** One line per model call in Workers Logs, to keep an eye on token spend (never the key). */
 function logUsage(opts: CallOpts, provider: Provider, model: string, input?: number, output?: number, reasoning?: number) {
   console.log(`ai usage ${provider} ${model}: ${input ?? '?'} in, ${output ?? '?'} out${reasoning ? ` (${reasoning} reasoning)` : ''}`)
   opts.usage?.push({ provider, model, input: input ?? 0, output: output ?? 0, reasoning: reasoning ?? 0 })
 }
 
-async function anthropicJson<T>(
-  env: Env,
-  model: string,
-  opts: CallOpts,
-): Promise<T> {
-  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
+/** Models that take the server-side refusal fallback (another model answers when a safety classifier declines). */
+const SERVER_FALLBACK = /^claude-(fable-5-[12]|mythos-5-[12]|opus-5-5|opus-5|sonnet-5-5)$/
+/** Models with adaptive thinking and the effort setting; older ones get neither (they would reject them). */
+const ADAPTIVE = /^claude-(fable|mythos|opus-5|sonnet-5|haiku-5|opus-4-[6-9]|sonnet-4-6)/
+
+const who = (route: Route) => (route.own ? 'Your' : "The site's")
+
+async function anthropicJson<T>(route: Route, opts: CallOpts): Promise<T> {
+  const { model } = route
+  const client = new Anthropic({ apiKey: route.apiKey })
   try {
     // Streaming avoids HTTP timeouts on long structured outputs.
     const stream = client.beta.messages.stream({
       model,
       max_tokens: 32000,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      thinking: { type: 'adaptive' },
-      output_config: { effort: opts.effort, format: { type: 'json_schema', schema: opts.schema } },
+      ...(SERVER_FALLBACK.test(model) && { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const }),
+      ...(ADAPTIVE.test(model) && { thinking: { type: 'adaptive' as const } }),
+      output_config: { ...(ADAPTIVE.test(model) && { effort: opts.effort }), format: { type: 'json_schema', schema: opts.schema } },
       system: opts.system,
       messages: [{ role: 'user', content: opts.prompt }],
     })
@@ -121,24 +178,25 @@ async function anthropicJson<T>(
     return JSON.parse(text) as T
   } catch (err) {
     if (err instanceof AiError) throw err
-    if (err instanceof Anthropic.AuthenticationError) throw new AiError('ANTHROPIC_API_KEY is invalid.')
-    if (err instanceof Anthropic.RateLimitError) throw new AiError('Claude rate limit reached, retry in a minute.')
-    if (err instanceof Anthropic.APIError) throw new AiError(`Claude API error ${err.status}: ${err.message}`)
+    if (err instanceof Anthropic.AuthenticationError) throw new ProviderError(`${who(route)} Anthropic API key was rejected.`)
+    if (err instanceof Anthropic.PermissionDeniedError) throw new ProviderError(`${who(route)} Anthropic API key may not use ${model}.`)
+    if (err instanceof Anthropic.NotFoundError) throw new ProviderError(`Anthropic does not know the model ${model}.`)
+    if (err instanceof Anthropic.RateLimitError) throw new ProviderError('Anthropic rate limit reached, retry in a minute.')
+    if (err instanceof Anthropic.BadRequestError) throw new ProviderError(`Anthropic refused the request: ${err.message}`)
+    if (err instanceof Anthropic.APIConnectionError) throw new ProviderError('Could not reach Anthropic.')
+    if (err instanceof Anthropic.APIError) throw new ProviderError(`Anthropic error ${err.status}: ${err.message}`)
     if (err instanceof SyntaxError) throw new AiError('The model returned malformed JSON. Please retry.')
     throw err
   }
 }
 
 /** OpenAI Chat Completions with strict JSON-schema structured outputs. */
-async function openaiJson<T>(
-  env: Env,
-  model: string,
-  opts: CallOpts,
-): Promise<T> {
+async function openaiJson<T>(route: Route, opts: CallOpts): Promise<T> {
+  const { model } = route
   const reasoning = /^(gpt-5|o\d)/.test(model)
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${route.apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model,
       messages: [
@@ -150,7 +208,8 @@ async function openaiJson<T>(
       ...(reasoning ? { reasoning_effort: opts.effort === 'high' ? 'medium' : 'low' } : { temperature: 0.2 }),
       max_completion_tokens: 32000,
     }),
-  })
+  }).catch(() => null)
+  if (!res) throw new ProviderError('Could not reach OpenAI.')
   const data = (await res.json().catch(() => null)) as {
     error?: { message?: string }
     choices?: { finish_reason?: string; message?: { content?: string | null; refusal?: string | null } }[]
@@ -162,9 +221,10 @@ async function openaiJson<T>(
   }
   if (!res.ok) {
     const detail = data?.error?.message ?? res.statusText
-    if (res.status === 401) throw new AiError('OPENAI_API_KEY is invalid or revoked.')
-    if (res.status === 429) throw new AiError(`OpenAI rate limit or quota reached: ${detail}`)
-    throw new AiError(`OpenAI error ${res.status}: ${detail}`)
+    if (res.status === 401) throw new ProviderError(`${who(route)} OpenAI API key is invalid or revoked.`)
+    if (res.status === 429) throw new ProviderError(`OpenAI rate limit or quota reached: ${detail}`)
+    if (res.status === 404) throw new ProviderError(`OpenAI does not know the model ${model}.`)
+    throw new ProviderError(`OpenAI error ${res.status}: ${detail}`)
   }
   const choice = data?.choices?.[0]
   if (choice?.message?.refusal) throw new AiError('The model declined this request. Try rephrasing the job description.')

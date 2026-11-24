@@ -265,6 +265,15 @@ export async function saveBoardColumns(s: Store, columns: BoardColumn[]): Promis
   await putSetting(s, 'board_columns', JSON.stringify(columns))
 }
 
+/** The account's own AI settings with its API keys encrypted (aikeys.ts); null when never set. */
+export async function getAiSettingsRaw(s: Store): Promise<string | null> {
+  return getSetting(s, 'ai_settings')
+}
+
+export async function saveAiSettingsRaw(s: Store, value: string): Promise<void> {
+  await putSetting(s, 'ai_settings', value)
+}
+
 /**
  * Job listings the account's searches have already shown, by "source:id", with the day first seen, so the next search
  * can tell what is new. Kept for 45 days and at most 5000 listings.

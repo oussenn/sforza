@@ -109,7 +109,7 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
       {demo && <DemoBanner expiresAt={demo.expiresAt} />}
       <TopBar onLogout={onLogout} user={user} demo={!!demo} />
       {route.page === 'cvs' && <Overview />}
-      {(route.page === 'jobsearch' || route.page === 'knowledge' || route.page === 'mcp') && <ProfilePage panel={route.page} />}
+      {route.page in PANELS && <ProfilePage panel={route.page as keyof typeof PANELS} />}
       {route.page === 'applications' && <ApplicationsPage appId={route.appId} />}
       {route.page === 'letters' && <LettersPage appId={route.appId} />}
       {route.page === 'cv' &&

@@ -1,6 +1,8 @@
 import type {
   AccountInfo,
   AiEvent,
+  AiProviderId,
+  AiSettingsView,
   AiStatus,
   Application,
   BoardColumn,
@@ -109,6 +111,10 @@ export const api = {
     request<{ url: string }>('/api/assets', { method: 'POST', body: blob, headers: { 'Content-Type': blob.type } }),
 
   aiStatus: () => request<AiStatus>('/api/ai/status'),
+  aiSettings: () => request<AiSettingsView>('/api/ai/settings'),
+  saveAiSettings: (body: { keys?: Partial<Record<AiProviderId, string | null>>; mode?: 'auto' | 'manual'; provider?: AiProviderId; model?: string }) =>
+    request<AiSettingsView>('/api/ai/settings', json('PUT', body)),
+  checkAiKey: (provider: AiProviderId) => request<AiSettingsView>('/api/ai/settings/check', json('POST', { provider })),
   tailor: (
     body: {
       baseId: string

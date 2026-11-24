@@ -344,9 +344,49 @@ export interface Library {
   notes: string
 }
 
+/** The providers an account can bring its own API key for. */
+export const AI_PROVIDERS = ['anthropic', 'openai'] as const
+export type AiProviderId = (typeof AI_PROVIDERS)[number]
+
+export const AI_PROVIDER_LABELS: Record<AiProviderId, { name: string; product: string; keyPrefix: string; keysUrl: string }> = {
+  anthropic: { name: 'Anthropic', product: 'Claude', keyPrefix: 'sk-ant-', keysUrl: 'https://console.anthropic.com/settings/keys' },
+  openai: { name: 'OpenAI', product: 'ChatGPT', keyPrefix: 'sk-', keysUrl: 'https://platform.openai.com/api-keys' },
+}
+
+/** Models offered in the AI settings, the automatic choice first; any other model id of the provider can be typed in. */
+export const AI_MODEL_OPTIONS: Record<AiProviderId, { id: string; label: string; note: string }[]> = {
+  anthropic: [
+    { id: 'claude-opus-5-5', label: 'Claude Opus 5.5', note: 'Automatic choice: best results for CVs and letters' },
+    { id: 'claude-fable-5-2', label: 'Claude Fable 5.2', note: 'Most capable, about twice the cost' },
+    { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', note: 'Faster, half the cost' },
+    { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5', note: 'Fastest and cheapest' },
+  ],
+  openai: [
+    { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', note: 'Automatic choice: best accuracy per dollar in our tests' },
+    { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', note: 'Most capable, highest cost' },
+    { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', note: 'Between the two' },
+    { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', note: 'Older and cheaper' },
+  ],
+}
+
+/** An account's own AI setup as the editor sees it: never the keys themselves, only their last characters. */
+export interface AiSettingsView {
+  keys: Record<AiProviderId, { set: boolean; hint: string; checkedAt: string | null; ok: boolean | null; error: string | null }>
+  /** auto: the app picks the provider (in AI_PROVIDERS order) and the model; manual: the account's choice */
+  mode: 'auto' | 'manual'
+  provider: AiProviderId
+  model: string
+  /** what the AI buttons use now, and what takes over when that call fails */
+  active: AiStatus
+}
+
 export interface AiStatus {
   provider: 'anthropic' | 'openai' | 'workers-ai' | 'none'
   model: string
+  /** own: the account's API key; site: the server's shared AI (and its budget) */
+  source?: 'own' | 'site' | 'none'
+  /** the next provider and model tried when a call fails */
+  fallback?: { provider: AiStatus['provider']; model: string } | null
   /** paid models only */
   spend?: AiSpend | null
   /** AI-text detector available on the server ("AI or Not"), null when no API key is set */

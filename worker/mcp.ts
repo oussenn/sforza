@@ -34,7 +34,8 @@ import {
   toMeta,
   uid,
 } from '@shared/utils'
-import { AiError, aiStatus, list, text, translatableFields, translationProblem } from './ai'
+import { AiError, aiStatus, list, text, translatableFields, translationProblem, type AiEnv } from './ai'
+import { accountAi } from './aikeys'
 import { connectorUser, signShare, siteOrigin } from './auth'
 import { aiSpend } from './budget'
 import * as db from './db'
@@ -46,14 +47,12 @@ import { fullNameSalutation, gapSentences, letterIssues, letterRules } from './l
 import { findLogo } from './logo'
 import { fetchPublic, readCapped } from './net'
 import { formAnswersField, readApplicationForm, type ApplicationForm } from './forms'
-import { checkLayout, checkLetterFit, fitLayout, type FitReport } from './pdf'
-import { applyCuts, applyMoves, cutOrder } from '@shared/shrink'
+import { autoFit, LAYOUT_FIX, layoutOf, LETTER_FIX, letterFitOf } from './pagefit'
 import { linkedInJobId, readJobPage, type JobPage } from './scrape'
 import {
   addAiCheck,
   createTailoredCv,
   documentText,
-  letterCv,
   letterForApplication,
   masterResume,
   rescore,
@@ -95,7 +94,7 @@ When the user asks to find jobs or for a list of jobs (without asking for drafts
    Last, check_draft: it renders the CV in every language and every letter. A draft is done only when it says "ready": true (each CV one full page with no empty space at the bottom or under a column, each letter one page); fix what it lists and run it again before telling the user the draft is ready.
 8. Never submit an application, fill in an application form or send an e-mail unless the user explicitly asks for that specific job. Once the user has sent it: save_application with stage "applied", applied_on and source.
 
-Rules: never invent experience, skills, numbers, availability, salary or work-permit facts; everything comes from the CV, the knowledge base and the search profile. Never point out a missing skill or tool in a letter, a CV or a form answer ("I have not used X yet"): leave it out and mention it only in the notes. No em dashes (—) in a CV, letter or form answer, in any language: write a comma, a colon or a new sentence (the server turns any left into commas). Tools ending in _with_site_ai and score_cv use the site's paid model and stop at the user's budget; prefer doing the writing yourself.`
+Rules: never invent experience, skills, numbers, availability, salary or work-permit facts; everything comes from the CV, the knowledge base and the search profile. Never point out a missing skill or tool in a letter, a CV or a form answer ("I have not used X yet"): leave it out and mention it only in the notes. No em dashes (—) in a CV, letter or form answer, in any language: write a comma, a colon or a new sentence (the server turns any left into commas). Tools ending in _with_site_ai and score_cv use the app's own AI (the user's API key when they set one, otherwise the site's shared model and budget); prefer doing the writing yourself.`
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -181,11 +180,6 @@ const styleView = (st: ResumeStyle) => ({
   background: st.background,
 })
 
-/** What fit_cv_to_page may change, by its edit_cv name. */
-const FIT_KEYS = ['fontSize', 'lineHeight', 'sectionGap', 'itemGap', 'marginY', 'columnRatio'] as const
-const fitStyle = (style: ResumeStyle) =>
-  Object.fromEntries(STYLE_LIMITS.filter(([, key]) => (FIT_KEYS as readonly string[]).includes(key)).map(([name, key]) => [name, style[key]]))
-
 /** Item fields that are not text: edit_cv sets them in every language. */
 const SHARED_FIELDS = ['start', 'end', 'current', 'url', 'level', 'date']
 
@@ -203,160 +197,6 @@ function setItemFields(item: SectionItem, fields: Json): string[] {
   return unknown
 }
 
-const LAYOUT_FIX =
-  'Layout rule for a tailored CV: exactly one page, completely filled: every section whole, no empty space at the bottom of the page or under a column. Run fit_cv_to_page (the tools that change a CV run it themselves when the layout is not ok): it sets font size, spacing and column width, moves a section into a column that ends early and, when a tailored CV is still too long, hides the content least relevant to the posting; check what it hid. Spacing, font size and column width: never by hand. Still too short after it, or a column that ends early: add a relevant bullet or project, or move a section to the other column. Too long even after it: hide the least relevant bullets, projects or skill groups (edit_cv), keeping everything the posting asks for. A tailored CV is ready only when its layout says "ok": true; only the master CV may have two pages. A section alone in a column with the other half of the page white goes full width (edit_cv sections placement "full"). Use edit_cv for content and placement (it keeps the translations).'
-
-/** The rendered CV's page layout as advice for the agent: whole sections on each page, no gap at a page bottom. */
-async function layoutOf(env: Env, origin: string, resume: Resume, lang: Lang) {
-  try {
-    const l = await checkLayout(env as Env & db.Store, origin, resume, lang)
-    // A tailored CV is one full page; only the master CV (the source of everything) may run longer.
-    const onePage = resume.kind !== 'master'
-    const problems = [
-      ...(onePage && l.pages > 1 ? [`${l.pages} pages: a tailored CV must fit on one page`] : []),
-      ...l.split.map((t) => `"${t}" runs over a page break`),
-      ...l.gaps.map(
-        (g) =>
-          `${g.mm} mm empty at the bottom of page ${g.page}${g.column === 'page' ? '' : ` under the ${g.column} column`}${g.before ? `, before "${g.before.slice(0, 50)}"` : ': fill it (relevant bullet or project, or a little more spacing)'}`,
-      ),
-      ...(l.lonely ?? []).map(
-        (s) =>
-          `${s.sections.map((t) => `"${t}"`).join(', ')} sits alone in the side column on page ${s.page}, with the other half of the page empty: make it full width (edit_cv sections ${JSON.stringify((s.types.length ? s.types : ['languages']).map((type) => ({ type, placement: 'full' })))}) or shorten the side column`,
-      ),
-    ]
-    return {
-      checked: true,
-      pages: l.pages,
-      fill_percent: l.lastPageFill,
-      ok: problems.length === 0,
-      problems,
-      next: problems.length
-        ? onePage
-          ? LAYOUT_FIX
-          : 'Master CV: fix what is listed (sections whole, no column that ends early) with edit_cv placement, or run fit_cv_to_page; it may keep two pages.'
-        : l.pages === 1
-          ? 'Good layout: one full page. Nothing to do.'
-          : 'Whole sections, no gaps.',
-    }
-  } catch (err) {
-    return { checked: false, error: (err as Error).message, next: 'Layout check unavailable; ask the user to look at the PDF.' }
-  }
-}
-
-/** A tailored CV's job, for ranking what to hide when the CV runs long. */
-const jobText = (r: Resume) => (r.job ? `${r.job.title}\n${r.job.description}` : '')
-
-/** What autoFit changed besides the style, for the agent to review. */
-interface ShrinkLog {
-  moved: string[]
-  hidden: { id: string; item: string }[]
-  removed_bullets: { id: string; item: string; bullet: string }[]
-  kept_in: Lang[]
-}
-
-const itemsOf = (c: ResumeContent) => c.sections.flatMap((s) => (isItemSection(s) ? (s.items as SectionItem[]) : []))
-const linesOf = (it: SectionItem | undefined) => ((it as { description?: string } | undefined)?.description ?? '').split('\n')
-
-/** Applies one language's moves and cuts to every language: the same sections and items, and the same bullet line where the translation has as many lines. */
-function applyShrink(resume: Resume, lang: Lang, f: FitReport, log: ShrinkLog) {
-  const measured = resume.content[lang]!
-  const byId = new Map(itemsOf(measured).map((i) => [i.id, i]))
-  for (const m of f.moves ?? []) log.moved.push(`"${measured.sections.find((x) => x.id === m.section)?.title ?? m.section}" to the ${m.placement} column`)
-  const cuts = f.cuts ?? []
-  for (const c of cuts) {
-    const it = byId.get(c.item)
-    if (!it) continue
-    if (c.line === undefined) log.hidden.push({ id: c.item, item: itemHead(it) })
-    else log.removed_bullets.push({ id: c.item, item: itemHead(it), bullet: (linesOf(it)[c.line] ?? '').replace(/^\s*[-•*]\s+/, '') })
-  }
-  for (const [l, content] of Object.entries(resume.content) as [Lang, ResumeContent][]) {
-    const there = new Map(itemsOf(content).map((i) => [i.id, i]))
-    const same = cuts.filter((c) => c.line === undefined || linesOf(there.get(c.item)).length === linesOf(byId.get(c.item)).length)
-    if (same.length < cuts.length) log.kept_in.push(l)
-    resume.content[l] = applyCuts(applyMoves(content, f.moves ?? []), same)
-  }
-}
-
-/**
- * fit_cv_to_page, also run by the tools that change a CV: in every language the fullest style that keeps one page.
- * When spacing alone cannot, the print page may move a section into the column that ends early and, on a tailored
- * CV, hide the content least relevant to its posting (shared/shrink.ts) until it fits. Saves the CV.
- */
-async function autoFit(env: Env, origin: string, resume: Resume): Promise<Json> {
-  const langs = availableLangs(resume)
-  const canCut = resume.kind !== 'master' && !!resume.job
-  const fits: [Lang, FitReport][] = []
-  const log: ShrinkLog = { moved: [], hidden: [], removed_bullets: [], kept_in: [] }
-  try {
-    // One language after the other: each fit is a browser session and reads the CV as last saved.
-    for (const l of langs) {
-      const f = await fitLayout(env as Env & db.Store, origin, resume, l, { cuts: canCut ? cutOrder(resume.content[l]!, jobText(resume)) : [] })
-      if (f.status !== 'too_long' && (f.moves?.length || f.cuts?.length)) {
-        applyShrink(resume, l, f, log)
-        resume.updatedAt = new Date().toISOString()
-        await db.saveResume(env, resume)
-      }
-      fits.push([l, f])
-    }
-  } catch (err) {
-    throw new ToolError(`The page fit is unavailable right now (${(err as Error).message}); try again in a minute.`)
-  }
-  const cut = log.hidden.length + log.removed_bullets.length > 0
-  const shrunk = cut || log.moved.length > 0
-  const changes: Json = {
-    ...(log.moved.length ? { moved: log.moved } : {}),
-    ...(log.hidden.length ? { hidden: log.hidden } : {}),
-    ...(log.removed_bullets.length ? { removed_bullets: log.removed_bullets } : {}),
-  }
-  const done = [log.moved.length && 'moved a section to the column with room', cut && 'took out the content least relevant to the posting (hidden, removed_bullets)'].filter(Boolean)
-  const review = shrunk
-    ? ` To keep one page the server ${done.join(' and ')}.${cut ? ' Check that nothing the posting asks for is gone; to bring an item back use edit_cv items [{ id, hidden: false }] (a bullet: edit_cv items [{ id, fields: { description } }] with the bullet back in) and hide something less relevant instead.' : ''}${log.kept_in.length ? ` The ${log.kept_in.join(', ')} version has a different number of lines in a shortened item and keeps that bullet: check it.` : ''}`
-    : ''
-  const long = fits.filter(([, f]) => f.status === 'too_long')
-  if (long.length) {
-    return {
-      changed: shrunk,
-      ...changes,
-      ok: false,
-      too_long: Object.fromEntries(long.map(([l, f]) => [l, `${f.layout.lastPageFill}% of a second page left over at 9 pt with the tightest spacing${canCut ? ', even after hiding what the server may hide' : ''}`])),
-      next:
-        (resume.kind === 'master'
-          ? 'The master CV holds more than one page, which is fine for the source of every tailored CV. A CV to send must fit one page: tailor one for the job (save_tailored_cv), do not cut the master for it.'
-          : 'Too much content for one page. Hide the least relevant bullets, projects or skill groups with edit_cv (about that much), keep everything the posting asks for, then run fit_cv_to_page again.') + review,
-    }
-  }
-  // One style serves every language: the tightest of their fits keeps the longest language on one page too.
-  const density = (st: ResumeStyle) => st.fontSize * 10 + st.lineHeight
-  const [longest, tightest] = fits.map(([l, f]) => [l, f.style] as const).reduce((a, b) => (density(b[1]) < density(a[1]) ? b : a))
-  const before = fitStyle(resume.style)
-  for (const key of FIT_KEYS) resume.style[key] = tightest[key]
-  resume.updatedAt = new Date().toISOString()
-  await db.saveResume(env, resume)
-  const layout: Record<string, Awaited<ReturnType<typeof layoutOf>>> = {}
-  for (const l of langs) layout[l] = await layoutOf(env, origin, resume, l)
-  const isOk = (l: Lang) => layout[l]?.ok === true
-  const ok = langs.every(isOk)
-  const short = fits.some(([, f]) => f.status === 'too_short')
-  // The longest language sets the style; a shorter translation keeps some room that only its own text can fill.
-  const shorter = isOk(longest) ? langs.filter((l) => !isOk(l)) : []
-  return {
-    changed: true,
-    before,
-    after: fitStyle(resume.style),
-    ...changes,
-    layout,
-    ok,
-    next:
-      (ok
-        ? 'One full page in every language. Nothing to do.'
-        : short
-          ? 'The page stays short even at the roomiest setting: add a relevant bullet or project with edit_cv, then run fit_cv_to_page again.'
-          : shorter.length
-            ? `One style serves every language and ${longest} is the longest, so ${shorter.join(' and ')} keeps room at the bottom. Fill it in that language only: edit_cv with lang "${shorter[0]}" and a slightly fuller bullet or one more fact the knowledge base states, then run fit_cv_to_page again.`
-            : 'Fix what the layout lists with edit_cv (a column that ends early: move a section to the other column or make it full width; a section over a page break: shorten it), then run fit_cv_to_page again.') + review,
-  }
-}
-
 /** autoFit after a tool changed a CV, when its layout is not ok yet; never fails the tool that saved the change. */
 async function fitAfterChange(env: Env, origin: string, resume: Resume, layout: Awaited<ReturnType<typeof layoutOf>>, wanted: unknown): Promise<Json | undefined> {
   if (wanted === false || !layout.checked || layout.ok) return undefined
@@ -366,22 +206,6 @@ async function fitAfterChange(env: Env, origin: string, resume: Resume, layout: 
 
 const MASTER_NOTE =
   'This is the master CV: the source every tailored CV is made from, and allowed two pages. To tailor a CV for one job, do not rewrite the master: save_tailored_cv (or copy_cv, then edit_cv on the copy), which fits it on one page and puts it on that job\'s card.'
-
-const LETTER_FIX =
-  'Layout rule for a motivation letter: one page. Shorten it (drop a sentence or tighten a paragraph, staying within 220–320 words; a long address block or enclosures list costs lines too) and save it again with save_motivation_letter. A letter is ready only when its layout says "ok": true.'
-
-/** Whether the rendered letter fits on one page. */
-async function letterFitOf(env: Env, origin: string, app: Application, lang: Lang) {
-  try {
-    const l = await checkLetterFit(env as Env & db.Store, origin, app, await letterCv(env, app), lang)
-    // About 5 mm a line and 12 words a line at letter sizes, plus a few words so the cut is enough at once.
-    const words = Math.ceil(Math.max(1, l.overMm) / 5) * 12 + 5
-    const problems = l.pages > 1 ? [`${l.pages} pages: the letter runs about ${Math.max(1, l.overMm)} mm past one page; cut about ${words} words`] : []
-    return { checked: true, pages: l.pages, ok: !problems.length, problems, next: problems.length ? LETTER_FIX : 'Good layout: one page. Nothing to do.' }
-  } catch (err) {
-    return { checked: false, error: (err as Error).message, next: 'Layout check unavailable; ask the user to look at the PDF.' }
-  }
-}
 
 /** Job boards whose posting page is not the application form. */
 const JOB_BOARDS = /(^|\.)(linkedin\.com|indeed\.[a-z.]+|stepstone\.[a-z.]+|arbeitsagentur\.de|xing\.com|glassdoor\.[a-z.]+|monster\.[a-z.]+|jobware\.de|kununu\.com)$/i
@@ -1285,7 +1109,7 @@ const TOOLS: Tool[] = [
   {
     name: 'save_tailored_cv',
     description:
-      'Saves a tailored CV you wrote (answer format from get_tailoring_material). The server keeps referenced lines word for word, fact-checks headline/summary/skills against the material, adds matching ATS keywords from the skill lists, creates the CV and puts it on the board as "Draft" (or on the given application) with the card details you pass, then fits it on one page (page_fit: style, a moved section, and when still too long the content least relevant to the posting hidden; review it). Free unless score=true or languages are given (site AI). Returns the CV id, fact-check notes, the layout and the card.',
+      'Saves a tailored CV you wrote (answer format from get_tailoring_material). The server keeps referenced lines word for word, fact-checks headline/summary/skills against the material, adds matching ATS keywords from the skill lists, creates the CV and puts it on the board as "Draft" (or on the given application) with the card details you pass, then fits it on one page (page_fit: style, a moved section, and when still too long the content least relevant to the posting hidden; review it). Free unless score=true or languages are given (the app\'s AI). Returns the CV id, fact-check notes, the layout and the card.',
     inputSchema: obj(
       {
         job: jobSchema,
@@ -1301,8 +1125,8 @@ const TOOLS: Tool[] = [
           type: 'string',
           description: 'rewrite this tailored CV in place (e.g. shortened after a layout check) instead of creating a new one; translations are dropped',
         },
-        score: { type: 'boolean', description: 'compute the match score with the site AI (about $0.003)' },
-        languages: { type: 'array', items: langSchema, description: 'also translate with the site AI (about $0.001 each); or translate yourself with save_cv_translation' },
+        score: { type: 'boolean', description: 'compute the match score with the app\'s AI (about $0.003)' },
+        languages: { type: 'array', items: langSchema, description: 'also translate with the app\'s AI (about $0.001 each); or translate yourself with save_cv_translation' },
         full_width: {
           type: 'array',
           items: { type: 'string', enum: [...FULL_WIDTH_TYPES] },
@@ -1397,7 +1221,7 @@ const TOOLS: Tool[] = [
   {
     name: 'tailor_cv_with_site_ai',
     description:
-      "Tailors a CV with the site's own model (about $0.005 with score; counts toward the user's AI budget), optionally translated and with a motivation letter, and puts it on the board as \"Draft\". Use only when you cannot write it yourself.",
+      "Tailors a CV with the app's AI (the user's own API key when set, otherwise the site's model and budget; about $0.005 with score), then fits it on one page, optionally translated and with a motivation letter, and puts it on the board as \"Draft\". Use only when you cannot write it yourself.",
     inputSchema: obj(
       {
         job: jobSchema,
@@ -1420,6 +1244,7 @@ const TOOLS: Tool[] = [
         useLibrary: true,
         strict: true,
         letterLang: isLang(args.letter_language) ? args.letter_language : null,
+        origin,
       })
       return {
         resume_id: resume.id,
@@ -1427,6 +1252,7 @@ const TOOLS: Tool[] = [
         languages: Object.keys(resume.content),
         match_score: resume.job?.matchScore ?? null,
         notes: resume.job?.notes,
+        layout: await layoutOf(env, origin, resume, resume.sourceLang),
         application: application ? applicationSummary(application, origin) : null,
         edit_url: `${origin}/cv/${resume.id}`,
       }
@@ -1956,20 +1782,22 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'translate_cv_with_site_ai',
-    description: "Translates a CV with the site's model (about $0.001 per language; counts toward the AI budget).",
+    description: "Translates a CV with the app's AI (the user's own API key when set, otherwise the site's model; about $0.001 per language).",
     inputSchema: obj({ resume_id: { type: 'string' }, languages: { type: 'array', items: langSchema } }, ['resume_id', 'languages']),
-    run: async (env, args) => {
+    run: async (env, args, origin) => {
       const resume = await needResume(env, args.resume_id)
       await translateInto(env, resume, list<Lang>(args.languages).filter(isLang))
       resume.updatedAt = new Date().toISOString()
       await db.saveResume(env, resume)
-      return { resume_id: resume.id, languages: Object.keys(resume.content) }
+      // One style serves every language: a tailored CV is fitted on one page again in all of them.
+      const pageFit = resume.kind === 'tailored' ? await autoFit(env, origin, resume).catch((err: Error) => ({ ok: false, error: err.message })) : undefined
+      return { resume_id: resume.id, languages: Object.keys(resume.content), ...(pageFit && { page_fit: pageFit }) }
     },
   },
   {
     name: 'score_cv',
     description:
-      "Match score of a tailored CV against its job with the site's model (about $0.003): overall %, per dimension, unmet requirements, missing ATS keywords.",
+      "Match score of a tailored CV against its job with the app's AI (the user's own API key when set, otherwise the site's model; about $0.003): overall %, per dimension, unmet requirements, missing ATS keywords.",
     inputSchema: obj({ resume_id: { type: 'string' } }, ['resume_id']),
     run: async (env, args) => {
       const resume = await rescore(env, await needResume(env, args.resume_id))
@@ -2199,11 +2027,11 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'write_motivation_letter_with_site_ai',
-    description: "Writes the motivation letter of an application with the site's model (about $0.002; counts toward the AI budget).",
+    description: "Writes the motivation letter of an application with the app's AI (the user's own API key when set, otherwise the site's model; about $0.002), checked against the letter rules and the one-page layout.",
     inputSchema: obj({ application_id: { type: 'string' }, lang: langSchema }, ['application_id', 'lang']),
     run: async (env, args, origin) => {
       const lang = needLang(args.lang)
-      const saved = await letterForApplication(env, await needApplication(env, args.application_id), lang)
+      const saved = await letterForApplication(env, await needApplication(env, args.application_id), lang, origin)
       const letter = saved.letters![lang]!
       return { application_id: saved.id, language: lang, subject: letter.subject, body: letter.body, notes: letter.notes, pdf: await links(env, origin, 'letter', saved.id, lang) }
     },
@@ -2578,8 +2406,10 @@ export async function handleMcp(c: Ctx, pathToken?: string): Promise<Response> {
     return c.json({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error' } }, 400)
   }
   const origin = siteOrigin(c.env, c.req.url)
-  const env = db.forOwner(c.env, user)
+  const env: AiEnv = db.forOwner(c.env, user)
   await db.ensureAccount(env)
+  // The account's own API keys run the site-AI tools; without them the site's shared AI does (aikeys.ts).
+  env.ACCOUNT_AI = await accountAi(env).catch(() => null)
   const messages = (Array.isArray(payload) ? payload : [payload]) as RpcRequest[]
   const replies = await Promise.all(
     messages.map(async (msg) => {

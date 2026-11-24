@@ -20,6 +20,7 @@ Sforza is self-hosted for one person or a small group. There is no open sign-up:
 - Links read by the server (job postings, forms, logos) must be public web addresses: no IP addresses, local names, private DNS answers or odd ports, checked again on every redirect. Responses are read up to a size limit.
 - The web app sends a strict Content-Security-Policy, and error responses do not include internal details.
 - The public demo (only with `DEMO_PASSWORD`) never opens a shared account: each sign-in gets its own sandbox of sample data under a random id, deleted after two hours or at sign-out. A sandbox may only use the editor, the board, letters and settings (an allow-list); AI, the AI detector, PDF rendering, link reading, uploads, the connector, passwords and accounts answer 403. New sandboxes are limited per address (3 an hour), at once (20) and per day (60), checked inside one database statement; each sandbox has a budget of 400 writes of up to 300 KB, 12 CVs and 40 cards. Wrong demo passwords lock the address like other failed sign-ins but never the demo itself.
+- API keys saved under AI are checked with the provider, then stored encrypted with AES-GCM under a key derived from `SESSION_SECRET` for that account alone (the account name is bound in, so one account's key can't be opened as another's). They are never logged and never sent back: the browser sees the last four characters, and the connector never sees them. The demo cannot save keys.
 - AI output is checked against your own material: numbers, tools and skills that are not in your CV or knowledge base are removed.
 
 ## Things to know as an operator
@@ -28,5 +29,6 @@ Sforza is self-hosted for one person or a small group. There is no open sign-up:
 - Changing `SESSION_SECRET` or `AUTH_USERS` signs everyone out and invalidates every link.
 - `SETUP_TOKEN` only matters until the first account exists; you can delete it afterwards.
 - Job postings are untrusted text that goes into AI prompts. The app never applies or sends anything on its own, but read what an agent drafts before you send it.
-- The AI budget in `wrangler.jsonc` is shared by all accounts.
+- The AI budget in `wrangler.jsonc` is shared by all accounts that use the site's keys. Calls on an account's own key are not counted.
+- Changing `SESSION_SECRET` also makes the saved API keys unreadable: the AI page then asks for them again.
 - The demo password is public on purpose; the limits above are what protect the site. Changing or removing `DEMO_PASSWORD` ends every demo session at once, and a cron trigger deletes sandboxes that ran out every 30 minutes.

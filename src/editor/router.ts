@@ -10,15 +10,16 @@ import { useSyncExternalStore } from 'react'
  *   /job-search                job-search profile
  *   /knowledge                 knowledge base (library)
  *   /connector                 MCP prompts and connector help (/mcp itself is the connector endpoint)
+ *   /ai                        the account's own AI: API keys and model
  * Old /edit/... addresses (links in earlier connector answers and card notes) open the same page without /edit.
  */
 
 export type CvTab = 'content' | 'customize' | 'ai'
 
 /** The pages about the person rather than one CV: each is its own panel in the top bar. */
-export type PanelPage = 'jobsearch' | 'knowledge' | 'mcp'
+export type PanelPage = 'jobsearch' | 'knowledge' | 'mcp' | 'ai'
 
-const PANEL_PATHS: Record<PanelPage, string> = { jobsearch: 'job-search', knowledge: 'knowledge', mcp: 'connector' }
+const PANEL_PATHS: Record<PanelPage, string> = { jobsearch: 'job-search', knowledge: 'knowledge', mcp: 'connector', ai: 'ai' }
 
 export type Route =
   | { page: 'cvs' }
@@ -58,6 +59,7 @@ export function routePath(route: Route): string {
     case 'jobsearch':
     case 'knowledge':
     case 'mcp':
+    case 'ai':
       return `/${PANEL_PATHS[route.page]}`
     case 'applications':
     case 'letters':

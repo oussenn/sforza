@@ -5,6 +5,7 @@ import { clone, contentHash, cvMarkdown, detectorText, isUnsent, jobSource, jobU
 import { AiError, translate } from './ai'
 import * as db from './db'
 import { writeLetter } from './letter'
+import { autoFit, letterFitOf, pageFitNote } from './pagefit'
 import { analyzeJob, scoreCv } from './match'
 import { finishTailoring, tailor, type TailorOutput } from './tailor'
 
@@ -182,6 +183,8 @@ export interface TailorOptions {
   authored?: TailorOutput
   /** score the result (one model call) */
   scoreIt?: boolean
+  /** the site's address: with it the CV is fitted on one page and the letter checked on the rendered page */
+  origin?: string
 }
 
 /** Tailors a CV (the app's model, or an agent's answer), scores and translates it, and puts it on the board. */
@@ -247,6 +250,16 @@ export async function createTailoredCv(
   }
   await progress('Saving…')
   await db.createResume(env, resume)
+  // The one-page rule, as for an agent's CV: the fit sets the style, moves a section or hides the least relevant content.
+  if (opts.origin && !opts.authored) {
+    await progress('Fitting the CV on one full page…')
+    const fit = await autoFit(env, opts.origin, resume).catch((err: Error) => ({ ok: false, error: err.message }))
+    const note = pageFitNote(fit)
+    resume.job = { ...resume.job!, notes: [resume.job!.notes, note].filter(Boolean).join('\n\n') }
+    resume.updatedAt = new Date().toISOString()
+    await db.saveResume(env, resume)
+    await progress(note)
+  }
   let application = await trackApplication(env, resume, { ...job, location: resume.job?.location }, opts.applicationId).catch((err) => {
     console.error('Could not add the CV to the applications board', err)
     return null
@@ -255,7 +268,7 @@ export async function createTailoredCv(
   if (opts.letterLang && application) {
     await progress('Writing the motivation letter…')
     const lang = opts.letterLang === 'auto' ? postingLang(resume.job?.analysis ?? known, base.sourceLang) : opts.letterLang
-    application = await letterForApplication(env, application, lang).catch((err: unknown) => {
+    application = await letterForApplication(env, application, lang, opts.origin, progress).catch((err: unknown) => {
       console.error('Letter failed', err)
       return application
     })
@@ -263,8 +276,13 @@ export async function createTailoredCv(
   return { resume, application }
 }
 
-/** Writes (or rewrites) the motivation letter of an application with the app's model and saves it. */
-export async function letterForApplication(env: Env, application: Application, lang: Lang): Promise<Application> {
+/**
+ * Writes (or rewrites) the motivation letter of an application with the app's model and saves it. The writer checks
+ * the letter rules itself (letter.ts); with the site's address, the saved letter is also measured on the rendered
+ * page and written again shorter until it fits one page (twice at most). A rewrite keeps the letter's template and
+ * enclosures.
+ */
+export async function letterForApplication(env: Env, application: Application, lang: Lang, origin?: string, progress: Progress = () => undefined): Promise<Application> {
   const [master, library, linked, profile] = await Promise.all([
     masterResume(env),
     db.getLibrary(env),
@@ -274,7 +292,7 @@ export async function letterForApplication(env: Env, application: Application, l
   const cvResume = linked ?? master
   const cv = cvResume.content[cvResume.sourceLang]
   if (!cv) throw new AiError('The CV of this application has no content.')
-  const letter = await writeLetter(env, {
+  const input = {
     lang,
     cv,
     master: master.content[master.sourceLang] ?? null,
@@ -288,8 +306,24 @@ export async function letterForApplication(env: Env, application: Application, l
     analysis: linked?.job?.analysis ?? null,
     facts: profileFacts(profile),
     rules: profile.cvRules,
+  }
+  const before = application.letters?.[lang]
+  const keep = (l: CoverLetter): CoverLetter => ({
+    ...l,
+    ...(before?.layout && { layout: before.layout }),
+    ...(before?.enclosures !== undefined && { enclosures: before.enclosures }),
   })
-  return saveLetter(env, application, lang, letter)
+  let letter = keep(await writeLetter(env, input))
+  let saved = await saveLetter(env, application, lang, letter)
+  if (!origin) return saved
+  for (let round = 0; round < 2; round++) {
+    const fit = await letterFitOf(env, origin, saved, lang)
+    if (!fit.checked || fit.ok) break
+    await progress('Shortening the letter to one page…')
+    letter = keep(await writeLetter(env, { ...input, previous: letter, feedback: `${(fit.problems ?? []).join(' ')}. Keep the strongest facts and stay on one page.` }))
+    saved = await saveLetter(env, saved, lang, letter)
+  }
+  return saved
 }
 
 export async function saveLetter(d1: db.Store, application: Application, lang: Lang, letter: CoverLetter): Promise<Application> {

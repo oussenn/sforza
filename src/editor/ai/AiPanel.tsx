@@ -75,8 +75,11 @@ export default function AiPanel() {
     <div className="flex flex-col gap-3">
       {ai?.provider === 'none' && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-          No AI provider is configured. Add the <code className="font-mono">OPENAI_API_KEY</code> secret to the Worker (or keep the Workers AI
-          binding).
+          No AI is set up yet. Add your own Anthropic or OpenAI API key under{' '}
+          <button type="button" className="font-medium underline" onClick={() => navigate({ page: 'ai' })}>
+            AI
+          </button>{' '}
+          in the top bar.
         </div>
       )}
       {resume.job && <JobCard />}
@@ -84,8 +87,18 @@ export default function AiPanel() {
       <TranslateCard />
       {ai && ai.provider !== 'none' && (
         <p className="text-muted-foreground px-1 text-xs">
-          Using {ai.provider === 'anthropic' ? 'Claude' : ai.provider === 'openai' ? 'OpenAI' : 'Workers AI (free daily allowance)'} ·{' '}
-          <span className="font-mono">{ai.model}</span> · every number and tool is fact-checked against your CV and library
+          {ai.source === 'own' ? 'Your key' : "The site's AI"}: {ai.provider === 'anthropic' ? 'Anthropic' : ai.provider === 'openai' ? 'OpenAI' : 'Workers AI (free daily allowance)'} ·{' '}
+          <span className="font-mono">{ai.model}</span>
+          {ai.fallback && (
+            <>
+              {' '}
+              (backup <span className="font-mono">{ai.fallback.model}</span>)
+            </>
+          )}{' '}
+          · facts checked against your CV and library, every CV fitted on one page ·{' '}
+          <button type="button" className="underline" onClick={() => navigate({ page: 'ai' })}>
+            change
+          </button>
           {ai.spend && (
             <span className="mt-1 block">
               Spent ${ai.spend.today.toFixed(3)} today (cap ${ai.spend.dailyLimit.toFixed(2)}) · ${ai.spend.month.toFixed(3)} this month (cap $

@@ -69,6 +69,12 @@ Connect your agent to find jobs and prepare drafts.
 
 ![MCP prompt for one job link](.github/readme/mcp.gif)
 
+## Your own AI
+
+Each account adds its own API key under AI in the top bar: Anthropic, OpenAI or both. The model is picked for you, or you choose one. With two keys, the other one takes over when a call fails.
+
+![AI panel: two API keys, the model choice and the backup](.github/readme/ai-models.gif)
+
 ## Command palette and dark mode
 
 <table>
@@ -88,7 +94,8 @@ Connect your agent to find jobs and prepare drafts.
 - Tailored CVs and cover letters built only from your own facts
 - 6 letter templates (DIN 5008, Modern, Classic, Banner, Sidebar, Logo & signature) with their own fonts, colours and spacing, or the CV's
 - Logo & signature letters: the company's logo beside the date (the card's logo, found from the posting) and your handwritten signature, uploaded once in the letter's Design panel and kept for all your letters; either can be turned off per card
-- One-page check: tailored CVs fill one page, letters fit on one
+- One-page fit: tailored CVs fill one page and letters fit on one, from the AI buttons and the MCP tools alike
+- Your own AI for each account: an Anthropic or OpenAI API key (or both), the model picked automatically or by you, and the other key as backup when a call fails. Keys are stored encrypted and never shown again
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
@@ -145,24 +152,35 @@ Open http://localhost:5173 and create your account. The local database is create
 
 <p align="center"><img src=".github/readme/create-account.png" width="420" alt="Create your account"></p>
 
-The editor, board and job readers work without any API key. AI features need an Anthropic or OpenAI key in `.env`, or `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
+The editor, board and job readers work without any API key. For the AI features, add your own Anthropic or OpenAI key under AI in the top bar. You can also give the whole site a key in `.env` for accounts without one, or run `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
 
 ## Environment
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `SESSION_SECRET` | yes | Signs sessions and download links. At least 16 characters, 32 or more recommended |
+| `SESSION_SECRET` | yes | Signs sessions and download links, and encrypts the API keys saved under AI. At least 16 characters, 32 or more recommended |
 | `SETUP_TOKEN` | deploy | Asked once to create the first account on a public address, so nobody else can claim a new site. Not needed locally |
 | `AUTH_USERS` | no | Accounts kept in a secret instead: `{ "username": "pbkdf2-sha256$..." }`, made by `scripts/new-logins.mjs` |
 | `PRIMARY_USER` | no | Account whose connector token is `MCP_TOKEN` itself. Default: first account in `AUTH_USERS` |
-| `ANTHROPIC_API_KEY` | no | Claude for tailoring, letters, matching and translation |
-| `OPENAI_API_KEY` | no | OpenAI, used when no Anthropic key is set |
+| `ANTHROPIC_API_KEY` | no | The site's Anthropic key, for accounts without a key of their own |
+| `OPENAI_API_KEY` | no | The site's OpenAI key, used when the site has no Anthropic key |
 | `MCP_TOKEN` | no | Enables the MCP server. At least 24 characters |
 | `AIORNOT_API_KEY` | no | Server-side AI-text detection |
 | `DEMO_PASSWORD` | no | Turns on the public demo: `demo` with this password (8+ characters) opens a private two-hour copy of the sample data. Remove it to end the demo and every demo session |
 | `CANONICAL_HOST` | no | Main host name in production. Visitors on another address of the Worker move there, and links and connector addresses use it |
 
-Models and the daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`).
+The site's models and its daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`). Calls on an account's own key are billed to that key and don't count against the budget.
+
+## AI models
+
+Under AI in the top bar (`/ai`), each account can save an Anthropic key, an OpenAI key or both. A key is checked with the provider before it's saved, so a wrong key is refused at once. It is stored encrypted for that account and never comes back to the browser or to a connected agent. The page only shows its last four characters and whether the last check passed.
+
+- Automatic: the app picks the model for each key (the page names them). The Anthropic key runs first and the OpenAI key takes over when a call fails.
+- Choose your model: a model from either list, or any model id the provider offers. The other key stays as the backup.
+
+Only a failed call moves to the backup: a rejected key, an unknown model, a rate limit, an outage or a timeout. A declined request or a broken answer is reported as it is. Without a key of its own, an account uses the site's keys (above), then Workers AI.
+
+Every AI button keeps the same rules an agent follows. After tailoring or translating, the CV is fitted on one full page in every language, and the notes say what was hidden or what still doesn't fit. A letter breaking the rules (220–320 words, no full-name salutation, no skill gaps, only your own facts, one page) is written again with the problem named, twice at most, and anything left is listed in the notes.
 
 ## Accounts
 
@@ -186,11 +204,12 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 | Knowledge base | `GET/PUT /api/library` |
 | Job search profile | `GET/PUT /api/search-profile` |
 | AI | `POST /api/ai/job-from-url`, `/match`, `/rescore`, `/tailor`, `/translate`, `/letter`, `GET /api/ai/status` |
+| AI models | `GET/PUT /api/ai/settings`, `POST /api/ai/settings/check` |
 | Board | `GET/POST /api/applications`, `PUT/DELETE /api/applications/:id`, `POST /api/applications/read-link`, `GET/PUT /api/board-columns` |
 | Letters | `GET /api/applications/:id/letter.pdf` |
 | Connector | `GET /api/connector` returns the signed-in account's MCP address |
 
-AI routes stream progress as NDJSON.
+AI routes stream progress as NDJSON. `PUT /api/ai/settings` takes `{ "keys": { "anthropic": "<key>" or null, "openai": "<key>" or null }, "mode": "auto" or "manual", "provider", "model" }` and answers without the keys.
 
 ## Connect an MCP client
 
@@ -225,7 +244,7 @@ Tools:
 | Letters | `get_letter_rules`, `save_motivation_letter`, `design_letter`, `set_signature` |
 | Checks | `check_draft`, `check_ai_text`, `record_ai_check` |
 | Board | `list_applications`, `get_application`, `save_application`, `save_form_answers`, `delete_application`, `get_download_links` |
-| Site AI | `tailor_cv_with_site_ai`, `translate_cv_with_site_ai`, `write_motivation_letter_with_site_ai` |
+| App's AI | `tailor_cv_with_site_ai`, `translate_cv_with_site_ai`, `write_motivation_letter_with_site_ai` |
 
 Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_knowledge_base`.
 
@@ -252,6 +271,8 @@ The tools also check the writing rules as they save:
 - documents in the wrong language: German postings get German documents (plus English when the profile asks for it), English postings English only
 
 `check_draft` holds only the languages a card is sent in to the one-full-page rule. The English source of a CV sent in German is still measured, but doesn't block the draft.
+
+The App's AI tools let the app write instead of the agent. They run on the account's own key when it has one (otherwise the site's AI) and keep the rules of the AI buttons: the CV fitted on one page, with its layout in the answer, and the letter written again when it breaks a rule. Agents never see the keys.
 
 Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
 
