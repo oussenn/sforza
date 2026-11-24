@@ -102,7 +102,7 @@ Each account adds its own API key under AI in the top bar: Anthropic, OpenAI or 
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
-- Version number at the bottom right of every page: 0.1, then 0.11, 0.12 and so on, and 0.2 for a big change
+- Version number at the bottom right of every page: 0.19, then 0.20, 0.21 and so on, with one more digit for a small change (0.191, 0.201)
 
 ![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
 
@@ -125,6 +125,7 @@ shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
 scripts/   optional account generator for the AUTH_USERS secret
+design/    full-size source images of the logo and the background (public/ has the sized copies)
 ```
 
 ## Run locally
