@@ -54,7 +54,7 @@ Each CV can have all three.
 
 ## Board
 
-Your own columns between the stages, for your account only. Drag a card to move it. A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages.
+Your own columns between the stages, for your account only. Drag a card to move it. A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages. Flags in column names (Drafts 🇬🇧, Drafts 🇩🇪) show in every browser, also Chrome, Edge and Brave on Windows, which have no flag emoji of their own.
 
 ![Cards dragged between board columns](.github/readme/board.gif)
 
@@ -317,5 +317,7 @@ See [SECURITY.md](SECURITY.md) for what is in place and how to report a problem.
 ## License
 
 [MIT](LICENSE)
+
+Country flags are drawn with the Twemoji Country Flags font from [country-flag-emoji-polyfill](https://github.com/talkjs/country-flag-emoji-polyfill), flag art by [Twemoji](https://github.com/twitter/twemoji) (Twitter, Inc and other contributors), [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 Named after Ludovico Sforza, who in 1482 received Leonardo da Vinci's letter of application, often called the first résumé.
