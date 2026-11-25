@@ -5,7 +5,7 @@ import type {
   AiSettingsView,
   AiStatus,
   Application,
-  BoardColumn,
+  Board,
   ChangeStamps,
   CoverLetter,
   InviteInfo,
@@ -20,6 +20,7 @@ import type {
   ResumeMeta,
   ScrapedJob,
   SearchProfile,
+  Stage,
 } from '@shared/types'
 
 export class ApiError extends Error {
@@ -138,10 +139,11 @@ export const api = {
 
   applications: () => request<Application[]>('/api/applications'),
   createApplication: (fields: Partial<Application>) => request<Application>('/api/applications', json('POST', fields)),
-  saveApplication: (app: Application) => request<{ updatedAt: string }>(`/api/applications/${app.id}`, json('PUT', app)),
+  saveApplication: (app: Application) => request<{ updatedAt: string; stage?: Stage }>(`/api/applications/${app.id}`, json('PUT', app)),
   removeApplication: (id: string) => request<{ ok: true; deletedCv: string | null }>(`/api/applications/${id}`, json('DELETE')),
-  boardColumns: () => request<BoardColumn[]>('/api/board-columns'),
-  saveBoardColumns: (columns: BoardColumn[]) => request<BoardColumn[]>('/api/board-columns', json('PUT', { columns })),
+  board: () => request<Board>('/api/board'),
+  /** saves the board; `moved` counts the cards the server moved to another column */
+  saveBoard: (board: Board) => request<Board & { moved: number }>('/api/board', json('PUT', board)),
   /** title, company, location and logo of a job link, without AI */
   readLink: (url: string) => request<ScrapedJob>('/api/applications/read-link', json('POST', { url })),
   findLogo: (id: string) => request<Application>(`/api/applications/${id}/logo`, json('POST', {})),

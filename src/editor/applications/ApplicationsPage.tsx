@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useMemo, useState, type DragEvent } from 'react'
-import { ArrowUpRight, CalendarClock, Download, Ellipsis, FileText, Import, Languages, Loader2, Mail, MapPin, Pencil, Plus, Search, Send, ShieldCheck, SquareKanban, Trash2 } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, Download, Ellipsis, Eye, EyeOff, FileText, Import, Languages, Loader2, Mail, MapPin, Pencil, Plus, Search, Send, ShieldCheck, SquareKanban, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Application, BoardColumn, BuiltinStage, Lang, ResumeMeta, Stage } from '@shared/types'
-import { LANG_LABELS, LANGS } from '@shared/types'
-import { baseStage, boardStages, isCustomStage, isUnsent, pdfFileName } from '@shared/utils'
+import { LANG_LABELS, LANGS, STAGE_LABELS } from '@shared/types'
+import { baseStage, boardStages, isCustomStage, isUnsent, pdfFileName, placeStage } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { ScoreRing } from '@/components/ScoreRing'
 import { Button } from '@/components/ui/button'
@@ -177,14 +177,21 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
   const [target, setTarget] = useState<DropTarget | null>(null)
   const move = useApplications((s) => s.move)
   const columns = useApplications((s) => s.columns)
-  const { renameColumn, removeColumn } = useApplications.getState()
-  const stages = boardStages(columns)
+  const hidden = useApplications((s) => s.hidden)
+  const { renameColumn, removeColumn, setHidden } = useApplications.getState()
+  // A hidden stage still shows while a card is in it (saved there before the page noticed), so no card is lost.
+  const stages = boardStages(columns, hidden.filter((s) => !items.some((a) => a.stage === s)))
   const label = useStageLabel()
   const [adding, setAdding] = useState(false)
   const [renaming, setRenaming] = useState<BoardColumn | null>(null)
   const [removing, setRemoving] = useState<BoardColumn | null>(null)
-  // A card whose column was removed shows in the stage that column followed.
-  const placed = (a: Application): Stage => (stages.includes(a.stage) ? a.stage : baseStage(a.stage))
+  // A card whose column was removed shows in the stage that column followed, or in what replaces that stage.
+  const placed = (a: Application): Stage =>
+    stages.includes(a.stage) ? a.stage : stages.includes(baseStage(a.stage)) ? baseStage(a.stage) : placeStage(baseStage(a.stage), a.lang, { columns, hidden })
+  const hide = async (stage: BuiltinStage) => {
+    await setHidden(stage, true)
+    toast.success(`${STAGE_LABELS[stage]} is hidden. Its cards are in the columns after it.`)
+  }
 
   const dragOver = (stage: Stage) => (e: DragEvent<HTMLElement>) => {
     if (!dragId) return
@@ -237,11 +244,31 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {column.lang && (
+                        <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                          {LANG_LABELS[column.lang].flag} {LANG_LABELS[column.lang].name} drafts land here
+                        </DropdownMenuLabel>
+                      )}
                       <DropdownMenuItem onSelect={() => setRenaming(column)}>
                         <Pencil /> Rename
                       </DropdownMenuItem>
                       <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(column)}>
                         <Trash2 /> Delete column
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {!isCustomStage(stage) && isUnsent(stage) && columns.some((c) => baseStage(c.id) === stage) && (
+                  // A built-in stage can make way for the columns after it, e.g. Draft for one Drafts column per language.
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button type="button" aria-label={`Column ${label(stage)}`} className={cn(LINK, '-my-1 ml-auto size-6')}>
+                        <Ellipsis className="size-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onSelect={() => void hide(stage)}>
+                        <EyeOff /> Hide column
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -280,13 +307,26 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
             </section>
           )
         })}
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="text-muted-foreground hover:text-foreground hover:bg-foreground/[0.035] border-foreground/15 mt-9 flex h-24 w-40 shrink-0 items-center justify-center gap-1.5 rounded-2xl text-xs font-medium border border-dashed transition-colors xl:w-28"
-        >
-          <Plus className="size-4" /> Add column
-        </button>
+        <div className="mt-9 flex w-40 shrink-0 flex-col gap-2 xl:w-28">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="text-muted-foreground hover:text-foreground hover:bg-foreground/[0.035] border-foreground/15 flex h-24 items-center justify-center gap-1.5 rounded-2xl border border-dashed text-xs font-medium transition-colors"
+          >
+            <Plus className="size-4" /> Add column
+          </button>
+          {hidden.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => void setHidden(s, false)}
+              title={`${STAGE_LABELS[s]} is hidden: show it again`}
+              className="text-muted-foreground hover:text-foreground hover:bg-foreground/[0.035] flex h-8 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition-colors"
+            >
+              <Eye className="size-3.5" /> Show {STAGE_LABELS[s]}
+            </button>
+          ))}
+        </div>
       </div>
 
       <AddColumnDialog open={adding} onOpenChange={setAdding} />

@@ -54,7 +54,7 @@ Each CV can have all three.
 
 ## Board
 
-Your own columns between the stages, for your account only. Drag a card to move it.
+Your own columns between the stages, for your account only. Drag a card to move it. A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages.
 
 ![Cards dragged between board columns](.github/readme/board.gif)
 
@@ -103,7 +103,7 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
 - Logo & signature letters: the company's logo beside the date (the card's logo, found from the posting) and your handwritten signature, uploaded once in the letter's Design panel and kept for all your letters; either can be turned off per card
 - One-page fit: tailored CVs fill one page and letters fit on one, from the AI buttons and the MCP tools alike
 - Your own AI for each account: Anthropic, OpenAI and Google Gemini API keys (any of them), the model picked automatically or by you, and the next key as backup when a call fails. Keys are stored encrypted and never shown again
-- Board with your own columns, form answers and AI-text checks
+- Board with your own columns, form answers and AI-text checks; a built-in column can be hidden, e.g. Draft for one Drafts column per language
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, CV preview on a button
@@ -216,7 +216,7 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 | Job search profile | `GET/PUT /api/search-profile` |
 | AI | `POST /api/ai/job-from-url`, `/match`, `/rescore`, `/tailor`, `/translate`, `/letter`, `GET /api/ai/status` |
 | AI models | `GET/PUT /api/ai/settings`, `POST /api/ai/settings/check` |
-| Board | `GET/POST /api/applications`, `PUT/DELETE /api/applications/:id`, `POST /api/applications/read-link`, `GET/PUT /api/board-columns` |
+| Board | `GET/POST /api/applications`, `PUT/DELETE /api/applications/:id`, `POST /api/applications/read-link`, `GET/PUT /api/board-columns`, `GET/PUT /api/board` |
 | Letters | `GET /api/applications/:id/letter.pdf` |
 | Connector | `GET /api/connector` returns the signed-in account's MCP address |
 
@@ -254,7 +254,7 @@ Tools:
 | CVs | `get_tailoring_material`, `save_tailored_cv`, `get_cv`, `edit_cv`, `fit_cv_to_page`, `check_cv_layout`, `save_cv_translation`, `copy_cv`, `delete_cv`, `score_cv` |
 | Letters | `get_letter_rules`, `save_motivation_letter`, `design_letter`, `set_signature` |
 | Checks | `check_draft`, `check_ai_text`, `record_ai_check` |
-| Board | `list_applications`, `get_application`, `save_application`, `save_form_answers`, `delete_application`, `get_download_links` |
+| Board | `list_applications`, `get_application`, `save_application`, `save_form_answers`, `delete_application`, `edit_board`, `get_download_links` |
 | App's AI | `tailor_cv_with_site_ai`, `translate_cv_with_site_ai`, `write_motivation_letter_with_site_ai` |
 
 Prompts: `job_hunt`, `draft_application`, `review_drafts`, `follow_up`, `build_knowledge_base`.

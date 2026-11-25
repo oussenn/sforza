@@ -1,5 +1,6 @@
 import { FONTS, LABELS, TEMPLATE_MAP } from './templates'
 import type {
+  Board,
   Application,
   BoardColumn,
   BuiltinStage,
@@ -172,23 +173,57 @@ export function stageLabel(stage: Stage, columns: readonly BoardColumn[] = []): 
   return columns.find((c) => c.id === stage)?.label ?? STAGE_LABELS[baseStage(stage)]
 }
 
-/** Every column of the board in order: each built-in stage followed by the custom columns placed after it. */
-export function boardStages(columns: readonly BoardColumn[]): Stage[] {
-  return STAGES.flatMap((s) => [s, ...columns.filter((c) => baseStage(c.id) === s).map((c) => c.id)])
+/**
+ * Every column of the board in order: each built-in stage followed by the custom columns placed after it. Built-in
+ * stages in `hidden` are left out.
+ */
+export function boardStages(columns: readonly BoardColumn[], hidden: readonly BuiltinStage[] = []): Stage[] {
+  return STAGES.flatMap((s) => [...(hidden.includes(s) ? [] : [s]), ...columns.filter((c) => baseStage(c.id) === s).map((c) => c.id)])
 }
 
-/** Custom columns from untrusted input: valid ids, trimmed labels, no duplicates. */
+/** Custom columns from untrusted input: valid ids, trimmed labels, no duplicates; a language only after Draft. */
 export function cleanBoardColumns(raw: unknown): BoardColumn[] {
   if (!Array.isArray(raw)) return []
   const seen = new Set<string>()
   const out: BoardColumn[] = []
-  for (const c of raw as { id?: unknown; label?: unknown }[]) {
+  for (const c of raw as { id?: unknown; label?: unknown; lang?: unknown }[]) {
     const label = typeof c?.label === 'string' ? c.label.trim().slice(0, 40) : ''
     if (!isCustomStage(c?.id) || !label || seen.has(c.id)) continue
     seen.add(c.id)
-    out.push({ id: c.id, label })
+    const lang = baseStage(c.id) === 'draft' && (LANGS as readonly unknown[]).includes(c.lang) ? (c.lang as Lang) : undefined
+    out.push(lang ? { id: c.id, label, lang } : { id: c.id, label })
   }
   return out.slice(0, MAX_COLUMNS)
+}
+
+/**
+ * A board from untrusted input or storage: the old plain list of columns, or { columns, hidden }. A stage stays
+ * hidden only while a column of its own follows it, so no card is ever left without a column.
+ */
+export function cleanBoard(raw: unknown): Board {
+  const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { columns?: unknown; hidden?: unknown }) : null
+  const columns = cleanBoardColumns(obj ? obj.columns : raw)
+  const hidden = Array.isArray(obj?.hidden)
+    ? STAGES.filter((s) => (obj.hidden as unknown[]).includes(s) && columns.some((c) => baseStage(c.id) === s))
+    : []
+  return { columns, hidden }
+}
+
+/**
+ * Where a card in `stage` goes on this board: the stage itself, unless it is hidden. Then the column after it that
+ * takes the card's language, else the first one without a language, else the first one. While Draft is hidden, a
+ * draft in the column of another language moves to the column of its own (its cv_language changed).
+ */
+export function placeStage(stage: Stage, lang: Lang | null | undefined, board: Board): Stage {
+  if (isCustomStage(stage)) {
+    const column = board.columns.find((c) => c.id === stage)
+    const base = baseStage(stage)
+    if (!column?.lang || !lang || column.lang === lang || !board.hidden.includes(base)) return stage
+    return board.columns.find((c) => baseStage(c.id) === base && c.lang === lang)?.id ?? stage
+  }
+  if (!board.hidden.includes(stage)) return stage
+  const after = board.columns.filter((c) => baseStage(c.id) === stage)
+  return (after.find((c) => lang && c.lang === lang) ?? after.find((c) => !c.lang) ?? after[0])?.id ?? stage
 }
 
 /** Stages before the application is sent (custom columns count as the stage they follow). */

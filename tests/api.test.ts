@@ -505,6 +505,65 @@ describe('MCP connector', () => {
   })
 })
 
+describe('a board of its own', () => {
+  const rpc = (path: string, body: unknown) =>
+    app.request(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, env, ctx)
+  const tool = (name: string, args = {}) => ({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } })
+  const asUser = async (user: string, name: string, args = {}) => {
+    const res = await rpc(`/mcp/${(await connectorToken(env, user))!}`, tool(name, args))
+    return JSON.parse(((await res.json()) as { result: { content: { text: string }[] } }).result.content[0].text)
+  }
+
+  it('sorts the drafts of one account by language, and only that account', async () => {
+    const card = (user: string, company: string, lang: string) =>
+      asUser(user, 'save_application', { title: 'Werkstudent Data', company, stage: 'draft', cv_language: lang })
+    const en = await card('alice', 'Lang English', 'en')
+    const de = await card('alice', 'Lang German', 'de')
+    const bobs = await card('bob', 'Bob German', 'de')
+
+    // Every account starts with the six stages and hides none.
+    for (const user of ['alice', 'bob'] as const) {
+      const board = (await (await call('/api/board', { as: user })).json()) as { hidden: string[] }
+      expect(board.hidden).toEqual([])
+    }
+
+    const kept = (await asUser('alice', 'get_profile')).board_columns as { id: string; label: string }[]
+    const edited = await asUser('alice', 'edit_board', {
+      columns: [...kept, { label: 'Drafts 🇬🇧', after: 'draft', lang: 'en' }, { label: 'Drafts 🇩🇪', after: 'draft', lang: 'de' }],
+      hidden: ['draft'],
+    })
+    expect(Object.values(edited.stages)).not.toContain('Draft')
+    expect(Object.values(edited.stages)).toEqual(expect.arrayContaining(['Drafts 🇬🇧', 'Drafts 🇩🇪']))
+    const label = async (user: string, id: string) => (await asUser(user, 'get_application', { id })).stage_label
+    expect(await label('alice', en.id)).toBe('Drafts 🇬🇧')
+    expect(await label('alice', de.id)).toBe('Drafts 🇩🇪')
+    // A new draft lands in its column, and moves when its language changes.
+    const later = await card('alice', 'Later German', 'de')
+    expect(later.stage_label).toBe('Drafts 🇩🇪')
+    expect(later.created_on).toBe(new Date().toISOString().slice(0, 10))
+    expect((await asUser('alice', 'save_application', { id: later.id, cv_language: 'en' })).stage_label).toBe('Drafts 🇬🇧')
+    // stage "draft" still finds them all.
+    const drafts = (await asUser('alice', 'list_applications', { stage: 'draft' })).applications.map((a: { id: string }) => a.id)
+    expect(drafts).toEqual(expect.arrayContaining([en.id, de.id, later.id]))
+
+    // The other account keeps the plain Draft column.
+    expect(await label('bob', bobs.id)).toBe('Draft')
+    expect((await (await call('/api/board', { as: 'bob' })).json()).hidden).toEqual([])
+    expect(Object.keys((await asUser('bob', 'get_profile')).board)).toContain('Draft')
+
+    // Hiding needs a column of its own after the stage.
+    const refused = await rpc(`/mcp/${(await connectorToken(env, 'bob'))!}`, tool('edit_board', { hidden: ['draft'] }))
+    expect(((await refused.json()) as { result: { content: { text: string }[] } }).result.content[0].text).toContain('add a column after it first')
+
+    // Showing Draft again keeps the columns and the cards where they are; removing the columns brings the cards back.
+    await asUser('alice', 'edit_board', { hidden: [] })
+    expect(await label('alice', de.id)).toBe('Drafts 🇩🇪')
+    const back = await asUser('alice', 'edit_board', { columns: kept })
+    expect(back.moved.length).toBeGreaterThanOrEqual(3)
+    expect(await label('alice', de.id)).toBe('Draft')
+  })
+})
+
 describe('request limits and errors', () => {
   it('refuses bodies over 2.5 MB', async () => {
     const res = await call('/api/library', { method: 'PUT', as: 'alice', json: { notes: 'x'.repeat(3_000_000) } })

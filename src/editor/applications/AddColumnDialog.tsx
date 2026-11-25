@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import type { BuiltinStage } from '@shared/types'
-import { STAGE_LABELS, STAGES } from '@shared/types'
+import type { BuiltinStage, Lang } from '@shared/types'
+import { LANG_LABELS, LANGS, STAGE_LABELS, STAGES } from '@shared/types'
 import { InfoTip } from '@/components/InfoTip'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -16,11 +16,13 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
   const addColumn = useApplications((s) => s.addColumn)
   const [label, setLabel] = useState('')
   const [after, setAfter] = useState<BuiltinStage>('applied')
+  const [lang, setLang] = useState<Lang | 'any'>('any')
 
   useEffect(() => {
     if (open) {
       setLabel('')
       setAfter('applied')
+      setLang('any')
     }
   }, [open])
 
@@ -28,7 +30,7 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
     e.preventDefault()
     if (!label.trim()) return
     onOpenChange(false)
-    await addColumn(label, after)
+    await addColumn(label, after, lang === 'any' ? undefined : lang)
   }
 
   return (
@@ -65,6 +67,29 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
               </SelectContent>
             </Select>
           </div>
+          {after === 'draft' && (
+            <div className="grid gap-1.5">
+              <div className="flex items-center gap-1">
+                <Label className="text-muted-foreground text-xs">Drafts in</Label>
+                <InfoTip label="About drafts by language">
+                  With Draft hidden (its menu on the board), each new draft lands in the column of its language: one column for English drafts, one for German ones.
+                </InfoTip>
+              </div>
+              <Select value={lang} onValueChange={(v) => setLang(v as Lang | 'any')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value="any">Any language</SelectItem>
+                  {LANGS.map((l) => (
+                    <SelectItem key={l} value={l}>
+                      {LANG_LABELS[l].flag} {LANG_LABELS[l].name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <DialogFooter>
             <Button type="submit" disabled={!label.trim()}>
               Add column

@@ -1,6 +1,6 @@
 import { blankMaster } from '@shared/seed'
-import type { Application, BoardColumn, ChangeStamps, Library, Resume, SearchProfile } from '@shared/types'
-import { applicationWithoutEmDashes, cleanBoardColumns, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, uid } from '@shared/utils'
+import type { Application, Board, BoardColumn, ChangeStamps, Library, Resume, SearchProfile, Stage } from '@shared/types'
+import { applicationWithoutEmDashes, baseStage, cleanBoard, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, isCustomStage, placeStage, uid } from '@shared/utils'
 import { primaryUser } from './auth'
 import { DEMO_SCHEMA, isDemoOwner } from './demo'
 
@@ -255,14 +255,42 @@ export async function saveSearchProfile(s: Store, profile: SearchProfile): Promi
   await putSetting(s, 'search_profile', JSON.stringify(profile))
 }
 
-/** The columns this account added to its board, in order. */
-export async function getBoardColumns(s: Store): Promise<BoardColumn[]> {
+/** This account's board: the columns it added (in order) and the built-in ones it hides. Nothing for a new account. */
+export async function getBoard(s: Store): Promise<Board> {
   const raw = await getSetting(s, 'board_columns')
-  return raw ? cleanBoardColumns(JSON.parse(raw)) : []
+  return raw ? cleanBoard(JSON.parse(raw)) : { columns: [], hidden: [] }
 }
 
+/** The columns this account added to its board, in order. */
+export async function getBoardColumns(s: Store): Promise<BoardColumn[]> {
+  return (await getBoard(s)).columns
+}
+
+/**
+ * Saves the board and moves the cards it leaves without a column: those of a removed column to the stage it
+ * followed, those of a hidden stage to the column that replaces it (by language after Draft). A board that hides
+ * nothing is stored as the plain list of columns it always was. Returns the board and the cards moved.
+ */
+export async function saveBoard(s: Store, input: Board): Promise<{ board: Board; moved: { id: string; from: Stage; to: Stage }[] }> {
+  const board = cleanBoard(input)
+  await putSetting(s, 'board_columns', JSON.stringify(board.hidden.length ? board : board.columns))
+  const ids = new Set(board.columns.map((c) => c.id as Stage))
+  const moved: { id: string; from: Stage; to: Stage }[] = []
+  for (const app of await listApplications(s)) {
+    const from = app.stage
+    const kept = isCustomStage(from) && !ids.has(from) ? baseStage(from) : from
+    const to = placeStage(kept, app.lang, board)
+    if (to === from) continue
+    const now = new Date().toISOString()
+    await writeApplication(s, { ...app, stage: to, history: [...app.history, { stage: to, at: now }], updatedAt: now })
+    moved.push({ id: app.id, from, to })
+  }
+  return { board, moved }
+}
+
+/** Saves the columns and keeps the stages the board hides. */
 export async function saveBoardColumns(s: Store, columns: BoardColumn[]): Promise<void> {
-  await putSetting(s, 'board_columns', JSON.stringify(columns))
+  await saveBoard(s, { columns, hidden: (await getBoard(s)).hidden })
 }
 
 /** The account's own AI settings with its API keys encrypted (aikeys.ts); null when never set. */
@@ -321,7 +349,23 @@ export async function getApplication(s: Store, id: string): Promise<Application 
   return row ? applicationWithoutEmDashes(JSON.parse(row.data) as Application) : null
 }
 
+/**
+ * Saves a card. A card saved in a stage this account's board hides goes to the column that replaces it (a draft to
+ * the Drafts column of its language); the card passed in is changed to match, so callers answer with the real stage.
+ */
 export async function putApplication(s: Store, app: Application): Promise<void> {
+  if (baseStage(app.stage) === app.stage || baseStage(app.stage) === 'draft') {
+    const to = placeStage(app.stage, app.lang, await getBoard(s))
+    if (to !== app.stage) {
+      const from = app.stage
+      app.stage = to
+      app.history = app.history.map((h, i) => (i === app.history.length - 1 && h.stage === from ? { ...h, stage: to } : h))
+    }
+  }
+  await writeApplication(s, app)
+}
+
+async function writeApplication(s: Store, app: Application): Promise<void> {
   // The WHERE stops an id that belongs to another account from being overwritten.
   await s.DB.prepare(
     `INSERT INTO applications (id, owner, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)

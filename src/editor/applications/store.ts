@@ -12,6 +12,8 @@ interface ApplicationsState {
   items: Application[]
   /** columns the user added to the board */
   columns: BoardColumn[]
+  /** built-in stages this board does not show (a column of its own replaces each) */
+  hidden: BuiltinStage[]
   /** letter to show when a card opens (set by the letter chips on the board) */
   letterFocus: { appId: string; lang: Lang } | null
   /** the letter open on the Letters page, for the top bar's CV and Download buttons */
@@ -27,10 +29,12 @@ interface ApplicationsState {
   /** After a change made elsewhere (sync.ts): cards and columns, keeping cards with unsaved edits. */
   reload: () => Promise<void>
   flush: () => Promise<void>
-  addColumn: (label: string, after: BuiltinStage) => Promise<void>
+  addColumn: (label: string, after: BuiltinStage, lang?: Lang) => Promise<void>
   renameColumn: (id: BoardColumn['id'], label: string) => Promise<void>
   /** Removes a column; its cards go back to the stage it followed. */
   removeColumn: (id: BoardColumn['id']) => Promise<void>
+  /** Hides a built-in stage or shows it again; the server moves the cards of a hidden one to its replacement. */
+  setHidden: (stage: BuiltinStage, hide: boolean) => Promise<void>
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -58,7 +62,10 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     saving.add(id)
     return api
       .saveApplication(app)
-      .then(() => undefined)
+      .then((r) => {
+        // Saved in a stage the board hides: the server put it in the column that replaces it.
+        if (r.stage && r.stage !== app.stage) set((s) => ({ items: s.items.map((a) => (a.id === id ? { ...a, stage: r.stage! } : a)) }))
+      })
       .catch((err: Error) => {
         toast.error(`Could not save the application: ${err.message}`)
       })
@@ -72,13 +79,17 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     )
   }
 
-  const saveColumns = async (columns: BoardColumn[]) => {
-    const before = get().columns
-    set({ columns })
+  const saveBoard = async (columns: BoardColumn[], hidden = get().hidden) => {
+    const before = { columns: get().columns, hidden: get().hidden }
+    set({ columns, hidden })
     try {
-      set({ columns: await api.saveBoardColumns(columns) })
+      await Promise.all([...timers.keys()].map((id) => save(id)))
+      const saved = await api.saveBoard({ columns, hidden })
+      set({ columns: saved.columns, hidden: saved.hidden })
+      // Cards of a removed column or a hidden stage changed columns on the server.
+      if (saved.moved) set({ items: await api.applications() })
     } catch (err) {
-      set({ columns: before })
+      set(before)
       toast.error(`Could not save the columns: ${(err as Error).message}`)
     }
   }
@@ -87,12 +98,13 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     loaded: false,
     items: [],
     columns: [],
+    hidden: [],
     letterFocus: null,
     letterView: null,
 
     load: async () => {
-      const [items, columns] = await Promise.all([api.applications(), api.boardColumns().catch(() => [])])
-      set({ items, columns, loaded: true })
+      const [items, board] = await Promise.all([api.applications(), api.board().catch(() => ({ columns: [], hidden: [] }))])
+      set({ items, columns: board.columns, hidden: board.hidden, loaded: true })
     },
 
     create: async (fields) => {
@@ -134,27 +146,33 @@ export const useApplications = create<ApplicationsState>((set, get) => {
     replace: (app) => set((s) => ({ items: s.items.map((a) => (a.id === app.id ? app : a)) })),
 
     reload: async () => {
-      const [items, columns] = await Promise.all([api.applications(), api.boardColumns().catch(() => null)])
+      const [items, board] = await Promise.all([api.applications(), api.board().catch(() => null)])
       const local = (id: string) => (timers.has(id) || saving.has(id) ? get().items.find((a) => a.id === id) : undefined)
-      set((s) => ({ items: items.map((a) => local(a.id) ?? a), columns: columns ?? s.columns }))
+      set((s) => ({ items: items.map((a) => local(a.id) ?? a), columns: board?.columns ?? s.columns, hidden: board?.hidden ?? s.hidden }))
     },
 
     flush: async () => {
       await Promise.all([...timers.keys()].map((id) => save(id)))
     },
 
-    addColumn: async (label, after) => {
-      await saveColumns([...get().columns, { id: newColumnId(after), label: label.trim() }])
+    addColumn: async (label, after, lang) => {
+      await saveBoard([...get().columns, { id: newColumnId(after), label: label.trim(), ...(after === 'draft' && lang && { lang }) }])
     },
 
     renameColumn: async (id, label) => {
-      await saveColumns(get().columns.map((c) => (c.id === id ? { ...c, label: label.trim() } : c)))
+      await saveBoard(get().columns.map((c) => (c.id === id ? { ...c, label: label.trim() } : c)))
     },
 
     removeColumn: async (id) => {
-      for (const app of get().items.filter((a) => a.stage === id)) get().move(app.id, baseStage(id), null)
-      await get().flush()
-      await saveColumns(get().columns.filter((c) => c.id !== id))
+      // The server moves its cards back to the stage it followed (or to that stage's replacement when it is hidden).
+      const columns = get().columns.filter((c) => c.id !== id)
+      const base = baseStage(id)
+      await saveBoard(columns, get().hidden.filter((s) => s !== base || columns.some((c) => baseStage(c.id) === s)))
+    },
+
+    setHidden: async (stage, hide) => {
+      const hidden = get().hidden.filter((s) => s !== stage)
+      await saveBoard(get().columns, hide ? [...hidden, stage] : hidden)
     },
   }
 })

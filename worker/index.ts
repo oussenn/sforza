@@ -6,6 +6,7 @@ import type { AiCheck, AiEvent, AiProviderId, AiStatus, Application, CoverLetter
 import { AI_PROVIDERS, LANGS, LETTER_LAYOUTS } from '@shared/types'
 import { formAnswersField } from './forms'
 import {
+  cleanBoard,
   cleanBoardColumns,
   cleanLetterStyle,
   cleanSearchProfile,
@@ -765,6 +766,15 @@ app.put('/api/board-columns', async (c) => {
   return c.json(columns)
 })
 
+/** The whole board: the columns the account added and the built-in ones it hides. Saving it moves the cards it leaves without a column. */
+app.get('/api/board', async (c) => c.json(await db.getBoard(c.env)))
+
+app.put('/api/board', async (c) => {
+  const body = await c.req.json<unknown>().catch(() => null)
+  const { board, moved } = await db.saveBoard(c.env, cleanBoard(body))
+  return c.json({ ...board, moved: moved.length })
+})
+
 app.post('/api/applications', async (c) => {
   if (await demoFull(c, 'applications')) return c.json({ error: DEMO_FULL }, 403)
   const fields = applicationFields(await c.req.json())
@@ -784,7 +794,8 @@ app.put('/api/applications/:id', async (c) => {
     updatedAt: new Date().toISOString(),
   }
   await db.putApplication(c.env, application)
-  return c.json({ updatedAt: application.updatedAt })
+  // The stage too: a card saved in a stage the board hides lands in the column that replaces it.
+  return c.json({ updatedAt: application.updatedAt, stage: application.stage })
 })
 
 app.delete('/api/applications/:id', async (c) => {

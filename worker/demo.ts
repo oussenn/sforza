@@ -157,10 +157,10 @@ const ID = '[A-Za-z0-9_-]{1,80}'
 /** Everything a sandbox may call; every other /api route answers 403 for it. */
 const DEMO_ROUTES: Record<string, RegExp[]> = {
   GET: [
-    /^\/api\/(resumes|library|search-profile|applications|board-columns|changes|ai\/status)$/,
+    /^\/api\/(resumes|library|search-profile|applications|board-columns|board|changes|ai\/status)$/,
     new RegExp(`^/api/resumes/${ID}$`),
   ],
-  PUT: [/^\/api\/(library|search-profile|board-columns)$/, new RegExp(`^/api/(resumes|applications)/${ID}$`)],
+  PUT: [/^\/api\/(library|search-profile|board-columns|board)$/, new RegExp(`^/api/(resumes|applications)/${ID}$`)],
   POST: [/^\/api\/(resumes|applications|applications\/import)$/, new RegExp(`^/api/resumes/${ID}/main$`)],
   DELETE: [new RegExp(`^/api/(resumes|applications)/${ID}$`)],
 }

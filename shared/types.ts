@@ -434,6 +434,17 @@ export type Stage = BuiltinStage | CustomStage
 export interface BoardColumn {
   id: CustomStage
   label: string
+  /** A column after Draft can take the drafts of one language (the card's cv_language) while Draft is hidden. */
+  lang?: Lang
+}
+
+/**
+ * The board of one account: the columns it added and the built-in ones it hides. A new account has neither, so it
+ * sees the six stages. A hidden stage needs a column of its own after it: cards saved in the hidden stage go there.
+ */
+export interface Board {
+  columns: BoardColumn[]
+  hidden: BuiltinStage[]
 }
 
 export const STAGE_LABELS: Record<BuiltinStage, string> = {

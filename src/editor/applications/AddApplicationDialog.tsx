@@ -21,7 +21,7 @@ const EMPTY = { url: '', title: '', company: '', location: '', logo: '', descrip
 export default function AddApplicationDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const list = useEditor((s) => s.list)
   const apps = useApplications((s) => s.items)
-  const stages = boardStages(useApplications((s) => s.columns))
+  const stages = boardStages(useApplications((s) => s.columns), useApplications((s) => s.hidden))
   const label = useStageLabel()
   const [job, setJob] = useState(EMPTY)
   const [stage, setStage] = useState<Stage>('saved')
