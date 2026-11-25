@@ -98,7 +98,7 @@ Light and dark are contrasts, and every theme has both. Pick a theme under Theme
 - **Space**: a twinkling starfield that shifts with the pointer, shooting stars and nebulae (a dawn sky in light); clicks scatter little stars.
 - **Your colours**: three colours of your own (page, primary, accent), turned into a light and a dark contrast.
 
-Motion effects can be switched off in the same window, and stay off when the system asks for reduced motion. The CV and letter pages keep their own colours in every theme.
+Motion effects can be switched off in the same window, and stay off when the system asks for reduced motion. They stay light on the machine: a few petals and stars at a time, the scenes behind the app drawn at 30 to 40 frames a second at no more than 1.5 times the screen resolution, the steady stars drawn once, nothing at all while the tab is hidden. The CV and letter pages keep their own colours in every theme.
 
 ![Sakura in light and dark, Terminal and Space](.github/readme/themes.jpg)
 

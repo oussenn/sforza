@@ -244,6 +244,8 @@
   width: auto;
   transform-origin: 50% 0;
   animation: sakura-sway 9s ease-in-out infinite alternate;
+  /* its own GPU layer: the sway (and the night glow) is not painted again every frame */
+  will-change: rotate;
 }
 /* The right 12 % of the picture was cut flat: it hangs past the window's edge. */
 .sakura-branch-right {
@@ -384,8 +386,15 @@
     var(--scene-1);
 }
 
+/* While a scene moves behind the top bar, a nearly solid bar costs far less than blurring every frame anew. */
+:root[data-motion='on']:is([data-look='sakura'], [data-look='space'], [data-look='terminal']) [data-topbar] {
+  backdrop-filter: none;
+  background: color-mix(in oklab, var(--background) 90%, transparent);
+}
+
 /* Motion effects off (or reduced motion): everything stands still. */
 :root[data-motion='off'] .sakura-branch,
 :root[data-motion='off'] [data-topbar] [aria-current='page'] > span::after {
   animation: none;
+  will-change: auto;
 }

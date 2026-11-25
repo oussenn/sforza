@@ -39,11 +39,11 @@ function SakuraScene({ dark, motion }: { dark: boolean; motion: boolean }) {
 
   useEffect(() => {
     if (!motion || !canvas.current) return
-    const field = new Field(canvas.current)
+    const field = new Field(canvas.current, { fps: 40, maxDpr: 1.5 })
     field.breeze = 16
     let alive = true
-    let next = 0.4
-    let gustIn = 8 + Math.random() * 8
+    let next = 0.8
+    let gustIn = 14 + Math.random() * 10
     // Where petals leave the branches: the flowered middle of each branch picture.
     const from = (img: HTMLImageElement | null, mirrored: boolean) => {
       if (!img || !img.offsetParent) return null
@@ -62,25 +62,25 @@ function SakuraScene({ dark, motion }: { dark: boolean; motion: boolean }) {
     field.ambient = (dt) => {
       next -= dt
       gustIn -= dt
-      // About one petal a second on a wide window, fewer on a phone.
+      // A petal every two or three seconds on a wide window, fewer on a phone; a small gust now and then.
       if (next <= 0) {
         drop()
-        next = (0.7 + Math.random() * 0.9) * Math.max(1, 1200 / Math.max(600, field.width))
+        next = (1.8 + Math.random() * 1.6) * Math.max(1, 1200 / Math.max(600, field.width))
       }
       if (gustIn <= 0) {
         field.gust()
-        drop(6 + Math.floor(Math.random() * 7))
-        gustIn = 10 + Math.random() * 10
+        drop(3 + Math.floor(Math.random() * 3))
+        gustIn = 16 + Math.random() * 12
       }
     }
     void petalSprites().then((s) => {
       if (!alive) return
       field.sprites = s
-      drop(3)
+      drop(2)
       field.resume()
     })
     const move = (e: PointerEvent) => field.movePointer(e.clientX, e.clientY)
-    const resize = () => field.resize()
+    const resize = debounce(() => field.resize())
     const vis = () => !document.hidden && field.resume()
     window.addEventListener('pointermove', move, { passive: true })
     window.addEventListener('resize', resize)
@@ -115,43 +115,80 @@ interface Star {
   speed: number
 }
 
-/** Stars for a window this size: about one per 5000 px², in three depths (near ones bigger and brighter). */
+/** Stars for a window this size: about one per 11000 px², in three depths (near ones bigger and brighter). */
 function makeStars(w: number, h: number, dark: boolean): Star[] {
-  const n = Math.round(((w * h) / 5000) * (dark ? 1 : 0.45))
-  return Array.from({ length: Math.min(n, 520) }, () => {
+  const n = Math.round(((w * h) / 11000) * (dark ? 1 : 0.5))
+  return Array.from({ length: Math.min(n, 220) }, () => {
     const depth = Math.random() < 0.7 ? 0.3 : Math.random() < 0.7 ? 0.65 : 1
     return { x: Math.random() * w, y: Math.random() * h, r: (0.4 + Math.random() * 0.9) * (0.6 + depth), depth, phase: Math.random() * 6.3, speed: 0.6 + Math.random() * 2.2 }
   })
+}
+
+/** The steady stars of each depth on its own transparent picture (drawn once per window size). */
+function starLayers(stars: Star[], w: number, h: number, dark: boolean) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
+  const color = dark ? '235 238 255' : '92 96 170'
+  return [0.3, 0.65, 1].map((depth) => {
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(w * dpr)
+    canvas.height = Math.round(h * dpr)
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(dpr, dpr)
+    ctx.fillStyle = `rgb(${color})`
+    stars.forEach((s, i) => {
+      if (s.depth !== depth || i % 6 === 0) return
+      ctx.globalAlpha = (dark ? 0.35 + 0.65 * depth : 0.18 + 0.3 * depth) * 0.8
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
+      ctx.fill()
+    })
+    return { canvas, depth }
+  })
+}
+
+/** Runs `fn` once the window has stopped changing size for a moment. */
+function debounce(fn: () => void, ms = 150) {
+  let t = 0
+  return () => {
+    clearTimeout(t)
+    t = window.setTimeout(fn, ms)
+  }
 }
 
 function AmbientCanvas({ kind, dark, motion }: { kind: 'space' | 'terminal'; dark: boolean; motion: boolean }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     if (!canvas.current) return
-    const field = new Field(canvas.current)
+    const field = new Field(canvas.current, { fps: 30, maxDpr: 1.5 })
     if (kind === 'space') {
       let stars = makeStars(field.width, field.height, dark)
       let size = `${field.width}x${field.height}`
+      let layers = starLayers(stars, field.width, field.height, dark)
       const meteors: { x: number; y: number; vx: number; vy: number; age: number }[] = []
-      let meteorIn = 3 + Math.random() * 5
+      let meteorIn = 6 + Math.random() * 6
       let lastT = 0
       const starColor = dark ? '235 238 255' : '92 96 170'
       field.scene = (ctx, w, h, t, pointer) => {
         if (`${w}x${h}` !== size) {
           stars = makeStars(w, h, dark)
+          layers = starLayers(stars, w, h, dark)
           size = `${w}x${h}`
         }
         const dt = Math.min(0.05, t - lastT)
         lastT = t
-        // Parallax: near stars move more with the pointer.
+        // Parallax: near stars move more with the pointer. The steady stars are three pictures, drawn once;
+        // only every sixth star twinkles on its own.
         const px = pointer.x > -1e3 ? (pointer.x / w - 0.5) * 18 : 0
         const py = pointer.y > -1e3 ? (pointer.y / h - 0.5) * 12 : 0
-        for (const s of stars) {
-          const tw = motion ? 0.55 + 0.45 * Math.sin(t * s.speed + s.phase) : 0.8
+        ctx.globalAlpha = 1
+        for (const l of layers) ctx.drawImage(l.canvas, -px * l.depth, -py * l.depth, w, h)
+        ctx.fillStyle = `rgb(${starColor})`
+        for (let i = 0; i < stars.length; i += 6) {
+          const s = stars[i]
+          const tw = motion ? 0.5 + 0.5 * Math.sin(t * s.speed + s.phase) : 0.8
           ctx.globalAlpha = (dark ? 0.35 + 0.65 * s.depth : 0.18 + 0.3 * s.depth) * tw
-          ctx.fillStyle = `rgb(${starColor})`
           ctx.beginPath()
-          ctx.arc(s.x - px * s.depth, s.y - py * s.depth, s.r, 0, Math.PI * 2)
+          ctx.arc(s.x - px * s.depth, s.y - py * s.depth, s.r * 1.15, 0, Math.PI * 2)
           ctx.fill()
         }
         if (!motion) return
@@ -159,7 +196,7 @@ function AmbientCanvas({ kind, dark, motion }: { kind: 'space' | 'terminal'; dar
         if (meteorIn <= 0) {
           const fromLeft = Math.random() < 0.5
           meteors.push({ x: fromLeft ? Math.random() * w * 0.5 : w * (0.5 + Math.random() * 0.5), y: Math.random() * h * 0.35, vx: (fromLeft ? 1 : -1) * (700 + Math.random() * 400), vy: 260 + Math.random() * 200, age: 0 })
-          meteorIn = 5 + Math.random() * 9
+          meteorIn = 10 + Math.random() * 12
         }
         for (let i = meteors.length - 1; i >= 0; i--) {
           const m = meteors[i]
@@ -193,10 +230,10 @@ function AmbientCanvas({ kind, dark, motion }: { kind: 'space' | 'terminal'; dar
       field.ambient = (dt, f) => {
         next -= dt
         if (next > 0) return
-        next = 0.5 + Math.random() * 0.9
+        next = 1.3 + Math.random() * 1.3
         const x = Math.round((Math.random() * f.width) / 18) * 18
         const vy = 35 + Math.random() * 60
-        const n = 6 + Math.floor(Math.random() * 8)
+        const n = 5 + Math.floor(Math.random() * 6)
         const base = dark ? 0.16 : 0.09
         for (let i = 0; i < n; i++) f.add({ x, y: -i * 17, vx: 0, vy, size: 13, mode: 'rain', life: (f.height + n * 17) / vy + 1, alpha: base * (1 - i / n) })
       }
@@ -208,10 +245,10 @@ function AmbientCanvas({ kind, dark, motion }: { kind: 'space' | 'terminal'; dar
       paint?.(...a)
       field.scene = undefined
     }
-    const resize = () => {
+    const resize = debounce(() => {
       if (!motion) field.scene = once
       field.resize()
-    }
+    })
     if (motion) {
       window.addEventListener('pointermove', move, { passive: true })
       document.addEventListener('visibilitychange', vis)

@@ -25,7 +25,7 @@ export function Effects() {
     let alive = true
     void sprites(look, resolved === 'dark').then((s) => alive && (field.sprites = s))
     const petals = look === 'sakura'
-    const count = (n: number) => (petals ? n : Math.round(n * 1.4))
+    const count = (n: number) => (petals ? n : Math.round(n * 1.2))
 
     const CLICKABLE = 'button, [role="button"], a[href], [role="menuitem"], [role="menuitemradio"], [role="tab"], [role="switch"], [role="option"], summary'
     const click = (e: MouseEvent) => {
@@ -35,10 +35,10 @@ export function Effects() {
       const keyboard = e.detail === 0 || (e.clientX === 0 && e.clientY === 0)
       const x = keyboard ? r.left + r.width / 2 : e.clientX
       const y = keyboard ? r.top + r.height / 2 : e.clientY
-      field.burst(x, y, count(8), petals ? 0.9 : 1)
+      field.burst(x, y, count(5), petals ? 0.85 : 1)
     }
 
-    // Sakura: entering a top bar button shakes two or three petals off its sprig (top right corner).
+    // Sakura: entering a top bar button shakes a petal or two off its sprig (top right corner).
     let hovered: Element | null = null
     const shaken = new WeakMap<Element, number>()
     const over = (e: PointerEvent) => {
@@ -48,10 +48,10 @@ export function Effects() {
       hovered = el
       if (!el) return
       const now = performance.now()
-      if (now - (shaken.get(el) ?? 0) < 900) return
+      if (now - (shaken.get(el) ?? 0) < 1500) return
       shaken.set(el, now)
       const r = el.getBoundingClientRect()
-      for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++)
+      for (let i = 0; i < 1 + Math.floor(Math.random() * 2); i++)
         field.add({ x: r.right - 4 + Math.random() * 6, y: r.top + 2, vx: -20 + Math.random() * 50, vy: 20 + Math.random() * 30, size: 9 + Math.random() * 6, life: 2.4 + Math.random() * 1.2 })
     }
 
@@ -64,7 +64,7 @@ export function Effects() {
       const r = card.getBoundingClientRect()
       drag = { w: r.width, h: r.height, ox: e.clientX - r.left, oy: e.clientY - r.top, x: e.clientX, y: e.clientY, travel: 0 }
       dropStage = null
-      field.fromRect(r, count(10))
+      field.fromRect(r, count(5))
     }
     const dragOver = (e: DragEvent) => {
       if (!drag || (e.clientX === 0 && e.clientY === 0)) return
@@ -73,10 +73,10 @@ export function Effects() {
       drag.travel += Math.hypot(dx, dy)
       drag.x = e.clientX
       drag.y = e.clientY
-      // One petal per ~26 px moved, from behind the edges of the card's picture, carried back the way it came.
+      // One petal per ~48 px moved, from behind the edges of the card's picture, carried back the way it came.
       const rect = { left: e.clientX - drag.ox, top: e.clientY - drag.oy, width: drag.w, height: drag.h }
-      while (drag.travel > 26) {
-        drag.travel -= 26
+      while (drag.travel > 48) {
+        drag.travel -= 48
         field.fromRect(rect, 1, { x: -dx * 1.6, y: -dy * 1.6 })
       }
     }
@@ -92,12 +92,12 @@ export function Effects() {
       const x = e.clientX || d.x
       const y = e.clientY || d.y
       const rect = { left: x - d.ox, top: y - d.oy, width: d.w, height: d.h }
-      field.fromRect(rect, count(14), { x: 0, y: -40 })
+      field.fromRect(rect, count(7), { x: 0, y: -40 })
       const stage = baseStage(dropStage as Stage)
       if (stage === 'offer' || stage === 'interview') {
         // A shower over the column it landed in: more for an offer.
         const col = document.querySelector(`[data-stage="${CSS.escape(dropStage)}"]`)?.getBoundingClientRect()
-        const n = count(stage === 'offer' ? 46 : 18)
+        const n = count(stage === 'offer' ? 20 : 8)
         for (let i = 0; i < n; i++) {
           const left = col ? col.left : x - 150
           const width = col ? col.width : 300
@@ -107,7 +107,11 @@ export function Effects() {
     }
 
     const move = (e: PointerEvent) => field.movePointer(e.clientX, e.clientY)
-    const resize = () => field.resize()
+    let resizing = 0
+    const resize = () => {
+      clearTimeout(resizing)
+      resizing = window.setTimeout(() => field.resize(), 150)
+    }
     const vis = () => !document.hidden && field.resume()
     document.addEventListener('click', click, true)
     document.addEventListener('pointerover', over, true)
@@ -120,6 +124,7 @@ export function Effects() {
     document.addEventListener('visibilitychange', vis)
     return () => {
       alive = false
+      clearTimeout(resizing)
       field.stop()
       document.removeEventListener('click', click, true)
       document.removeEventListener('pointerover', over, true)

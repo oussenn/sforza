@@ -10,7 +10,7 @@
  */
 
 export type Sprite =
-  | { kind: 'image'; img: HTMLImageElement; ratio: number }
+  | { kind: 'image'; img: CanvasImageSource; ratio: number }
   | { kind: 'glyph'; chars: string; color: string; font: string }
   | { kind: 'star'; color: string }
   | { kind: 'dot'; color: string }
@@ -53,7 +53,8 @@ export interface Spawn {
 }
 
 const G = 190
-const MAX = 420
+/** Particles alive at once in one field: enough for a shower, little for the GPU. */
+const MAX = 160
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a)
 
@@ -80,11 +81,19 @@ export class Field {
   /** called every frame before the physics, to spawn ambient particles */
   ambient?: (dt: number, field: Field) => void
   /** at most this many particles resting at the bottom */
-  maxResting = 36
+  maxResting = 14
+  /** frames per second at most: the scenes behind the app need fewer than the bursts in front */
+  private frameMs: number
+  private maxDpr: number
+  private lastDraw = 0
+  private font = ''
+  private stopped = false
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, { fps = 60, maxDpr = 2 }: { fps?: number; maxDpr?: number } = {}) {
     this.canvas = canvas
-    this.ctx = canvas.getContext('2d')!
+    this.ctx = canvas.getContext('2d', { alpha: true, desynchronized: true })!
+    this.frameMs = 1000 / fps
+    this.maxDpr = maxDpr
     this.resize()
   }
 
@@ -99,7 +108,7 @@ export class Field {
   }
 
   resize() {
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2)
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr)
     this.w = window.innerWidth
     this.h = window.innerHeight
     this.canvas.width = Math.round(this.w * this.dpr)
@@ -185,12 +194,14 @@ export class Field {
   }
 
   private wake() {
-    if (this.raf || document.hidden) return
+    if (this.raf || this.stopped || document.hidden) return
     this.last = performance.now()
     this.raf = requestAnimationFrame(this.frame)
   }
 
+  /** For good: the canvas is going away. */
   stop() {
+    this.stopped = true
     cancelAnimationFrame(this.raf)
     this.raf = 0
   }
@@ -198,6 +209,12 @@ export class Field {
   /** The loop runs while something moves or a scene or spawner wants frames. */
   private frame = (now: number) => {
     this.raf = 0
+    // Below the frame budget: wait for the next display frame without any work.
+    if (now - this.lastDraw < this.frameMs - 2) {
+      this.raf = requestAnimationFrame(this.frame)
+      return
+    }
+    this.lastDraw = now
     const dt = Math.min(0.05, (now - this.last) / 1000)
     this.last = now
     this.time += dt
@@ -286,6 +303,7 @@ export class Field {
     const { ctx, dpr } = this
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, this.w, this.h)
+    this.font = ctx.font
     this.scene?.(ctx, this.w, this.h, this.time, this.pointer)
     for (const q of this.list) {
       // Fade in over 0.25 s, out over the last quarter of the life (a resting petal over its last 2 s).
@@ -309,7 +327,8 @@ export class Field {
       } else if (s.kind === 'glyph') {
         ctx.setTransform(dpr, 0, 0, dpr, dpr * q.x, dpr * q.y)
         ctx.fillStyle = s.color
-        ctx.font = `${Math.round(q.size)}px ${s.font}`
+        const font = `${Math.round(q.size)}px ${s.font}`
+        if (font !== this.font) ctx.font = this.font = font
         ctx.fillText(q.ch ?? '0', 0, 0)
       } else if (s.kind === 'star') {
         const r = q.size * 0.42 * (1 - 0.35 * (q.age / q.life))
@@ -345,7 +364,14 @@ export function petalSprites(): Promise<Sprite[]> {
         new Promise<Sprite | null>((resolve) => {
           const img = new Image()
           img.decoding = 'async'
-          img.onload = () => resolve({ kind: 'image', img, ratio: img.naturalHeight / img.naturalWidth })
+          img.onload = () => {
+            const ratio = img.naturalHeight / img.naturalWidth
+            // Drawn at 10-26 px: a 56 px bitmap (sharp at 2x) is far cheaper to draw every frame than the 112 px photo.
+            if (typeof createImageBitmap !== 'function') return resolve({ kind: 'image', img, ratio })
+            createImageBitmap(img, { resizeWidth: 56, resizeHeight: Math.round(56 * ratio), resizeQuality: 'high' })
+              .then((bitmap) => resolve({ kind: 'image', img: bitmap, ratio }))
+              .catch(() => resolve({ kind: 'image', img, ratio }))
+          }
           img.onerror = () => resolve(null)
           img.src = `/themes/sakura/petal-${i}.webp`
         }),
