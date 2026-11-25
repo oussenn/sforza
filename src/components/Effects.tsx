@@ -3,13 +3,14 @@ import { baseStage } from '@shared/utils'
 import type { Stage } from '@shared/types'
 import { Field, MONO, petalSprites, type Sprite } from '@/lib/fx'
 import { useAppearance, type Look } from '@/lib/theme'
+import type { CardDragDetail } from '@/editor/applications/touchDrag'
 
 /**
  * The themes' motion effects in front of the app (a canvas that takes no clicks):
  *  - a click on a button, link, tab or menu item bursts from it: petals (sakura), glyphs (terminal), little stars
  *    (space), dots in the palette's colours (custom);
  *  - sakura: hovering a button of the top bar shakes a few petals off the sprig that blooms on its corner;
- *  - a board card being dragged sheds petals (stars, glyphs) from behind it, in the direction it came from, and
+ *  - a board card being dragged (with the mouse or a finger) sheds petals (stars, glyphs) from behind it, in the direction it came from, and
  *    sends a puff from under it where it lands; a card dropped on Offer brings a shower over its column.
  * The standard theme has none of it, and nothing runs with motion effects off or reduced motion asked for.
  */
@@ -58,23 +59,29 @@ export function Effects() {
     // A dragged board card: where it was grabbed, how far it moved since the last petal.
     let drag: { w: number; h: number; ox: number; oy: number; x: number; y: number; travel: number } | null = null
     let dropStage: string | null = null
-    const dragStart = (e: DragEvent) => {
-      const card = (e.target as Element | null)?.closest?.('[data-card]')
-      if (!card) return
+    const lift = (card: Element, cx: number, cy: number) => {
       const r = card.getBoundingClientRect()
-      drag = { w: r.width, h: r.height, ox: e.clientX - r.left, oy: e.clientY - r.top, x: e.clientX, y: e.clientY, travel: 0 }
+      drag = { w: r.width, h: r.height, ox: cx - r.left, oy: cy - r.top, x: cx, y: cy, travel: 0 }
       dropStage = null
       field.fromRect(r, count(5))
     }
+    const dragStart = (e: DragEvent) => {
+      const card = (e.target as Element | null)?.closest?.('[data-card]')
+      if (card) lift(card, e.clientX, e.clientY)
+    }
     const dragOver = (e: DragEvent) => {
       if (!drag || (e.clientX === 0 && e.clientY === 0)) return
-      const dx = e.clientX - drag.x
-      const dy = e.clientY - drag.y
+      trail(e.clientX, e.clientY)
+    }
+    const trail = (cx: number, cy: number) => {
+      if (!drag) return
+      const dx = cx - drag.x
+      const dy = cy - drag.y
       drag.travel += Math.hypot(dx, dy)
-      drag.x = e.clientX
-      drag.y = e.clientY
+      drag.x = cx
+      drag.y = cy
       // One petal per ~48 px moved, from behind the edges of the card's picture, carried back the way it came.
-      const rect = { left: e.clientX - drag.ox, top: e.clientY - drag.oy, width: drag.w, height: drag.h }
+      const rect = { left: cx - drag.ox, top: cy - drag.oy, width: drag.w, height: drag.h }
       while (drag.travel > 48) {
         drag.travel -= 48
         field.fromRect(rect, 1, { x: -dx * 1.6, y: -dy * 1.6 })
@@ -84,13 +91,14 @@ export function Effects() {
       if (!drag) return
       dropStage = (e.target as Element | null)?.closest?.('[data-stage]')?.getAttribute('data-stage') ?? null
     }
-    const dragEnd = (e: DragEvent) => {
+    const dragEnd = (e: DragEvent) => land(e.clientX, e.clientY)
+    const land = (cx: number, cy: number) => {
       if (!drag) return
       const d = drag
       drag = null
       if (!dropStage) return
-      const x = e.clientX || d.x
-      const y = e.clientY || d.y
+      const x = cx || d.x
+      const y = cy || d.y
       const rect = { left: x - d.ox, top: y - d.oy, width: d.w, height: d.h }
       field.fromRect(rect, count(7), { x: 0, y: -40 })
       const stage = baseStage(dropStage as Stage)
@@ -103,6 +111,17 @@ export function Effects() {
           const width = col ? col.width : 300
           field.add({ x: left + Math.random() * width, y: -10 - Math.random() * 160, vx: -30 + Math.random() * 60, vy: 40 + Math.random() * 60, life: 4.5 + Math.random() * 3 })
         }
+      }
+    }
+
+    // A card moved with a finger (touchDrag.ts).
+    const cardDrag = (e: Event) => {
+      const d = (e as CustomEvent<CardDragDetail>).detail
+      if (d.phase === 'start' && d.card) lift(d.card, d.x, d.y)
+      else if (d.phase === 'move') trail(d.x, d.y)
+      else if (d.phase === 'end') {
+        dropStage = d.stage ?? null
+        land(d.x, d.y)
       }
     }
 
@@ -120,6 +139,7 @@ export function Effects() {
     document.addEventListener('drop', drop, true)
     document.addEventListener('dragend', dragEnd, true)
     window.addEventListener('pointermove', move, { passive: true })
+    window.addEventListener('carddrag', cardDrag)
     window.addEventListener('resize', resize)
     document.addEventListener('visibilitychange', vis)
     return () => {
@@ -133,6 +153,7 @@ export function Effects() {
       document.removeEventListener('drop', drop, true)
       document.removeEventListener('dragend', dragEnd, true)
       window.removeEventListener('pointermove', move)
+      window.removeEventListener('carddrag', cardDrag)
       window.removeEventListener('resize', resize)
       document.removeEventListener('visibilitychange', vis)
     }

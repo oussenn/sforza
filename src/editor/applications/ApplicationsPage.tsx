@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState, type DragEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type TouchEvent } from 'react'
 import { ArrowUpRight, CalendarClock, Download, Ellipsis, Eye, EyeOff, FileText, Import, Languages, Loader2, Mail, MapPin, Pencil, Plus, Search, Send, ShieldCheck, SquareKanban, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Application, BoardColumn, BuiltinStage, Lang, ResumeMeta, Stage } from '@shared/types'
@@ -27,6 +27,7 @@ import AddColumnDialog from './AddColumnDialog'
 import ApplicationSheet from './ApplicationSheet'
 import { daysUntil, shortDate, stageDot, useStageLabel } from './stages'
 import { byOrder, latestAiChecks, openCvIn, openLetter, useApplications } from './store'
+import { startTouchDrag, touchDragBusy } from './touchDrag'
 
 const EMPTY_HINT: Record<BuiltinStage, string> = {
   saved: 'Jobs to look at later',
@@ -193,18 +194,52 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
     toast.success(`${STAGE_LABELS[stage]} is hidden. Its cards are in the columns after it.`)
   }
 
+  /** The card a dragged card would land above at height y of a column; null = the end of the column. */
+  const beforeIn = (column: Element, y: number, id: string) =>
+    [...column.querySelectorAll<HTMLElement>('[data-card]')]
+      .filter((el) => el.dataset.card !== id)
+      .find((el) => {
+        const r = el.getBoundingClientRect()
+        return y < r.top + r.height / 2
+      })?.dataset.card ?? null
+
   const dragOver = (stage: Stage) => (e: DragEvent<HTMLElement>) => {
     if (!dragId) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
-    const cards = [...e.currentTarget.querySelectorAll<HTMLElement>('[data-card]')].filter((el) => el.dataset.card !== dragId)
-    const below = cards.find((el) => {
-      const r = el.getBoundingClientRect()
-      return e.clientY < r.top + r.height / 2
-    })
-    const beforeId = below?.dataset.card ?? null
+    const beforeId = beforeIn(e.currentTarget, e.clientY, dragId)
     if (target?.stage !== stage || target.beforeId !== beforeId) setTarget({ stage, beforeId })
   }
+
+  // A finger dragging a card (touchDrag.ts): the same drop line, found under the finger.
+  const scroller = useRef<HTMLDivElement>(null)
+  const touch = useRef<{ id: string; target: DropTarget | null }>({ id: '', target: null })
+  const touchStart = (e: TouchEvent<HTMLElement>, id: string) =>
+    startTouchDrag(e, id, scroller.current, {
+      start: (cardId) => {
+        touch.current = { id: cardId, target: null }
+        setDragId(cardId)
+      },
+      over: (x, y) => {
+        const column = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-stage]')
+        const next = column ? { stage: column.dataset.stage as Stage, beforeId: beforeIn(column, y, touch.current.id) } : null
+        const prev = touch.current.target
+        if (prev?.stage === next?.stage && prev?.beforeId === next?.beforeId) return
+        touch.current.target = next
+        setTarget(next)
+      },
+      drop: () => {
+        const { id: cardId, target: at } = touch.current
+        if (at) move(cardId, at.stage, at.beforeId)
+        setDragId(null)
+        setTarget(null)
+        return at?.stage ?? null
+      },
+      cancel: () => {
+        setDragId(null)
+        setTarget(null)
+      },
+    })
 
   const drop = (stage: Stage) => (e: DragEvent<HTMLElement>) => {
     e.preventDefault()
@@ -215,7 +250,7 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
   }
 
   return (
-    <div className="min-h-0 flex-1 snap-x snap-mandatory overflow-auto scroll-smooth sm:snap-none">
+    <div ref={scroller} className="min-h-0 flex-1 snap-x snap-mandatory overflow-auto scroll-smooth sm:snap-none">
       <div className="mx-auto flex w-max max-w-[1600px] gap-3 px-4 pb-10 sm:px-6 xl:w-full">
         {stages.map((stage) => {
           const cards = items.filter((a) => placed(a) === stage).sort(byOrder)
@@ -288,7 +323,10 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
                       app={app}
                       cv={app.resumeId ? cvs.get(app.resumeId) : undefined}
                       dragging={dragId === app.id}
+                      onTouchStart={(e) => touchStart(e, app.id)}
                       onDragStart={(e) => {
+                        // A finger already moves it (touchDrag.ts); the phone's own long-press drag stays out.
+                        if (touchDragBusy()) return e.preventDefault()
                         e.dataTransfer.setData('text/plain', app.id)
                         e.dataTransfer.effectAllowed = 'move'
                         setDragId(app.id)
@@ -361,12 +399,14 @@ function ApplicationCard({
   app,
   cv,
   dragging,
+  onTouchStart,
   onDragStart,
   onDragEnd,
 }: {
   app: Application
   cv: ResumeMeta | undefined
   dragging: boolean
+  onTouchStart: (e: TouchEvent<HTMLElement>) => void
   onDragStart: (e: DragEvent<HTMLElement>) => void
   onDragEnd: () => void
 }) {
@@ -384,16 +424,18 @@ function ApplicationCard({
     <article
       draggable
       data-card={app.id}
+      onTouchStart={onTouchStart}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        'group bg-card ring-hairline hover:ring-foreground/15 relative cursor-grab rounded-xl p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 transition active:cursor-grabbing',
+        'group bg-card ring-hairline hover:ring-foreground/15 relative cursor-grab rounded-xl p-3 select-none [-webkit-touch-callout:none] shadow-[0_1px_2px_rgba(0,0,0,0.04)] ring-1 transition active:cursor-grabbing',
         dragging && 'opacity-40',
         baseStage(app.stage) === 'rejected' && 'opacity-75',
       )}
     >
       <button
         type="button"
+        data-card-open
         onClick={() => navigate({ page: 'applications', appId: app.id })}
         className="absolute inset-0 rounded-xl"
         aria-label={`Open ${app.title || 'application'}`}

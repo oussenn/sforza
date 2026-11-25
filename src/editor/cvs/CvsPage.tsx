@@ -6,8 +6,10 @@ import { LANG_LABELS, LANGS } from '@shared/types'
 import { isStale } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { ScoreRing } from '@/components/ScoreRing'
+import { PreviewSheet } from '@/components/PreviewSheet'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useWide } from '@/lib/useMedia'
 import { cn } from '@/lib/utils'
 import { ResumePreview } from '@/resume/ResumePreview'
 import type { DocProps } from '@/resume/ResumeDocument'
@@ -50,6 +52,7 @@ export default function CvsPage({ cv, preview }: { cv: Resume | null; preview: D
   const shown = q ? sorted.filter((m) => `${m.name} ${m.job?.title ?? ''} ${m.job?.company ?? ''}`.toLowerCase().includes(q)) : sorted
   const master = list.find((m) => m.kind === 'master') ?? list[0]
   const app = cv ? applicationFor(apps, cv.id) : undefined
+  const wide = useWide()
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -92,7 +95,7 @@ export default function CvsPage({ cv, preview }: { cv: Resume | null; preview: D
 
       {cv ? (
         <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 lg:flex-row lg:overflow-hidden lg:p-6">
-          <section className="flex min-w-0 flex-col gap-3 max-lg:pb-20 lg:w-[30rem] lg:shrink-0 lg:overflow-y-auto lg:pr-1">
+          <section className="flex min-w-0 flex-col gap-3 max-lg:pb-44 lg:w-[30rem] lg:shrink-0 lg:overflow-y-auto lg:pr-1">
             <header className="flex items-start gap-2">
               <SidebarToggle className="mt-0.5 -ml-1.5" />
               <div className="min-w-0 flex-1">
@@ -132,13 +135,21 @@ export default function CvsPage({ cv, preview }: { cv: Resume | null; preview: D
             {tab === 'customize' && <CustomizePanel />}
             {tab === 'ai' && <AiPanel />}
           </section>
-          <section className="hidden min-w-0 flex-1 lg:block lg:overflow-y-auto">
-            {preview && (
-              <div className="mx-auto max-w-[720px]">
+          {wide ? (
+            <section className="min-w-0 flex-1 overflow-y-auto">
+              {preview && (
+                <div className="mx-auto max-w-[720px]">
+                  <ResumePreview {...preview} padding={0} />
+                </div>
+              )}
+            </section>
+          ) : (
+            preview && (
+              <PreviewSheet title={cv.name} subtitle={subtitleOf(cv)}>
                 <ResumePreview {...preview} padding={0} />
-              </div>
-            )}
-          </section>
+              </PreviewSheet>
+            )
+          )}
         </div>
       ) : !list.length ? (
         <div className="text-muted-foreground relative grid flex-1 place-items-center p-8 text-sm">

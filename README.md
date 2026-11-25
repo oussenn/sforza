@@ -54,7 +54,7 @@ Each CV can have all three.
 
 ## Board
 
-Your own columns between the stages, for your account only. Drag a card to move it. A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages. Flags in column names (Drafts 🇬🇧, Drafts 🇩🇪) show in every browser, also Chrome, Edge and Brave on Windows, which have no flag emoji of their own.
+Your own columns between the stages, for your account only. Drag a card to move it; on a phone or tablet, hold it until it lifts, then drag it (near the edge the board scrolls along). A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages. Flags in column names (Drafts 🇬🇧, Drafts 🇩🇪) show in every browser, also Chrome, Edge and Brave on Windows, which have no flag emoji of their own.
 
 ![Cards dragged between board columns](.github/readme/board.gif)
 
@@ -121,7 +121,7 @@ Motion effects can be switched off in the same window, and stay off when the sys
 - MCP server that can do everything the editor can
 - Themes: Standard, Sakura, Terminal, Space and your own three colours, each in light and dark, with motion effects (falling petals, stars, glyphs, bursts on clicks and moved cards) that can be switched off
 - Command palette (Ctrl+K)
-- Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, CV preview on a button
+- Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, cards moved with a finger, and the CV and letter pages in a bottom sheet that peeks at the top of the page and opens with a drag or a tap
 - Accounts made in the app: invitation links, password change, locking, separate data
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
 - Version number at the bottom right of every page: 0.19, then 0.20, 0.21 and so on, with one more digit for a small change (0.191, 0.201)

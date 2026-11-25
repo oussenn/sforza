@@ -5,10 +5,12 @@ import type { Application, Lang } from '@shared/types'
 import { LANG_LABELS, LANGS } from '@shared/types'
 import { ENCLOSURES, LETTER_FRAME } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
+import { PreviewSheet } from '@/components/PreviewSheet'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useWide } from '@/lib/useMedia'
 import { cn } from '@/lib/utils'
 import { ListSidebar, SidebarRow, SidebarToggle } from '../sidebar'
 import LetterSection, { LetterSheet, SUBJECT, initialLetterLang } from '../applications/LetterSection'
@@ -60,6 +62,7 @@ export default function LettersPage({ appId }: { appId: string | null }) {
   }, [loaded, appId, items])
 
   const letter = current?.letters?.[lang]
+  const wide = useWide()
 
   // The top bar shows the CV and Download buttons of the open letter.
   useEffect(() => {
@@ -106,7 +109,7 @@ export default function LettersPage({ appId }: { appId: string | null }) {
 
       {current ? (
         <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 lg:flex-row lg:overflow-hidden lg:p-6">
-          <section className="flex min-w-0 flex-col gap-3 lg:w-[30rem] lg:shrink-0 lg:overflow-y-auto lg:pr-1">
+          <section className="flex min-w-0 flex-col gap-3 max-lg:pb-44 lg:w-[30rem] lg:shrink-0 lg:overflow-y-auto lg:pr-1">
             <header className="flex items-start gap-2">
               <SidebarToggle className="-ml-1.5 mt-0.5" />
               <div className="min-w-0 flex-1">
@@ -138,17 +141,25 @@ export default function LettersPage({ appId }: { appId: string | null }) {
               <LetterSection key={current.id} app={current} lang={lang} onLangChange={setLang} inlinePreview />
             )}
           </section>
-          <section className="min-w-0 flex-1 lg:overflow-y-auto">
-            {letter ? (
-              <div className="mx-auto max-w-[720px]">
+          {wide ? (
+            <section className="min-w-0 flex-1 overflow-y-auto">
+              {letter ? (
+                <div className="mx-auto max-w-[720px]">
+                  <LetterSheet app={current} letter={letter} lang={lang} />
+                </div>
+              ) : (
+                <div className="text-muted-foreground grid h-full min-h-48 place-items-center rounded-xl border border-dashed text-sm">
+                  The {LANG_LABELS[lang].name} letter appears here once it exists.
+                </div>
+              )}
+            </section>
+          ) : (
+            letter && (
+              <PreviewSheet title={current.company || 'No company'} subtitle={`${LANG_LABELS[lang].name} letter · ${current.title}`}>
                 <LetterSheet app={current} letter={letter} lang={lang} />
-              </div>
-            ) : (
-              <div className="text-muted-foreground grid h-full min-h-48 place-items-center rounded-xl border border-dashed text-sm">
-                The {LANG_LABELS[lang].name} letter appears here once it exists.
-              </div>
-            )}
-          </section>
+              </PreviewSheet>
+            )
+          )}
         </div>
       ) : (
         <div className="text-muted-foreground relative grid flex-1 place-items-center p-8 text-sm">

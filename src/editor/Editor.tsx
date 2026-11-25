@@ -1,11 +1,8 @@
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Eye, X } from 'lucide-react'
+import { useDeferredValue, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { pdfFileName } from '@shared/utils'
-import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
 import { PrintPortal } from '@/resume/PrintPortal'
-import { ResumePreview } from '@/resume/ResumePreview'
 import type { DocProps } from '@/resume/ResumeDocument'
 import ApplicationsPage from './applications/ApplicationsPage'
 import { useApplications } from './applications/store'
@@ -33,7 +30,6 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
   const resume = useEditor((s) => s.resume)
   const list = useEditor((s) => s.list)
   const lang = useEditor((s) => s.lang)
-  const [mobilePreview, setMobilePreview] = useState(false)
   useSidebarShortcut(route.page === 'cv' || route.page === 'cvs' || route.page === 'letters')
 
   useEffect(() => {
@@ -119,20 +115,6 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
       {route.page === 'applications' && <ApplicationsPage appId={route.appId} />}
       {route.page === 'letters' && <LettersPage appId={route.appId} />}
       {(route.page === 'cv' || route.page === 'cvs') && <CvsPage cv={cv} preview={previewDoc} />}
-
-      {cv && (
-        <Button className="fixed right-4 bottom-4 z-20 rounded-full shadow-lg lg:hidden" onClick={() => setMobilePreview(true)}>
-          <Eye /> Preview
-        </Button>
-      )}
-      {cv && mobilePreview && previewDoc && (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-[var(--preview-canvas)] py-4 lg:hidden">
-          <Button size="icon" variant="secondary" className="fixed top-3 right-3 z-40 rounded-full shadow" onClick={() => setMobilePreview(false)}>
-            <X />
-          </Button>
-          <ResumePreview {...previewDoc} padding={10} />
-        </div>
-      )}
 
       <PrintPortal doc={doc} fileName={fileName} />
       <CommandPalette onLogout={onLogout} />
