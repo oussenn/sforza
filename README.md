@@ -28,6 +28,12 @@ Each CV and letter keeps its latest detector score, measured against your own ta
 
 ![AI-text checks on an application](.github/readme/ai-check.gif)
 
+## My CVs and My Cover Letters
+
+Both pages show the list, the editor and the A4 page side by side. Ctrl+B (⌘B on a Mac) hides the list and brings it back.
+
+![My CVs and My Cover Letters, the list hidden and shown with Ctrl+B](.github/readme/list.gif)
+
 ## Cover letters
 
 Five designs. Fonts, colours and spacing follow the CV until you change them.
@@ -87,6 +93,7 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
 ## Features
 
 - CV editor, 9 templates, A4 preview, PDF export
+- My CVs and My Cover Letters in one layout: the list, the editor and the A4 page. Ctrl+B (⌘B on a Mac) hides the list, also when the browser or the system has its own use for the keys
 - English, French and German versions of each CV
 - Knowledge base of projects, skills and facts
 - Job reader for LinkedIn, Greenhouse, Lever, Ashby, SmartRecruiters, Workday and most career pages
@@ -99,12 +106,12 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
-- Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, CV preview on a button
+- Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
 - Version number at the bottom right of every page: 0.19, then 0.20, 0.21 and so on, with one more digit for a small change (0.191, 0.201)
 
-![My CVs: the master CV and a tailored one with its match score](.github/readme/my-cvs.png)
+![My CVs: the list, a tailored CV with its match score, and its A4 page](.github/readme/my-cvs.png)
 
 ## Tech stack
 

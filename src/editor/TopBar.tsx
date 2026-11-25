@@ -12,9 +12,7 @@ import {
   Monitor,
   Moon,
   MoreVertical,
-  Paintbrush,
   PencilLine,
-  Sparkles,
   SquareKanban,
   Star,
   Sun,
@@ -24,7 +22,6 @@ import {
 import { toast } from 'sonner'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
 import { LANG_LABELS, LANGS, type Application, type Lang } from '@shared/types'
-import { isStale } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -38,29 +35,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
 import { useTheme, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { downloadLetterPdf } from '@/resume/download'
 import { FaIcon } from '@/templates/shared'
 import { AccountDialog } from './AccountDialog'
-import { logoFor, openCvIn, useApplications } from './applications/store'
+import { openCvIn, useApplications } from './applications/store'
 import { ConfirmDialog, PromptDialog } from './dialogs'
 import { PANELS } from './profile/ProfilePage'
-import { navigate, openCv, setCvTab, useRoute, type CvTab, type PanelPage } from './router'
+import { navigate, openCv, useRoute, type PanelPage } from './router'
 import { useEditor } from './store'
 import { useDownload } from './useDownload'
 
 /** The public repository of this app. */
 const SOURCE_URL = 'https://github.com/oussenn/sforza'
-
-const TABS: { id: CvTab; label: string; icon: typeof FileText }[] = [
-  { id: 'content', label: 'Content', icon: FileText },
-  { id: 'customize', label: 'Customize', icon: Paintbrush },
-  { id: 'ai', label: 'AI Tools', icon: Sparkles },
-]
 
 const THEMES: { id: ThemeChoice; label: string; icon: typeof Sun }[] = [
   { id: 'light', label: 'Light', icon: Sun },
@@ -73,17 +62,14 @@ function NavButton({
   icon: Icon,
   label,
   onClick,
-  compact,
   tools,
 }: {
   active: boolean
   icon: typeof FileText
   label: string
   onClick: () => void
-  /** Icon only until very wide screens (1800 px): the CV tabs and tools share the bar. Otherwise labels from 1280 px. */
-  compact: boolean
-  /** The page's own tools share the bar too (the letters page): labels from 1536 px. */
-  tools?: boolean
+  /** The page's own buttons share the bar (My CVs, My Cover Letters): labels from 1536 px. Otherwise from 1280 px. */
+  tools: boolean
 }) {
   return (
     <button
@@ -98,7 +84,7 @@ function NavButton({
       )}
     >
       <Icon className="size-4" />
-      <span className={compact ? 'hidden min-[1800px]:inline' : tools ? 'hidden 2xl:inline' : 'hidden xl:inline'}>{label}</span>
+      <span className={tools ? 'hidden 2xl:inline' : 'hidden xl:inline'}>{label}</span>
     </button>
   )
 }
@@ -106,9 +92,7 @@ function NavButton({
 export default function TopBar({ onLogout, user, demo = false }: { onLogout: () => void; user: string | null; demo?: boolean }) {
   const route = useRoute()
   const resume = useEditor((s) => s.resume)
-  const list = useEditor((s) => s.list)
   const lang = useEditor((s) => s.lang)
-  const setLang = useEditor((s) => s.setLang)
   const saveState = useEditor((s) => s.saveState)
   const apps = useApplications((s) => s.items)
   const { theme, setTheme } = useTheme()
@@ -120,9 +104,8 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
   // Controls for one CV only show while that CV is open.
   const cv = route.page === 'cv' && resume?.id === route.id ? resume : null
   const inCv = route.page === 'cv'
-  const onLetters = route.page === 'letters'
-  const masters = list.filter((m) => m.kind === 'master')
-  const tailored = list.filter((m) => m.kind === 'tailored')
+  // Pages whose own buttons share the bar.
+  const tools = inCv || route.page === 'cvs' || route.page === 'letters'
 
   const logout = async () => {
     await useEditor.getState().flush()
@@ -145,21 +128,21 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
       </button>
       <nav className="flex items-center gap-0.5 sm:gap-1">
         <NavButton
-          compact={inCv} tools={onLetters}
+          tools={tools}
           active={route.page === 'applications'}
           icon={SquareKanban}
           label="Applications"
           onClick={() => navigate({ page: 'applications', appId: null })}
         />
-        <NavButton compact={inCv} tools={onLetters} active={route.page === 'cvs'} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
-        <NavButton compact={inCv} tools={onLetters} active={route.page === 'letters'} icon={Mail} label="My Cover Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
+        <NavButton tools={tools} active={route.page === 'cvs' || inCv} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
+        <NavButton tools={tools} active={route.page === 'letters'} icon={Mail} label="My Cover Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
       </nav>
       <div className="bg-border mx-0.5 h-6 w-px sm:mx-1.5" aria-hidden />
       <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="About you">
         {(Object.keys(PANELS) as PanelPage[]).map((p) => (
           <NavButton
             key={p}
-            compact={inCv} tools={onLetters}
+            tools={tools}
             active={route.page === p}
             icon={PANELS[p].icon}
             label={PANELS[p].label}
@@ -168,94 +151,10 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
         ))}
       </nav>
 
-      {route.page === 'cv' && (
-        <>
-          <div className="bg-border mx-1.5 h-6 w-px max-lg:hidden" />
-          <nav className="flex items-center gap-0.5 max-lg:order-2 sm:gap-1" aria-label="CV">
-            {TABS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setCvTab(id)}
-                aria-current={route.tab === id ? 'page' : undefined}
-                className={cn(
-                  'text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:px-3.5',
-                  route.tab === id && 'bg-muted text-foreground',
-                )}
-              >
-                <Icon className="size-4" />
-                <span className="hidden xl:inline">{label}</span>
-              </button>
-            ))}
-          </nav>
-        </>
-      )}
 
       <div className="ml-auto flex items-center gap-1 max-lg:contents sm:gap-2">
         <div className="flex items-center gap-1 max-lg:order-2 max-lg:ml-auto sm:gap-2">
         {cv && <SaveIndicator state={saveState} />}
-
-        {cv && (
-          <div className="bg-muted hidden items-center rounded-lg p-0.5 sm:flex">
-            {LANGS.map((l) => {
-              const has = !!cv.content[l]
-              const stale = isStale(cv, l)
-              return (
-                <Tooltip key={l}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setLang(l)}
-                      className={cn(
-                        'text-muted-foreground hover:text-foreground relative h-8 rounded-md px-2.5 text-xs font-semibold transition-colors',
-                        l === lang && 'bg-background text-foreground shadow-sm',
-                        !has && 'opacity-50',
-                      )}
-                    >
-                      {LANG_LABELS[l].short}
-                      {stale && <span className="absolute top-1 right-1 size-1.5 rounded-full bg-amber-500" />}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {LANG_LABELS[l].name}
-                    {l === cv.sourceLang ? ' · source' : !has ? ' · not translated yet' : stale ? ' · outdated translation' : ''}
-                  </TooltipContent>
-                </Tooltip>
-              )
-            })}
-          </div>
-        )}
-
-        {cv && (
-          <Select value={cv.id} onValueChange={(id) => openCv(id)}>
-            <SelectTrigger className="bg-muted hidden h-9 w-48 xl:flex">
-              <SelectValue placeholder="Resume" />
-            </SelectTrigger>
-            <SelectContent align="end" position="popper" className="max-h-80">
-              <SelectGroup>
-                <SelectLabel>Master</SelectLabel>
-                {masters.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                    {m.isMain && <Star className="size-3 fill-amber-400 text-amber-400" />}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              {tailored.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel>Tailored versions</SelectLabel>
-                  {tailored.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      <CompanyLogo src={logoFor(apps, m)} name={m.job?.company || m.name} size={18} />
-                      {m.name}
-                      {m.isMain && <Star className="size-3 fill-amber-400 text-amber-400" />}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-            </SelectContent>
-          </Select>
-        )}
 
         {cv && <SendIn app={apps.find((a) => a.resumeId === cv.id && a.lang)} viewing={lang} />}
         {cv && <CvLetters cvId={cv.id} lang={lang} />}
@@ -311,21 +210,6 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
               <DropdownMenuItem variant="destructive" disabled={cv.isMain} onClick={() => setDeleting(true)}>
                 <Trash2 /> Delete
               </DropdownMenuItem>
-            )}
-            {cv && (
-              // On phones the language switch is not in the bar.
-              <div className="sm:hidden">
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">CV language</DropdownMenuLabel>
-                <DropdownMenuRadioGroup value={lang} onValueChange={(v) => setLang(v as Lang)}>
-                  {LANGS.map((l) => (
-                    <DropdownMenuRadioItem key={l} value={l}>
-                      {LANG_LABELS[l].name}
-                      {!cv.content[l] && <span className="text-muted-foreground ml-auto text-xs">not translated</span>}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </div>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">Appearance</DropdownMenuLabel>
@@ -493,12 +377,13 @@ function CvLetters({ cvId, lang }: { cvId: string; lang: Lang }) {
 
 function SaveIndicator({ state }: { state: string }) {
   if (state === 'idle') return null
+  const label = state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : 'Not saved'
   return (
-    <span className="text-muted-foreground hidden items-center gap-1.5 text-xs md:flex">
+    <span className="text-muted-foreground hidden items-center gap-1.5 text-xs md:flex" title={label}>
       {state === 'saving' && <Loader2 className="size-3.5 animate-spin" />}
       {state === 'saved' && <Check className="size-3.5 text-emerald-600 dark:text-emerald-500" />}
       {state === 'error' && <CloudOff className="text-destructive size-3.5" />}
-      <span className="hidden xl:inline">{state === 'saving' ? 'Saving…' : state === 'saved' ? 'Saved' : 'Not saved'}</span>
+      <span className="hidden min-[1800px]:inline">{label}</span>
     </span>
   )
 }

@@ -7,17 +7,14 @@ import { ApiError } from '@/lib/api'
 import { PrintPortal } from '@/resume/PrintPortal'
 import { ResumePreview } from '@/resume/ResumePreview'
 import type { DocProps } from '@/resume/ResumeDocument'
-import AiPanel from './ai/AiPanel'
 import ApplicationsPage from './applications/ApplicationsPage'
 import { useApplications } from './applications/store'
 import CommandPalette from './CommandPalette'
-import ContentPanel from './content/ContentPanel'
-import CustomizePanel from './customize/CustomizePanel'
-import JobStrip from './JobStrip'
-import Overview from './overview/Overview'
+import CvsPage from './cvs/CvsPage'
 import LettersPage from './letters/LettersPage'
 import ProfilePage, { PANELS } from './profile/ProfilePage'
 import { navigate, useRoute } from './router'
+import { useSidebarShortcut } from './sidebar'
 import { useEditor } from './store'
 import DemoBanner from './DemoBanner'
 import type { DemoSession } from '@/lib/api'
@@ -34,8 +31,10 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
   const route = useRoute()
   const ready = useEditor((s) => s.ready)
   const resume = useEditor((s) => s.resume)
+  const list = useEditor((s) => s.list)
   const lang = useEditor((s) => s.lang)
   const [mobilePreview, setMobilePreview] = useState(false)
+  useSidebarShortcut(route.page === 'cv' || route.page === 'cvs' || route.page === 'letters')
 
   useEffect(() => {
     useEditor
@@ -66,6 +65,14 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
         navigate({ page: 'cvs' }, { replace: true })
       })
   }, [ready, wantedId])
+
+  // My CVs opens a CV right away, as My Cover Letters opens a letter: the one open last, else the main CV.
+  useEffect(() => {
+    if (!ready || route.page !== 'cvs' || !list.length) return
+    const last = useEditor.getState().resume?.id
+    const pick = list.find((m) => m.id === last) ?? list.find((m) => m.isMain) ?? list.find((m) => m.kind === 'master') ?? list[0]
+    navigate({ page: 'cv', id: pick.id, tab: 'content' }, { replace: true })
+  }, [ready, route.page, list])
 
   const cv = route.page === 'cv' && resume?.id === route.id ? resume : null
 
@@ -108,34 +115,18 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
     <div className="flex h-dvh flex-col">
       {demo && <DemoBanner expiresAt={demo.expiresAt} />}
       <TopBar onLogout={onLogout} user={user} demo={!!demo} />
-      {route.page === 'cvs' && <Overview />}
       {route.page in PANELS && <ProfilePage panel={route.page as keyof typeof PANELS} />}
       {route.page === 'applications' && <ApplicationsPage appId={route.appId} />}
       {route.page === 'letters' && <LettersPage appId={route.appId} />}
-      {route.page === 'cv' &&
-        (cv ? (
-          <div className="flex min-h-0 flex-1">
-            <aside className="w-full shrink-0 overflow-y-auto px-3 pt-3 pb-24 md:w-[46%] md:max-w-[580px] lg:px-4">
-              {route.tab !== 'ai' && <JobStrip />}
-              {route.tab === 'content' && <ContentPanel />}
-              {route.tab === 'customize' && <CustomizePanel />}
-              {route.tab === 'ai' && <AiPanel />}
-            </aside>
-            <main className="hidden min-w-0 flex-1 overflow-y-auto py-6 md:block">
-              {previewDoc && <ResumePreview {...previewDoc} maxScale={1.1} padding={28} />}
-            </main>
-          </div>
-        ) : (
-          <Spinner />
-        ))}
+      {(route.page === 'cv' || route.page === 'cvs') && <CvsPage cv={cv} preview={previewDoc} />}
 
       {cv && (
-        <Button className="fixed right-4 bottom-4 z-20 rounded-full shadow-lg md:hidden" onClick={() => setMobilePreview(true)}>
+        <Button className="fixed right-4 bottom-4 z-20 rounded-full shadow-lg lg:hidden" onClick={() => setMobilePreview(true)}>
           <Eye /> Preview
         </Button>
       )}
       {cv && mobilePreview && previewDoc && (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-[var(--preview-canvas)] py-4 md:hidden">
+        <div className="fixed inset-0 z-30 overflow-y-auto bg-[var(--preview-canvas)] py-4 lg:hidden">
           <Button size="icon" variant="secondary" className="fixed top-3 right-3 z-40 rounded-full shadow" onClick={() => setMobilePreview(false)}>
             <X />
           </Button>

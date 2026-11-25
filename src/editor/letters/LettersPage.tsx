@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ArrowUpRight, Mail, Plus, Search } from 'lucide-react'
+import { ArrowUpRight, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Application, Lang } from '@shared/types'
 import { LANG_LABELS, LANGS } from '@shared/types'
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { ListSidebar, SidebarRow, SidebarToggle } from '../sidebar'
 import LetterSection, { LetterSheet, SUBJECT, initialLetterLang } from '../applications/LetterSection'
 import LetterDesignPanel from './LetterDesignPanel'
 import { stageDot } from '../applications/stages'
@@ -68,51 +69,46 @@ export default function LettersPage({ appId }: { appId: string | null }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-      <aside className="border-hairline flex max-h-[38vh] shrink-0 flex-col border-b lg:max-h-none lg:w-72 lg:border-r lg:border-b-0">
-        <div className="flex items-center gap-2 p-3">
-          <div className="relative flex-1">
-            <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Company or role" className="h-9 pl-8" />
-          </div>
-          <Button size="sm" onClick={() => setCreating(true)} title="Letter without a job posting, e.g. an Initiativbewerbung">
-            <Plus /> New
-          </Button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-          {loaded && !items.length && (
-            <p className="text-muted-foreground px-2 py-6 text-center text-sm">No applications yet. Start a letter with New.</p>
-          )}
-          {shown.map((a) => {
-            const langs = LANGS.filter((l) => a.letters?.[l])
-            return (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => navigate({ page: 'letters', appId: a.id }, { replace: true })}
-                aria-current={a.id === current?.id ? 'true' : undefined}
-                className={cn('hover:bg-muted flex w-full items-center gap-2.5 rounded-lg p-2 text-left', a.id === current?.id && 'bg-muted')}
-              >
-                <CompanyLogo src={a.logo} name={a.company || a.title} size={32} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{a.company || 'No company'}</span>
-                  <span className="text-muted-foreground block truncate text-xs">{a.title || '—'}</span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
+      <ListSidebar
+        label="Cover letters"
+        query={query}
+        onQuery={setQuery}
+        placeholder="Company or role"
+        onNew={() => setCreating(true)}
+        newTitle="Letter without a job posting, e.g. an Initiativbewerbung"
+      >
+        {loaded && !items.length && (
+          <p className="text-muted-foreground px-2 py-6 text-center text-sm">No applications yet. Start a letter with New.</p>
+        )}
+        {shown.map((a) => {
+          const langs = LANGS.filter((l) => a.letters?.[l])
+          return (
+            <SidebarRow
+              key={a.id}
+              href={`/letters/${encodeURIComponent(a.id)}`}
+              onOpen={() => navigate({ page: 'letters', appId: a.id }, { replace: true })}
+              active={a.id === current?.id}
+              media={<CompanyLogo src={a.logo} name={a.company || a.title} size={32} />}
+              title={a.company || 'No company'}
+              subtitle={a.title || '—'}
+              meta={
+                <>
                   <span className={cn('size-2 rounded-full', stageDot(a.stage))} />
                   <span className="text-muted-foreground text-[10px] font-semibold tracking-wide">
                     {langs.length ? langs.map((l) => LANG_LABELS[l].short).join(' ') : '—'}
                   </span>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </aside>
+                </>
+              }
+            />
+          )
+        })}
+      </ListSidebar>
 
       {current ? (
         <div className="flex min-h-0 flex-1 flex-col gap-6 p-4 lg:flex-row lg:overflow-hidden lg:p-6">
           <section className="flex min-w-0 flex-col gap-3 lg:w-[30rem] lg:shrink-0 lg:overflow-y-auto lg:pr-1">
-            <header className="flex items-start gap-3">
+            <header className="flex items-start gap-2">
+              <SidebarToggle className="-ml-1.5 mt-0.5" />
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-lg font-semibold tracking-tight">{current.company || 'No company'}</h1>
                 <p className="text-muted-foreground truncate text-sm">{current.title}</p>
@@ -155,7 +151,8 @@ export default function LettersPage({ appId }: { appId: string | null }) {
           </section>
         </div>
       ) : (
-        <div className="text-muted-foreground grid flex-1 place-items-center p-8 text-sm">
+        <div className="text-muted-foreground relative grid flex-1 place-items-center p-8 text-sm">
+          <SidebarToggle className="absolute top-4 left-4" />
           <div className="flex flex-col items-center gap-3">
             <Mail className="size-6" />
             Start a letter with New, or add an application on the board.

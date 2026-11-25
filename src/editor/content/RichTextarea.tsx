@@ -106,7 +106,9 @@ export function RichTextarea({
   const tool = 'text-muted-foreground hover:bg-muted hover:text-foreground grid size-7 place-items-center rounded-md transition-colors'
 
   return (
+    // Ctrl+B is bold in here; everywhere else it hides the list of My CVs (sidebar.tsx).
     <div
+      data-bold-shortcut
       className={cn(
         'border-input focus-within:border-ring focus-within:ring-ring/50 rounded-lg border bg-transparent transition-[color,box-shadow] focus-within:ring-3',
         className,

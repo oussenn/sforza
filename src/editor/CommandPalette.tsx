@@ -8,6 +8,7 @@ import {
   Mail,
   Monitor,
   Moon,
+  PanelLeft,
   Paintbrush,
   Plus,
   Sparkles,
@@ -34,6 +35,7 @@ import { useStageLabel } from './applications/stages'
 import { logoFor, useApplications } from './applications/store'
 import { PANELS } from './profile/ProfilePage'
 import { navigate, openCv, setCvTab, useRoute, type PanelPage } from './router'
+import { SIDEBAR_SHORTCUT, toggleSidebar } from './sidebar'
 import { useEditor } from './store'
 import { useDownload } from './useDownload'
 
@@ -63,6 +65,7 @@ export default function CommandPalette({ onLogout }: { onLogout: () => void }) {
     void fn()
   }
   const inCv = route.page === 'cv'
+  const withList = inCv || route.page === 'cvs' || route.page === 'letters'
   const master = list.find((m) => m.kind === 'master') ?? list[0]
 
   return (
@@ -155,6 +158,12 @@ export default function CommandPalette({ onLogout }: { onLogout: () => void }) {
           )}
           <CommandSeparator />
           <CommandGroup heading="Actions">
+            {withList && (
+              <CommandItem value="hide show the list sidebar" onSelect={run(toggleSidebar)}>
+                <PanelLeft /> Hide or show the list
+                <CommandShortcut>{SIDEBAR_SHORTCUT}</CommandShortcut>
+              </CommandItem>
+            )}
             {inCv && (
               <CommandItem onSelect={run(() => download.run())}>
                 <Download /> Download PDF
