@@ -24,6 +24,7 @@ import { toast } from 'sonner'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
 import { LANG_LABELS, LANGS, type Application, type Lang } from '@shared/types'
 import { CompanyLogo } from '@/components/CompanyLogo'
+import { Logo } from '@/components/Logo'
 import { LOOK_INFO, openAppearance } from '@/components/AppearanceDialog'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -127,7 +128,7 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
         title="Applications"
         aria-label="Sforza: go to applications"
       >
-        <img src="/logo.png" alt="" className="size-8 sm:size-9" />
+        <Logo className="size-8 sm:size-9" />
       </button>
       <nav className="flex items-center gap-0.5 sm:gap-1">
         <NavButton

@@ -24,7 +24,7 @@ export interface Move {
 const BULLET = /^\s*[-•*]\s+/
 
 /** Indexes of the description's bullet lines. */
-export const bulletLines = (description: string) => description.split('\n').flatMap((l, i) => (BULLET.test(l) ? [i] : []))
+const bulletLines = (description: string) => description.split('\n').flatMap((l, i) => (BULLET.test(l) ? [i] : []))
 
 // Words that say nothing about a job, in English and German.
 const STOP = new Set(

@@ -24,7 +24,7 @@ export const DEMO_USER = 'demo'
 /** Owner ids of sandboxes. "~" never occurs in a real username (USERNAME_PATTERN), so they cannot collide. */
 const PREFIX = 'demo~'
 
-export const SANDBOX_TTL = 2 * 3600
+const SANDBOX_TTL = 2 * 3600
 const PER_IP_HOUR = 3
 const MAX_ACTIVE = 20
 const MAX_PER_DAY = 60

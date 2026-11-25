@@ -19,7 +19,7 @@ export type Contrast = 'light' | 'dark'
 
 const HEX = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i
 
-export function isHex(value: unknown): value is string {
+function isHex(value: unknown): value is string {
   return typeof value === 'string' && HEX.test(value.trim())
 }
 

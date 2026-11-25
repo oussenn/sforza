@@ -16,6 +16,11 @@ export type ThemeChoice = 'light' | 'dark' | 'system'
 export type Look = 'standard' | 'sakura' | 'terminal' | 'space' | 'custom'
 export const LOOKS: Look[] = ['standard', 'sakura', 'terminal', 'space', 'custom']
 
+/** Each theme's logo and favicon (public/themes/<theme>/, built by scripts/logos.py); custom keeps the standard one. */
+const OWN_LOGO: Look[] = ['sakura', 'terminal', 'space']
+export const logoFor = (l: Look) => (OWN_LOGO.includes(l) ? `/themes/${l}/logo.webp` : '/logo.png')
+const faviconFor = (l: Look) => (OWN_LOGO.includes(l) ? `/themes/${l}/favicon.png` : '/favicon.png')
+
 const KEY = 'theme'
 const LOOK_KEY = 'look'
 const PALETTE_KEY = 'palette'
@@ -48,7 +53,7 @@ function storedChoice(): ThemeChoice {
   const t = read(KEY)
   return t === 'light' || t === 'dark' ? t : 'system'
 }
-export function parseLook(raw: string | null): Look {
+function parseLook(raw: string | null): Look {
   return LOOKS.includes(raw as Look) ? (raw as Look) : 'standard'
 }
 function storedPalette(): Palette {
@@ -99,6 +104,8 @@ function apply() {
   root.style.colorScheme = dark ? 'dark' : 'light'
   root.dataset.look = current
   root.dataset.motion = motion() ? 'on' : 'off'
+  const icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (icon && icon.getAttribute('href') !== faviconFor(current)) icon.href = faviconFor(current)
   const vars = current === 'custom' ? paletteVars(palette, dark ? 'dark' : 'light') : null
   for (const k of PALETTE_KEYS) {
     if (vars) root.style.setProperty(k, vars[k])
@@ -186,18 +193,36 @@ export function setTheme(next: ThemeChoice, from?: { x: number; y: number }) {
   )
 }
 
-/** The theme (standard, sakura, terminal, space or custom); each keeps the current contrast. */
+/** A theme's logo, fetched and decoded once, so it is already painted when the amoeba reveals the new theme. */
+const logos = new Map<string, Promise<void>>()
+function preloadLogo(l: Look): Promise<void> {
+  const src = logoFor(l)
+  let ready = logos.get(src)
+  if (!ready) {
+    const img = new Image()
+    img.src = src
+    ready = img.decode().catch(() => undefined)
+    logos.set(src, ready)
+  }
+  return ready
+}
+
+/** The theme (standard, sakura, terminal, space or custom); each keeps the current contrast. Waits (at most 0.4 s)
+ * for the theme's logo, so the logo changes with the rest of the page under the amoeba. */
 export function setLook(next: Look, from?: { x: number; y: number }) {
-  reveal(
-    () => {
-      look = next
-      write(LOOK_KEY, next === 'standard' ? null : next)
-      if (next === 'custom') storePaletteVars()
-      changed()
-    },
-    next !== look,
-    from,
-  )
+  const go = () =>
+    reveal(
+      () => {
+        look = next
+        write(LOOK_KEY, next === 'standard' ? null : next)
+        if (next === 'custom') storePaletteVars()
+        changed()
+      },
+      next !== look,
+      from,
+    )
+  if (next === look) return go()
+  void Promise.race([preloadLogo(next), new Promise((r) => setTimeout(r, 400))]).then(go)
 }
 
 /** The custom theme's three colours; stored with the tokens they make, for the first paint of the next visit. */

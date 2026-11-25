@@ -16,3 +16,6 @@ claude-connector.txt
 # Generated accounts (scripts/new-logins.mjs): passwords and hashes
 logins.txt
 auth-users.json
+
+# Reference pictures used while designing (not ours to publish)
+design/reference/

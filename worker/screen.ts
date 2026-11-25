@@ -108,7 +108,7 @@ const REMOTE_AD =
   /fully remote|100 ?% remote|remote[- ]first|work from anywhere|deutschlandweit remote|vollständig remote|komplett remote|remote within germany|remote in germany|remote from (anywhere in )?germany|ortsunabhängig|100 ?% (mobil|homeoffice|home office)/
 
 /** Whether the job is in one of the profile's places (or remote while the profile takes remote); null when the listing names no city. */
-export function nearProfile(f: PostingFacts, p: SearchProfile): boolean | null {
+function nearProfile(f: PostingFacts, p: SearchProfile): boolean | null {
   const low = (f.text ?? '').toLowerCase()
   const remoteOk = p.workModes.includes('remote') || /remote/i.test(p.locations)
   if (remoteOk && REMOTE_AD.test(low)) return true
@@ -176,7 +176,7 @@ const KIND_NAMES: Record<JobType, string> = {
  * The kinds of job a posting is: from its title, or from the ad when the title names none. "Praktikum / Werkstudent"
  * is both; an "Aushilfe" is a Minijob when the ad says so. Empty when nothing names a kind.
  */
-export function jobKinds(title: string, text = ''): Set<JobType> {
+function jobKinds(title: string, text = ''): Set<JobType> {
   const find = (s: string) => new Set(KIND_PATTERNS.filter(([, re]) => re.test(s)).map(([k]) => k))
   let kinds = find(title.toLowerCase())
   if (!kinds.size && text) kinds = find(text.toLowerCase().slice(0, 4000))

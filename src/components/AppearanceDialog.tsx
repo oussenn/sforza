@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { normalHex, type Palette } from '@/lib/palette'
-import { LOOKS, setEffects, setLook, setPalette, setTheme, useAppearance, type Look, type ThemeChoice } from '@/lib/theme'
+import { logoFor, LOOKS, setEffects, setLook, setPalette, setTheme, useAppearance, type Look, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 /** Opens from the top bar menu and the command palette. */
@@ -118,11 +118,12 @@ function LookCard({ id, active, dark, palette }: { id: Look; active: boolean; da
           <span className="absolute inset-0" style={{ backgroundImage: `radial-gradient(${dark ? '#fff' : '#6b5be0'} 0.8px, transparent 1px)`, backgroundSize: '11px 13px', opacity: 0.6 }} />
         )}
         {id === 'terminal' && (
-          <span className="absolute top-1.5 left-2 font-mono text-[10px]" style={{ color: primary }}>
+          <span className="absolute top-2.5 left-10 font-mono text-[10px]" style={{ color: primary }}>
             {'>'} sforza_
           </span>
         )}
         {id === 'standard' && <img src="/background.webp" alt="" className="absolute inset-0 size-full object-cover opacity-60" />}
+        <img src={logoFor(id)} alt="" className="absolute top-0.5 left-1.5 size-8" />
         <span className="absolute right-2 bottom-2 left-2 h-6 rounded-[5px] shadow-sm" style={{ background: surface }}>
           <span className="absolute top-1.5 left-1.5 h-3 w-8 rounded-full" style={{ background: primary }} />
         </span>

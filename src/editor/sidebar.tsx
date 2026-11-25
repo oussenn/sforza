@@ -34,7 +34,7 @@ export function toggleSidebar() {
   listeners.forEach((l) => l())
 }
 
-export function useSidebarHidden(): boolean {
+function useSidebarHidden(): boolean {
   return useSyncExternalStore(
     (l) => {
       listeners.add(l)

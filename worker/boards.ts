@@ -31,7 +31,7 @@ export interface Listing {
 
 const HEADERS = { 'User-Agent': USER_AGENT, 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8', Accept: 'text/html,application/json;q=0.9,*/*;q=0.8' }
 
-export class BoardError extends Error {}
+class BoardError extends Error {}
 
 async function get(url: string, max = 4_000_000): Promise<string> {
   const res = await fetchPublic(url, { headers: HEADERS, signal: AbortSignal.timeout(15_000) }).catch(() => null)

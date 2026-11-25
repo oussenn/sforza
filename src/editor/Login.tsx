@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { PASSWORD_MIN, passwordProblem, usernameProblem } from '@shared/utils'
+import { Logo } from '@/components/Logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -71,7 +72,7 @@ export default function Login({
     <div className="grid min-h-dvh place-items-center px-4">
       <form onSubmit={submit} className="bg-card ring-hairline w-full max-w-sm rounded-2xl p-7 shadow-2xl ring-1">
         <div className="mb-6 flex items-center gap-3">
-          <img src="/logo.png" alt="" className="size-11" />
+          <Logo className="size-11" />
           <div>
             <h1 className="text-base font-semibold">Sforza</h1>
             <p className="text-muted-foreground text-sm">{text.subtitle}</p>

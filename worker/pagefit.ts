@@ -15,10 +15,10 @@ import { letterCv } from './service'
 type Json = Record<string, unknown>
 
 /** The page fit could not run (no browser session right now): the message is written for the user. */
-export class PageFitError extends AiError {}
+class PageFitError extends AiError {}
 
 /** What fit_cv_to_page may change, by its edit_cv name. */
-export const FIT_KEYS = ['fontSize', 'lineHeight', 'sectionGap', 'itemGap', 'marginY', 'columnRatio'] as const
+const FIT_KEYS = ['fontSize', 'lineHeight', 'sectionGap', 'itemGap', 'marginY', 'columnRatio'] as const
 const FIT_NAMES: Record<(typeof FIT_KEYS)[number], string> = {
   fontSize: 'font_size',
   lineHeight: 'line_height',
@@ -28,7 +28,7 @@ const FIT_NAMES: Record<(typeof FIT_KEYS)[number], string> = {
   columnRatio: 'column_ratio',
 }
 /** The fit settings of a style, in edit_cv's names. */
-export const fitStyle = (style: ResumeStyle) => Object.fromEntries(FIT_KEYS.map((key) => [FIT_NAMES[key], style[key]]))
+const fitStyle = (style: ResumeStyle) => Object.fromEntries(FIT_KEYS.map((key) => [FIT_NAMES[key], style[key]]))
 
 export const LAYOUT_FIX =
   'Layout rule for a tailored CV: exactly one page, completely filled: every section whole, no empty space at the bottom of the page or under a column. Run fit_cv_to_page (the tools that change a CV run it themselves when the layout is not ok): it sets font size, spacing and column width, moves a section into a column that ends early and, when a tailored CV is still too long, hides the content least relevant to the posting; check what it hid. Spacing, font size and column width: never by hand. Still too short after it, or a column that ends early: add a relevant bullet or project, or move a section to the other column. Too long even after it: hide the least relevant bullets, projects or skill groups (edit_cv), keeping everything the posting asks for. A tailored CV is ready only when its layout says "ok": true; only the master CV may have two pages. A section alone in a column with the other half of the page white goes full width (edit_cv sections placement "full"). Use edit_cv for content and placement (it keeps the translations).'

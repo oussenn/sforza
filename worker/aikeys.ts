@@ -105,7 +105,7 @@ export async function accountAi(env: Env & db.Store): Promise<AccountAi | null> 
 }
 
 /** Checks a key against the provider's model list: free, no tokens used. ok null: the check itself could not run. */
-export async function checkKey(provider: AiProviderId, key: string): Promise<{ ok: boolean | null; error: string | null }> {
+async function checkKey(provider: AiProviderId, key: string): Promise<{ ok: boolean | null; error: string | null }> {
   if (provider === 'anthropic') {
     try {
       await new Anthropic({ apiKey: key, maxRetries: 0, timeout: 15_000 }).models.list({ limit: 1 })

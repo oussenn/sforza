@@ -98,6 +98,8 @@ Light and dark are contrasts, and every theme has both. Pick a theme under Theme
 - **Space**: a twinkling starfield that shifts with the pointer, shooting stars and nebulae (a dawn sky in light); clicks scatter little stars.
 - **Your colours**: three colours of your own (page, primary, accent), turned into a light and a dark contrast.
 
+Sakura, Terminal and Space each bring their own Sforza portrait to the top bar, the sign-in page and the browser tab: an oni mask, a hood with sunglasses, a space helmet. It changes with the rest of the page as the new theme spreads.
+
 Motion effects can be switched off in the same window, and stay off when the system asks for reduced motion. They stay light on the machine: a few petals and stars at a time, the scenes behind the app drawn at 30 to 40 frames a second at no more than 1.5 times the screen resolution, the steady stars drawn once, nothing at all while the tab is hidden. The CV and letter pages keep their own colours in every theme.
 
 ![Sakura in light and dark, Terminal and Space](.github/readme/themes.jpg)
@@ -144,8 +146,8 @@ worker/    API, auth, AI calls, job readers, PDF rendering, MCP server
 shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
-scripts/   optional account generator for the AUTH_USERS secret, and the sakura theme's image builder
-design/    full-size source images of the logo, the background and the sakura pictures (public/ has the sized copies)
+scripts/   optional account generator for the AUTH_USERS secret, and the image builders of the theme logos and the sakura theme
+design/    full-size source images per theme: the logos, the background and the sakura pictures (public/ has the sized copies)
 ```
 
 ## Run locally

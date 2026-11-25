@@ -15,12 +15,12 @@ type Effort = 'low' | 'medium' | 'high'
  * The automatic model of each provider: Claude Opus 5.5, the best accuracy per dollar in bench/ for OpenAI, and the
  * model Google recommends for new projects (Gemini 4 Hydrogen).
  */
-export const DEFAULT_MODELS: Record<AiProviderId, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-5.6-luna', gemini: 'gemini-4-hydrogen' }
+const DEFAULT_MODELS: Record<AiProviderId, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-5.6-luna', gemini: 'gemini-4-hydrogen' }
 
 export class AiError extends Error {}
 
 /** The provider could not answer (key rejected, quota, rate limit, outage, unknown model): the next route may. */
-export class ProviderError extends AiError {}
+class ProviderError extends AiError {}
 
 type Provider = Exclude<AiStatus['provider'], 'none'>
 export interface ModelChoice {
