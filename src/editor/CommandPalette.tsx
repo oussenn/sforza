@@ -79,7 +79,7 @@ export default function CommandPalette({ onLogout }: { onLogout: () => void }) {
               <SquareKanban /> Applications
             </CommandItem>
             <CommandItem onSelect={run(() => navigate({ page: 'letters', appId: null }))}>
-              <Mail /> Letters
+              <Mail /> My Cover Letters
             </CommandItem>
             {(Object.keys(PANELS) as PanelPage[]).map((p) => {
               const Icon = PANELS[p].icon

@@ -12,7 +12,12 @@ export function ThemeToggle({ className }: { className?: string }) {
       variant="ghost"
       size="icon"
       className={cn('size-9', className)}
-      onClick={() => setTheme(next)}
+      data-theme-toggle
+      onClick={(e) => {
+        // The new theme grows from this button.
+        const box = e.currentTarget.getBoundingClientRect()
+        setTheme(next, { x: box.left + box.width / 2, y: box.top + box.height / 2 })
+      }}
       title={`Switch to ${next} mode`}
       aria-label={`Switch to ${next} mode`}
     >

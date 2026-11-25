@@ -76,7 +76,7 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
         : route.page === 'applications'
           ? 'Applications'
           : route.page === 'letters'
-            ? 'Letters'
+            ? 'My Cover Letters'
             : route.page === 'cv'
             ? (cv?.name ?? 'CV')
             : PANELS[route.page].label

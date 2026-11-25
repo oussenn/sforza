@@ -32,14 +32,23 @@ const call = (path: string, as: 'alice' | 'bob', json?: unknown, method = json =
 const GOOD_OPENAI = `sk-proj-${'a'.repeat(40)}good`
 const BAD_OPENAI = `sk-proj-${'b'.repeat(40)}nope`
 const GOOD_ANTHROPIC = `sk-ant-api03-${'c'.repeat(40)}good`
+const GOOD_GEMINI = `AIza${'d'.repeat(31)}good`
+const BAD_GEMINI = `AIza${'e'.repeat(31)}nope`
 
-// The providers as seen by the server: a key is good when it ends in "good"; chat answers {"ok":"openai"}.
+// The providers as seen by the server: a key is good when it ends in "good"; OpenAI's chat answers {"ok":"openai"},
+// Gemini's interactions {"ok":"gemini"}.
 const seen: string[] = []
+const geminiBodies: Record<string, unknown>[] = []
+const googleBadKey = () =>
+  new Response(JSON.stringify({ error: { code: 400, message: 'API key not valid. Please pass a valid API key.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } }), {
+    status: 400,
+    headers: { 'content-type': 'application/json' },
+  })
 beforeAll(async () => {
   vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) => {
     const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
-    const key = headers.get('x-api-key') ?? headers.get('authorization')?.replace(/^Bearer /, '') ?? ''
+    const key = headers.get('x-api-key') ?? headers.get('x-goog-api-key') ?? headers.get('authorization')?.replace(/^Bearer /, '') ?? ''
     seen.push(`${init?.method ?? 'GET'} ${url.replace(/\?.*$/, '')}`)
     const good = key.endsWith('good')
     if (url.startsWith('https://api.openai.com/v1/models') || url.startsWith('https://api.anthropic.com/v1/models')) {
@@ -60,6 +69,22 @@ beforeAll(async () => {
         status: good ? 200 : 401,
         headers: { 'content-type': 'application/json' },
       })
+    }
+    if (url.startsWith('https://generativelanguage.googleapis.com/v1beta/models')) {
+      return good ? new Response(JSON.stringify({ models: [] }), { headers: { 'content-type': 'application/json' } }) : googleBadKey()
+    }
+    if (url.startsWith('https://generativelanguage.googleapis.com/v1beta/interactions')) {
+      if (!good) return googleBadKey()
+      geminiBodies.push(JSON.parse(String(init?.body)))
+      return new Response(
+        JSON.stringify({
+          id: 'i1',
+          status: 'completed',
+          steps: [{ type: 'model_output', content: [{ type: 'text', text: '{"ok":"gemini"}' }] }],
+          usage: { total_input_tokens: 12, total_output_tokens: 6, total_thought_tokens: 3 },
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
     }
     return new Response('not stubbed', { status: 599 })
   })
@@ -139,10 +164,52 @@ describe("an account's own AI keys", () => {
     expect(aiStatus({ ...env, ANTHROPIC_API_KEY: 'sk-ant-site-key' })).toMatchObject({ provider: 'anthropic', source: 'site' })
   })
 
+  it('adds a Google Gemini key as the third choice and reaches it when the other two fail', async () => {
+    expect((await call('/api/ai/settings', 'alice', { keys: { gemini: GOOD_OPENAI } })).status).toBe(422)
+    const wrong = await call('/api/ai/settings', 'alice', { keys: { gemini: BAD_GEMINI } })
+    expect(wrong.status).toBe(422)
+    expect((await wrong.json()).error).toContain('rejected')
+
+    const saved = await call('/api/ai/settings', 'alice', { keys: { gemini: GOOD_GEMINI }, mode: 'auto' })
+    expect(saved.status).toBe(200)
+    const text = await saved.text()
+    expect(text).not.toContain(GOOD_GEMINI)
+    const view = JSON.parse(text)
+    expect(view.keys.gemini).toMatchObject({ set: true, hint: '…good', ok: true })
+    // Anthropic, then OpenAI, then Google.
+    expect(view.active).toMatchObject({ provider: 'anthropic', fallback: { provider: 'openai' } })
+
+    const three: AiEnv = {
+      ...env,
+      ACCOUNT_AI: { anthropic: GOOD_ANTHROPIC.replace('good', 'down'), openai: BAD_OPENAI, gemini: GOOD_GEMINI, mode: 'auto', provider: 'anthropic', model: '' },
+    }
+    expect(aiRoutes(three).map((r) => `${r.provider}:${r.model}`)).toEqual(['anthropic:claude-opus-5-5', 'openai:gpt-5.6-luna', 'gemini:gemini-4-hydrogen'])
+    // Choosing Gemini puts it first; the other keys stay as backup in their order.
+    expect(aiRoutes({ ...three, ACCOUNT_AI: { ...three.ACCOUNT_AI!, mode: 'manual', provider: 'gemini', model: 'gemini-4-carbon' } }).map((r) => r.provider)).toEqual([
+      'gemini',
+      'anthropic',
+      'openai',
+    ])
+    seen.length = 0
+    geminiBodies.length = 0
+    const out = await generateJson<{ ok: string }>(three, { system: 'rules', prompt: 'the job', schema: { type: 'object' }, effort: 'medium' })
+    expect(out).toEqual({ ok: 'gemini' })
+    expect(seen.filter((x) => x.startsWith('POST')).map((x) => x.split(' ')[1].split('/')[2])).toEqual(['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com'])
+    expect(geminiBodies[0]).toMatchObject({
+      model: 'gemini-4-hydrogen',
+      system_instruction: 'rules',
+      input: 'the job',
+      response_format: { mime_type: 'application/json', schema: { type: 'object' } },
+      generation_config: { thinking_level: 'medium' },
+      store: false,
+    })
+  })
+
   it('removes a key on request, and keeps the settings out of the demo', async () => {
-    const view = await (await call('/api/ai/settings', 'alice', { keys: { openai: null, anthropic: null } })).json()
+    const view = await (await call('/api/ai/settings', 'alice', { keys: { openai: null, anthropic: null, gemini: null } })).json()
     expect(view.keys.openai.set).toBe(false)
     expect(view.keys.anthropic.set).toBe(false)
+    expect(view.keys.gemini.set).toBe(false)
     expect(demoRouteAllowed('GET', '/api/ai/settings')).toBe(false)
     expect(demoRouteAllowed('PUT', '/api/ai/settings')).toBe(false)
   })

@@ -71,16 +71,16 @@ Connect your agent to find jobs and prepare drafts.
 
 ## Your own AI
 
-Each account adds its own API key under AI in the top bar: Anthropic, OpenAI or both. The model is picked for you, or you choose one. With two keys, the other one takes over when a call fails.
+Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, Google Gemini, or any of them. The model is picked for you, or you choose one. When a call fails, the next key takes over: Anthropic, then OpenAI, then Gemini.
 
-![AI panel: two API keys, the model choice and the backup](.github/readme/ai-models.gif)
+![AI panel: three API keys, the model choice and the backup order](.github/readme/ai-models.gif)
 
 ## Command palette and dark mode
 
 <table>
   <tr>
     <td width="50%"><img src=".github/readme/palette.gif" alt="Command palette"><br><sub>Ctrl+K opens any CV, application or page</sub></td>
-    <td width="50%"><img src=".github/readme/dark.gif" alt="Dark mode"><br><sub>Light and dark, on every page</sub></td>
+    <td width="50%"><img src=".github/readme/dark.gif" alt="Dark mode"><br><sub>Light and dark on every page, spreading from the theme button</sub></td>
   </tr>
 </table>
 
@@ -95,7 +95,7 @@ Each account adds its own API key under AI in the top bar: Anthropic, OpenAI or 
 - 6 letter templates (DIN 5008, Modern, Classic, Banner, Sidebar, Logo & signature) with their own fonts, colours and spacing, or the CV's
 - Logo & signature letters: the company's logo beside the date (the card's logo, found from the posting) and your handwritten signature, uploaded once in the letter's Design panel and kept for all your letters; either can be turned off per card
 - One-page fit: tailored CVs fill one page and letters fit on one, from the AI buttons and the MCP tools alike
-- Your own AI for each account: an Anthropic or OpenAI API key (or both), the model picked automatically or by you, and the other key as backup when a call fails. Keys are stored encrypted and never shown again
+- Your own AI for each account: Anthropic, OpenAI and Google Gemini API keys (any of them), the model picked automatically or by you, and the next key as backup when a call fails. Keys are stored encrypted and never shown again
 - Board with your own columns, form answers and AI-text checks
 - MCP server that can do everything the editor can
 - Command palette (Ctrl+K), light and dark mode
@@ -112,7 +112,7 @@ Each account adds its own API key under AI in the top bar: Anthropic, OpenAI or 
 |---|---|
 | Frontend | React 19, Vite 8, TypeScript, Tailwind CSS 4, shadcn/ui (Radix UI), Zustand, Immer, cmdk, Sonner, Lucide and Font Awesome icons, Fontsource fonts |
 | Backend | Cloudflare Workers, Hono, D1 (SQLite), Browser Rendering with `@cloudflare/puppeteer` for PDFs |
-| AI | Anthropic SDK, OpenAI API, Workers AI (free fallback), AI or Not API (optional detector) |
+| AI | Anthropic SDK, OpenAI API, Google Gemini (Interactions API), Workers AI (free fallback), AI or Not API (optional detector) |
 | Integrations | MCP (JSON-RPC over HTTP), Bundesagentur für Arbeit job search API, LinkedIn guest job search, StepStone, Arbeitnow API, Stellenwerk, ATS public APIs |
 | Tooling | Wrangler, `@cloudflare/vite-plugin`, Vitest, jsdom |
 
@@ -153,7 +153,7 @@ Open http://localhost:5173 and create your account. The local database is create
 
 <p align="center"><img src=".github/readme/create-account.png" width="420" alt="Create your account"></p>
 
-The editor, board and job readers work without any API key. For the AI features, add your own Anthropic or OpenAI key under AI in the top bar. You can also give the whole site a key in `.env` for accounts without one, or run `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
+The editor, board and job readers work without any API key. For the AI features, add your own Anthropic, OpenAI or Google Gemini key under AI in the top bar. You can also give the whole site a key in `.env` for accounts without one, or run `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
 
 ## Environment
 
@@ -165,19 +165,22 @@ The editor, board and job readers work without any API key. For the AI features,
 | `PRIMARY_USER` | no | Account whose connector token is `MCP_TOKEN` itself. Default: first account in `AUTH_USERS` |
 | `ANTHROPIC_API_KEY` | no | The site's Anthropic key, for accounts without a key of their own |
 | `OPENAI_API_KEY` | no | The site's OpenAI key, used when the site has no Anthropic key |
+| `GEMINI_API_KEY` | no | The site's Google Gemini key, used after the Anthropic and OpenAI keys. Model: `GEMINI_MODEL`, default Gemini 4 Hydrogen |
 | `MCP_TOKEN` | no | Enables the MCP server. At least 24 characters |
 | `AIORNOT_API_KEY` | no | Server-side AI-text detection |
 | `DEMO_PASSWORD` | no | Turns on the public demo: `demo` with this password (8+ characters) opens a private two-hour copy of the sample data. Remove it to end the demo and every demo session |
 | `CANONICAL_HOST` | no | Main host name in production. Visitors on another address of the Worker move there, and links and connector addresses use it |
 
-The site's models and its daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`). Calls on an account's own key are billed to that key and don't count against the budget.
+The site's models and its daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `GEMINI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`). Calls on an account's own key are billed to that key and don't count against the budget.
 
 ## AI models
 
-Under AI in the top bar (`/ai`), each account can save an Anthropic key, an OpenAI key or both. A key is checked with the provider before it's saved, so a wrong key is refused at once. It is stored encrypted for that account and never comes back to the browser or to a connected agent. The page only shows its last four characters and whether the last check passed.
+Under AI in the top bar (`/ai`), each account can save an Anthropic key, an OpenAI key and a Google Gemini key. A key is checked with the provider before it's saved, so a wrong key is refused at once. It is stored encrypted for that account and never comes back to the browser or to a connected agent. The page only shows its last four characters and whether the last check passed.
 
-- Automatic: the app picks the model for each key (the page names them). The Anthropic key runs first and the OpenAI key takes over when a call fails.
-- Choose your model: a model from either list, or any model id the provider offers. The other key stays as the backup.
+- Automatic: the app picks the model for each key (the page names them). The keys run in this order: Anthropic, then OpenAI, then Gemini. Each one takes over when the one before fails.
+- Choose your model: a model from any list, or any model id the provider offers. It runs first, and your other keys stay as backup in that order.
+
+Gemini calls go through Google's Interactions API with `store: false`, so the CV and the posting are not kept in Google's interaction history.
 
 Only a failed call moves to the backup: a rejected key, an unknown model, a rate limit, an outage or a timeout. A declined request or a broken answer is reported as it is. Without a key of its own, an account uses the site's keys (above), then Workers AI.
 

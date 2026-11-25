@@ -17,7 +17,8 @@
       "database_id": "00000000-0000-0000-0000-000000000000"
     }
   ],
-  // AI provider: Claude if ANTHROPIC_API_KEY, else OpenAI if OPENAI_API_KEY, else free Workers AI
+  // The site's AI, for accounts without their own key: Claude if ANTHROPIC_API_KEY, then OpenAI (OPENAI_API_KEY), then
+  // Google Gemini (GEMINI_API_KEY, model GEMINI_MODEL or Gemini 4 Hydrogen), then the free Workers AI
   "ai": { "binding": "AI" },
   // Headless Chrome that renders the downloadable PDF (real text, embedded fonts, clickable links)
   "browser": { "binding": "BROWSER" },

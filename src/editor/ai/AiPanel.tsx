@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { LANG_LABELS, LANGS, type JobAnalysis, type Lang, type MatchScore } from '@shared/types'
+import { AI_PROVIDER_LABELS, LANG_LABELS, LANGS, type JobAnalysis, type Lang, type MatchScore } from '@shared/types'
 import { contentHash, cvAtCompany, isStale, isUnsent } from '@shared/utils'
 import { CompanyLogo } from '@/components/CompanyLogo'
 import { Badge } from '@/components/ui/badge'
@@ -75,7 +75,7 @@ export default function AiPanel() {
     <div className="flex flex-col gap-3">
       {ai?.provider === 'none' && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
-          No AI is set up yet. Add your own Anthropic or OpenAI API key under{' '}
+          No AI is set up yet. Add your own Anthropic, OpenAI or Google Gemini API key under{' '}
           <button type="button" className="font-medium underline" onClick={() => navigate({ page: 'ai' })}>
             AI
           </button>{' '}
@@ -87,7 +87,7 @@ export default function AiPanel() {
       <TranslateCard />
       {ai && ai.provider !== 'none' && (
         <p className="text-muted-foreground px-1 text-xs">
-          {ai.source === 'own' ? 'Your key' : "The site's AI"}: {ai.provider === 'anthropic' ? 'Anthropic' : ai.provider === 'openai' ? 'OpenAI' : 'Workers AI (free daily allowance)'} ·{' '}
+          {ai.source === 'own' ? 'Your key' : "The site's AI"}: {ai.provider === 'workers-ai' ? 'Workers AI (free daily allowance)' : AI_PROVIDER_LABELS[ai.provider].name} ·{' '}
           <span className="font-mono">{ai.model}</span>
           {ai.fallback && (
             <>

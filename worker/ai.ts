@@ -11,8 +11,11 @@ const workersAiModel = (env: Env) => env.WORKERS_AI_MODEL || DEFAULT_WORKERS_AI_
 type JsonSchema = Record<string, unknown>
 type Effort = 'low' | 'medium' | 'high'
 
-/** The automatic model of each provider: Claude Opus 5.5, and the best accuracy per dollar in bench/ for OpenAI. */
-export const DEFAULT_MODELS: Record<AiProviderId, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-5.6-luna' }
+/**
+ * The automatic model of each provider: Claude Opus 5.5, the best accuracy per dollar in bench/ for OpenAI, and the
+ * model Google recommends for new projects (Gemini 4 Hydrogen).
+ */
+export const DEFAULT_MODELS: Record<AiProviderId, string> = { anthropic: 'claude-opus-5-5', openai: 'gpt-5.6-luna', gemini: 'gemini-4-hydrogen' }
 
 export class AiError extends Error {}
 
@@ -29,6 +32,7 @@ export interface ModelChoice {
 export interface AccountAi {
   anthropic?: string
   openai?: string
+  gemini?: string
   mode: 'auto' | 'manual'
   provider: AiProviderId
   model: string
@@ -45,13 +49,13 @@ interface Route extends ModelChoice {
 
 /**
  * The routes a call tries, in order. With the account's own keys: its manual choice first (when that provider has a
- * key), then every provider with a key in AI_PROVIDERS order (Anthropic, then OpenAI) at its automatic model; the
+ * key), then every provider with a key in AI_PROVIDERS order (Anthropic, OpenAI, then Google) at its automatic model; the
  * site's shared AI is never used then, so an account's calls never spend the site's budget. Without own keys: the
  * site's AI (server keys, then the free Workers AI).
  */
 export function aiRoutes(env: AiEnv): Route[] {
   const acc = env.ACCOUNT_AI
-  if (acc && (acc.anthropic || acc.openai)) {
+  if (acc && AI_PROVIDERS.some((p) => acc[p])) {
     const own: Route[] = []
     if (acc.mode === 'manual' && acc[acc.provider]) own.push({ provider: acc.provider, model: acc.model || DEFAULT_MODELS[acc.provider], apiKey: acc[acc.provider], own: true })
     for (const p of AI_PROVIDERS) if (acc[p] && !own.some((r) => r.provider === p)) own.push({ provider: p, model: DEFAULT_MODELS[p], apiKey: acc[p], own: true })
@@ -60,6 +64,7 @@ export function aiRoutes(env: AiEnv): Route[] {
   const site: Route[] = []
   if (env.ANTHROPIC_API_KEY) site.push({ provider: 'anthropic', model: env.AI_MODEL || DEFAULT_MODELS.anthropic, apiKey: env.ANTHROPIC_API_KEY, own: false })
   if (env.OPENAI_API_KEY) site.push({ provider: 'openai', model: env.OPENAI_MODEL || DEFAULT_MODELS.openai, apiKey: env.OPENAI_API_KEY, own: false })
+  if (env.GEMINI_API_KEY) site.push({ provider: 'gemini', model: env.GEMINI_MODEL || DEFAULT_MODELS.gemini, apiKey: env.GEMINI_API_KEY, own: false })
   if (env.AI) site.push({ provider: 'workers-ai', model: workersAiModel(env), own: false })
   return site
 }
@@ -93,9 +98,9 @@ interface CallOpts {
 
 export async function generateJson<T>(env: AiEnv, opts: CallOpts): Promise<T> {
   const routes: Route[] = opts.model
-    ? [{ ...opts.model, apiKey: opts.model.provider === 'anthropic' ? env.ANTHROPIC_API_KEY : opts.model.provider === 'openai' ? env.OPENAI_API_KEY : undefined, own: false }]
+    ? [{ ...opts.model, apiKey: siteKey(env, opts.model.provider), own: false }]
     : aiRoutes(env)
-  if (!routes.length) throw new AiError('No AI is set up. Add your own Anthropic or OpenAI API key under AI in the top bar.')
+  if (!routes.length) throw new AiError('No AI is set up. Add your own Anthropic, OpenAI or Google Gemini API key under AI in the top bar.')
   for (const [i, route] of routes.entries()) {
     try {
       return await callRoute<T>(env, route, opts)
@@ -108,6 +113,9 @@ export async function generateJson<T>(env: AiEnv, opts: CallOpts): Promise<T> {
   throw new AiError('No AI route answered.')
 }
 
+const siteKey = (env: Env, provider: Provider) =>
+  provider === 'anthropic' ? env.ANTHROPIC_API_KEY : provider === 'openai' ? env.OPENAI_API_KEY : provider === 'gemini' ? env.GEMINI_API_KEY : undefined
+
 async function callRoute<T>(env: Env, route: Route, opts: CallOpts): Promise<T> {
   // The site's paid models stop at its spending cap (budget.ts); the account's own keys and Workers AI are not counted.
   const paid = !route.own && route.provider !== 'workers-ai'
@@ -119,7 +127,9 @@ async function callRoute<T>(env: Env, route: Route, opts: CallOpts): Promise<T> 
       ? anthropicJson<T>(route, counted)
       : route.provider === 'openai'
         ? openaiJson<T>(route, counted)
-        : workersAiJson<T>(env, route.model, counted)
+        : route.provider === 'gemini'
+          ? geminiJson<T>(route, counted)
+          : workersAiJson<T>(env, route.model, counted)
   // Never leave the editor waiting forever on a stuck model call.
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
@@ -231,6 +241,64 @@ async function openaiJson<T>(route: Route, opts: CallOpts): Promise<T> {
   if (choice?.finish_reason === 'length') throw new AiError('The response was cut off (max tokens). Try a shorter job description.')
   try {
     return JSON.parse(choice?.message?.content ?? '') as T
+  } catch {
+    throw new AiError('The model returned malformed JSON. Please retry.')
+  }
+}
+
+/** Gemini models with thinking levels (Gemini 3 and later, and Google's "latest" aliases); older ones reject the field. */
+const GEMINI_THINKING = /^gemini-([3-9]|\d{2,})|^gemini-(pro|flash|flash-lite)-latest$/
+
+/**
+ * Google's Interactions API (the recommended interface since mid 2026; new Gemini models launch there) with a JSON
+ * schema for the answer. store: false keeps the CV and the posting out of Google's interaction history.
+ */
+async function geminiJson<T>(route: Route, opts: CallOpts): Promise<T> {
+  const { model } = route
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'POST',
+    headers: { 'x-goog-api-key': route.apiKey ?? '', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      system_instruction: opts.system,
+      input: opts.prompt,
+      response_format: { type: 'text', mime_type: 'application/json', schema: opts.schema },
+      generation_config: { max_output_tokens: 32000, ...(GEMINI_THINKING.test(model) && { thinking_level: opts.effort }) },
+      store: false,
+    }),
+  }).catch(() => null)
+  if (!res) throw new ProviderError('Could not reach Google Gemini.')
+  const data = (await res.json().catch(() => null)) as {
+    error?: { message?: string; status?: string; details?: { reason?: string }[] }
+    status?: string
+    steps?: { type?: string; content?: { type?: string; text?: string }[] }[]
+    usage?: { total_input_tokens?: number; total_output_tokens?: number; total_thought_tokens?: number }
+  } | null
+  if (data?.usage) {
+    const u = data.usage
+    // Thought tokens are billed as output.
+    logUsage(opts, 'gemini', model, u.total_input_tokens, (u.total_output_tokens ?? 0) + (u.total_thought_tokens ?? 0), u.total_thought_tokens)
+  }
+  if (!res.ok) {
+    const detail = data?.error?.message ?? res.statusText
+    const badKey = res.status === 401 || (data?.error?.details ?? []).some((d) => d.reason === 'API_KEY_INVALID') || /api key/i.test(detail)
+    if (badKey) throw new ProviderError(`${who(route)} Google API key was rejected.`)
+    if (res.status === 403) throw new ProviderError(`${who(route)} Google API key may not use ${model}.`)
+    if (res.status === 404) throw new ProviderError(`Google does not know the model ${model}.`)
+    if (res.status === 429) throw new ProviderError(`Google Gemini rate limit or quota reached: ${detail}`)
+    throw new ProviderError(`Google Gemini error ${res.status}: ${detail}`)
+  }
+  if (data?.status === 'failed') throw new ProviderError('Google Gemini could not finish the answer.')
+  if (data?.status === 'incomplete') throw new AiError('The response was cut off (max tokens). Try a shorter job description.')
+  const text = (data?.steps ?? [])
+    .filter((s) => s.type === 'model_output')
+    .flatMap((s) => s.content ?? [])
+    .map((c) => (c.type === undefined || c.type === 'text' ? (c.text ?? '') : ''))
+    .join('')
+    .trim()
+  if (!text) throw new AiError('The model declined this request. Try rephrasing the job description.')
+  try {
+    return JSON.parse(text) as T
   } catch {
     throw new AiError('The model returned malformed JSON. Please retry.')
   }

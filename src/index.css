@@ -167,6 +167,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Theme switch: the new theme grows over the old one as an amoeba from the theme button (src/lib/theme.ts animates
+   the new snapshot's clip-path), instead of the default cross-fade. */
+html.theme-reveal::view-transition-old(root),
+html.theme-reveal::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 #print-root {
   position: absolute;
   top: 0;

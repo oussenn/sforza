@@ -17,6 +17,8 @@ interface __BaseEnv_Env {
 	SESSION_SECRET: string;
 	ANTHROPIC_API_KEY: string;
 	OPENAI_API_KEY: string;
+	GEMINI_API_KEY?: string;
+	GEMINI_MODEL?: string;
 	MCP_TOKEN: string;
 	AIORNOT_API_KEY: string;
 	AUTH_USERS?: string;

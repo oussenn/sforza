@@ -495,7 +495,7 @@ app.get('/api/ai/status', async (c) => {
   if (isDemoOwner(db.ownerOf(c.env))) return c.json({ provider: 'none', model: '', spend: null, detector: null } satisfies AiStatus)
   const status = aiStatus(c.env)
   // Only the site's shared paid models count against its budget; an account's own keys are billed to that account.
-  const paid = status.source === 'site' && (status.provider === 'openai' || status.provider === 'anthropic')
+  const paid = status.source === 'site' && status.provider !== 'workers-ai' && status.provider !== 'none'
   return c.json({ ...status, spend: paid ? await aiSpend(c.env) : null, detector: detectorName(c.env) } satisfies AiStatus)
 })
 

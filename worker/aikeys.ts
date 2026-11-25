@@ -5,7 +5,7 @@ import { secretConfigured } from './auth'
 import * as db from './db'
 
 /**
- * An account's own AI: its Anthropic and OpenAI API keys and its model choice. The keys are stored encrypted
+ * An account's own AI: its Anthropic, OpenAI and Google Gemini API keys and its model choice. The keys are stored encrypted
  * (AES-GCM with a key derived from SESSION_SECRET for this account, the account name bound in as associated data),
  * never logged, never returned to the browser or an agent: the editor only sees whether a key is set, its last four
  * characters and the result of the last check. Changing SESSION_SECRET makes the stored keys unreadable: they then
@@ -71,6 +71,8 @@ export async function openKey(env: { SESSION_SECRET?: string }, owner: string, s
 const KEY_SHAPE: Record<AiProviderId, RegExp> = {
   anthropic: /^sk-ant-[A-Za-z0-9_-]{20,300}$/,
   openai: /^sk-(?!ant-)[A-Za-z0-9_-]{20,300}$/,
+  // Google's keys have no fixed shape any more (standard "AIza…" keys and the newer auth keys): any long token.
+  gemini: /^(?!sk-)[A-Za-z0-9._-]{30,300}$/,
 }
 const MODEL_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]{1,80}$/
 
@@ -98,7 +100,7 @@ export async function accountAi(env: Env & db.Store): Promise<AccountAi | null> 
     const plain = sealed ? await openKey(env, owner, sealed) : null
     if (plain) keys[p] = plain
   }
-  if (!keys.anthropic && !keys.openai) return null
+  if (!AI_PROVIDERS.some((p) => keys[p])) return null
   return { ...keys, mode: stored.mode, provider: stored.provider, model: stored.model }
 }
 
@@ -116,12 +118,30 @@ export async function checkKey(provider: AiProviderId, key: string): Promise<{ o
       return { ok: null, error: 'Could not reach the provider to check the key; it was saved.' }
     }
   }
+  if (provider === 'gemini') return checkGeminiKey(key)
   const res = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15_000) }).catch(() => null)
   if (!res) return { ok: null, error: 'Could not reach the provider to check the key; it was saved.' }
   await res.body?.cancel().catch(() => undefined)
   if (res.ok) return { ok: true, error: null }
   if (res.status === 401) return { ok: false, error: 'The key was rejected: it is wrong or was revoked.' }
   if (res.status === 403) return { ok: false, error: 'This key has no permission to use the API.' }
+  if (res.status === 429) return { ok: null, error: 'Rate limit or quota reached while checking; the key was saved.' }
+  return { ok: null, error: `The check failed (${res.status}); the key was saved.` }
+}
+
+/** Google answers a wrong key with 400 API_KEY_INVALID (or 401), a key without access with 403. */
+async function checkGeminiKey(key: string): Promise<{ ok: boolean | null; error: string | null }> {
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', {
+    headers: { 'x-goog-api-key': key },
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => null)
+  if (!res) return { ok: null, error: 'Could not reach the provider to check the key; it was saved.' }
+  const body = (await res.json().catch(() => null)) as { error?: { message?: string; details?: { reason?: string }[] } } | null
+  if (res.ok) return { ok: true, error: null }
+  const reason = (body?.error?.details ?? []).map((d) => d.reason).join(' ')
+  if (res.status === 401 || /API_KEY_INVALID/.test(reason) || (res.status === 400 && /api key/i.test(body?.error?.message ?? '')))
+    return { ok: false, error: 'The key was rejected: it is wrong or was revoked.' }
+  if (res.status === 403) return { ok: false, error: 'This key may not use the Gemini API (Google refuses unrestricted keys: limit it to the Gemini API in Google AI Studio).' }
   if (res.status === 429) return { ok: null, error: 'Rate limit or quota reached while checking; the key was saved.' }
   return { ok: null, error: `The check failed (${res.status}); the key was saved.` }
 }
@@ -163,7 +183,10 @@ export async function updateAiSettings(env: Env & db.Store, input: AiSettingsInp
       continue
     }
     const key = String(given).trim()
-    if (!KEY_SHAPE[p].test(key)) throw new AiError(`That does not look like an ${AI_PROVIDER_LABELS[p].name} API key (they start with ${AI_PROVIDER_LABELS[p].keyPrefix}).`)
+    if (!KEY_SHAPE[p].test(key)) {
+      const { name, keyPrefix } = AI_PROVIDER_LABELS[p]
+      throw new AiError(`That does not look like ${/^[AEIOU]/.test(name) ? 'an' : 'a'} ${name} API key${keyPrefix ? ` (they start with ${keyPrefix})` : ''}.`)
+    }
     const check = await checkKey(p, key)
     if (check.ok === false) throw new AiError(`${AI_PROVIDER_LABELS[p].name}: ${check.error}`)
     stored.keys[p] = { ...(await sealKey(env, owner, key)), hint: hintOf(p, key), checkedAt: new Date().toISOString(), ...check }

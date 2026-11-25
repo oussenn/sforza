@@ -2,7 +2,7 @@ import type { AiSpend } from '@shared/types'
 import { AiError, type Usage } from './ai'
 
 /**
- * Spending cap for paid models (OpenAI, Claude): every call's cost is recorded per UTC day in D1, and new
+ * Spending cap for the site's paid models (Claude, OpenAI, Gemini): every call's cost is recorded per UTC day in D1, and new
  * calls are refused once today's or this month's total reaches AI_DAILY_BUDGET_USD / AI_MONTHLY_BUDGET_USD.
  * The free Workers AI model is not counted.
  */

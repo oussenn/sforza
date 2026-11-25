@@ -344,13 +344,15 @@ export interface Library {
   notes: string
 }
 
-/** The providers an account can bring its own API key for. */
-export const AI_PROVIDERS = ['anthropic', 'openai'] as const
+/** The providers an account can bring its own API key for, in the order the AI buttons try them. */
+export const AI_PROVIDERS = ['anthropic', 'openai', 'gemini'] as const
 export type AiProviderId = (typeof AI_PROVIDERS)[number]
 
 export const AI_PROVIDER_LABELS: Record<AiProviderId, { name: string; product: string; keyPrefix: string; keysUrl: string }> = {
   anthropic: { name: 'Anthropic', product: 'Claude', keyPrefix: 'sk-ant-', keysUrl: 'https://console.anthropic.com/settings/keys' },
   openai: { name: 'OpenAI', product: 'ChatGPT', keyPrefix: 'sk-', keysUrl: 'https://platform.openai.com/api-keys' },
+  // Google's keys have no fixed prefix (AI Studio makes "auth keys" since May 2026).
+  gemini: { name: 'Google', product: 'Gemini', keyPrefix: '', keysUrl: 'https://aistudio.google.com/apikey' },
 }
 
 /** Models offered in the AI settings, the automatic choice first; any other model id of the provider can be typed in. */
@@ -367,6 +369,12 @@ export const AI_MODEL_OPTIONS: Record<AiProviderId, { id: string; label: string;
     { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', note: 'Between the two' },
     { id: 'gpt-5.4-mini', label: 'GPT-5.4 mini', note: 'Older and cheaper' },
   ],
+  gemini: [
+    { id: 'gemini-4-hydrogen', label: 'Gemini 4 Hydrogen', note: 'Automatic choice: Google\'s pick for new projects, fast and dependable' },
+    { id: 'gemini-4-carbon', label: 'Gemini 4 Carbon', note: 'Strongest reasoning, slower' },
+    { id: 'gemini-4-argon', label: 'Gemini 4 Argon', note: 'Efficient reasoning, fewer tokens' },
+    { id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash', note: 'Fast and cheap' },
+  ],
 }
 
 /** An account's own AI setup as the editor sees it: never the keys themselves, only their last characters. */
@@ -381,7 +389,7 @@ export interface AiSettingsView {
 }
 
 export interface AiStatus {
-  provider: 'anthropic' | 'openai' | 'workers-ai' | 'none'
+  provider: 'anthropic' | 'openai' | 'gemini' | 'workers-ai' | 'none'
   model: string
   /** own: the account's API key; site: the server's shared AI (and its budget) */
   source?: 'own' | 'site' | 'none'

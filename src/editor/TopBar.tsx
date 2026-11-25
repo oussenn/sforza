@@ -74,6 +74,7 @@ function NavButton({
   label,
   onClick,
   compact,
+  tools,
 }: {
   active: boolean
   icon: typeof FileText
@@ -81,6 +82,8 @@ function NavButton({
   onClick: () => void
   /** Icon only until very wide screens (1800 px): the CV tabs and tools share the bar. Otherwise labels from 1280 px. */
   compact: boolean
+  /** The page's own tools share the bar too (the letters page): labels from 1536 px. */
+  tools?: boolean
 }) {
   return (
     <button
@@ -95,7 +98,7 @@ function NavButton({
       )}
     >
       <Icon className="size-4" />
-      <span className={compact ? 'hidden min-[1800px]:inline' : 'hidden xl:inline'}>{label}</span>
+      <span className={compact ? 'hidden min-[1800px]:inline' : tools ? 'hidden 2xl:inline' : 'hidden xl:inline'}>{label}</span>
     </button>
   )
 }
@@ -117,6 +120,7 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
   // Controls for one CV only show while that CV is open.
   const cv = route.page === 'cv' && resume?.id === route.id ? resume : null
   const inCv = route.page === 'cv'
+  const onLetters = route.page === 'letters'
   const masters = list.filter((m) => m.kind === 'master')
   const tailored = list.filter((m) => m.kind === 'tailored')
 
@@ -141,21 +145,21 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
       </button>
       <nav className="flex items-center gap-0.5 sm:gap-1">
         <NavButton
-          compact={inCv}
+          compact={inCv} tools={onLetters}
           active={route.page === 'applications'}
           icon={SquareKanban}
           label="Applications"
           onClick={() => navigate({ page: 'applications', appId: null })}
         />
-        <NavButton compact={inCv} active={route.page === 'cvs'} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
-        <NavButton compact={inCv} active={route.page === 'letters'} icon={Mail} label="Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
+        <NavButton compact={inCv} tools={onLetters} active={route.page === 'cvs'} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
+        <NavButton compact={inCv} tools={onLetters} active={route.page === 'letters'} icon={Mail} label="My Cover Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
       </nav>
       <div className="bg-border mx-0.5 h-6 w-px sm:mx-1.5" aria-hidden />
       <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="About you">
         {(Object.keys(PANELS) as PanelPage[]).map((p) => (
           <NavButton
             key={p}
-            compact={inCv}
+            compact={inCv} tools={onLetters}
             active={route.page === p}
             icon={PANELS[p].icon}
             label={PANELS[p].label}
@@ -270,7 +274,7 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="size-9 max-lg:order-1 max-lg:ml-auto" aria-label="Menu">
+            <Button variant="outline" size="icon" className="size-9 max-lg:order-1 max-lg:ml-auto" aria-label="Menu" data-theme-menu>
               <MoreVertical className="size-4" />
             </Button>
           </DropdownMenuTrigger>
