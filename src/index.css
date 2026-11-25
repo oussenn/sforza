@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "./shadcn.css";
 @import "@fontsource-variable/geist";
+@import "./themes.css";
 
 /* Country flags (🇬🇧 🇩🇪, a column like "Drafts 🇩🇪"): Windows has no flag emoji, so Chrome, Edge and Brave on
    Windows showed the letters "GB" and "DE". This face only covers the flag code points (unicode-range), is first in

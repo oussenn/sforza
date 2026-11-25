@@ -1,0 +1,391 @@
+/* ------------------------------------------------------------------------ */
+/* Themes: each one in a light and a dark contrast (src/lib/theme.ts).      */
+/* :root[data-look] outranks .dark, and :root[data-look].dark outranks both. */
+/* The CV and letter pages keep their own colours: they never read these.   */
+/* ------------------------------------------------------------------------ */
+
+/* Sakura: blush pink like a pink tablet home screen, rose accents, white rounded tiles. */
+:root[data-look='sakura'] {
+  --background: #fff6f8;
+  --foreground: #4a2433;
+  --card: #ffffff;
+  --card-foreground: #4a2433;
+  --popover: #fffafb;
+  --popover-foreground: #4a2433;
+  --primary: #d45f7f;
+  --primary-foreground: #ffffff;
+  --secondary: #f9e1e7;
+  --secondary-foreground: #5c2a3c;
+  --muted: #f8e3e8;
+  --muted-foreground: #95606f;
+  --accent: #fbd7e0;
+  --accent-foreground: #5c2a3c;
+  --destructive: #d23b4f;
+  --border: #f1cfd7;
+  --input: #eec9d2;
+  --ring: #e58ba0;
+  --chart-1: #f7c6d1;
+  --chart-2: #e58ba0;
+  --chart-3: #d45f7f;
+  --chart-4: #a8435f;
+  --chart-5: #6b2e45;
+  --radius: 0.95rem;
+  --sidebar: #fff8fa;
+  --sidebar-foreground: #4a2433;
+  --sidebar-primary: #d45f7f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fbd7e0;
+  --sidebar-accent-foreground: #5c2a3c;
+  --sidebar-border: #f1cfd7;
+  --sidebar-ring: #e58ba0;
+  --hairline: rgb(170 70 100 / 10%);
+  --editor-bg: #f7dfe4;
+  --preview-canvas: #f4d6dc;
+  --sakura-curve-1: rgb(255 255 255 / 24%);
+  --sakura-curve-2: rgb(255 255 255 / 30%);
+}
+/* Night sakura (yozakura): plum night, glowing blossoms. */
+:root[data-look='sakura'].dark {
+  --background: #1d1118;
+  --foreground: #fbe8ee;
+  --card: #28161f;
+  --card-foreground: #fbe8ee;
+  --popover: #2c1923;
+  --popover-foreground: #fbe8ee;
+  --primary: #f4a6ba;
+  --primary-foreground: #3a1424;
+  --secondary: #3a2230;
+  --secondary-foreground: #fbe8ee;
+  --muted: #33202b;
+  --muted-foreground: #c99aaa;
+  --accent: #452636;
+  --accent-foreground: #fde6ed;
+  --destructive: #ff7a8a;
+  --border: rgb(255 190 210 / 14%);
+  --input: rgb(255 190 210 / 18%);
+  --ring: #e48aa3;
+  --sidebar: #241520;
+  --sidebar-foreground: #fbe8ee;
+  --sidebar-primary: #f4a6ba;
+  --sidebar-primary-foreground: #3a1424;
+  --sidebar-accent: #452636;
+  --sidebar-accent-foreground: #fde6ed;
+  --sidebar-border: rgb(255 190 210 / 14%);
+  --sidebar-ring: #e48aa3;
+  --hairline: rgb(255 190 210 / 10%);
+  --editor-bg: #1a0f16;
+  --preview-canvas: #22131c;
+  --sakura-curve-1: rgb(255 170 200 / 4%);
+  --sakura-curve-2: rgb(255 170 200 / 6%);
+}
+
+/* Terminal: phosphor green on black; light is a pale green screen with dark green type. */
+:root[data-look='terminal'] {
+  --background: #eef5e9;
+  --foreground: #0f3a1c;
+  --card: #f8fcf5;
+  --card-foreground: #0f3a1c;
+  --popover: #f8fcf5;
+  --popover-foreground: #0f3a1c;
+  --primary: #157a36;
+  --primary-foreground: #f2fff5;
+  --secondary: #e0ecd9;
+  --secondary-foreground: #0f3a1c;
+  --muted: #e3eedc;
+  --muted-foreground: #4d7a59;
+  --accent: #d6ead0;
+  --accent-foreground: #0f3a1c;
+  --destructive: #c2412d;
+  --border: #c4d9bd;
+  --input: #bcd3b4;
+  --ring: #2f9a52;
+  --chart-1: #b9e4c4;
+  --chart-2: #6cc488;
+  --chart-3: #2f9a52;
+  --chart-4: #157a36;
+  --chart-5: #0f3a1c;
+  --radius: 0.25rem;
+  --sidebar: #f4f9f0;
+  --sidebar-foreground: #0f3a1c;
+  --sidebar-primary: #157a36;
+  --sidebar-primary-foreground: #f2fff5;
+  --sidebar-accent: #d6ead0;
+  --sidebar-accent-foreground: #0f3a1c;
+  --sidebar-border: #c4d9bd;
+  --sidebar-ring: #2f9a52;
+  --hairline: rgb(15 58 28 / 12%);
+  --editor-bg: #e6efe0;
+  --preview-canvas: #dde9d6;
+  --term-glow: transparent;
+  --term-grid: rgb(15 90 40 / 6%);
+  --term-scan: rgb(15 58 28 / 4%);
+}
+:root[data-look='terminal'].dark {
+  --background: #050a06;
+  --foreground: #66ff99;
+  --card: #08110a;
+  --card-foreground: #66ff99;
+  --popover: #0a140c;
+  --popover-foreground: #66ff99;
+  --primary: #39ff7a;
+  --primary-foreground: #021a08;
+  --secondary: #0f1f12;
+  --secondary-foreground: #8dffb5;
+  --muted: #0d1a10;
+  --muted-foreground: #2fae5c;
+  --accent: #10261a;
+  --accent-foreground: #8dffb5;
+  --destructive: #ff5f56;
+  --border: rgb(57 255 122 / 22%);
+  --input: rgb(57 255 122 / 28%);
+  --ring: #39ff7a;
+  --sidebar: #070e08;
+  --sidebar-foreground: #66ff99;
+  --sidebar-primary: #39ff7a;
+  --sidebar-primary-foreground: #021a08;
+  --sidebar-accent: #10261a;
+  --sidebar-accent-foreground: #8dffb5;
+  --sidebar-border: rgb(57 255 122 / 22%);
+  --sidebar-ring: #39ff7a;
+  --hairline: rgb(57 255 122 / 14%);
+  --editor-bg: #030704;
+  --preview-canvas: #061009;
+  --term-glow: rgb(57 255 122 / 35%);
+  --term-grid: rgb(57 255 122 / 5%);
+  --term-scan: rgb(0 0 0 / 28%);
+}
+
+/* Space: deep navy with violet and cyan; light is a pale dawn sky. */
+:root[data-look='space'] {
+  --background: #f3f3ff;
+  --foreground: #1b1f4b;
+  --card: #ffffff;
+  --card-foreground: #1b1f4b;
+  --popover: #ffffff;
+  --popover-foreground: #1b1f4b;
+  --primary: #5b4bdb;
+  --primary-foreground: #ffffff;
+  --secondary: #e6e8ff;
+  --secondary-foreground: #1b1f4b;
+  --muted: #e9ebff;
+  --muted-foreground: #5f6494;
+  --accent: #dfe4ff;
+  --accent-foreground: #1b1f4b;
+  --destructive: #d8434f;
+  --border: #d8dcf6;
+  --input: #d0d5f3;
+  --ring: #7c6cf0;
+  --chart-1: #cfd3ff;
+  --chart-2: #9c8ff7;
+  --chart-3: #5b4bdb;
+  --chart-4: #3fb6d9;
+  --chart-5: #1b1f4b;
+  --radius: 0.85rem;
+  --sidebar: #f7f7ff;
+  --sidebar-foreground: #1b1f4b;
+  --sidebar-primary: #5b4bdb;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dfe4ff;
+  --sidebar-accent-foreground: #1b1f4b;
+  --sidebar-border: #d8dcf6;
+  --sidebar-ring: #7c6cf0;
+  --hairline: rgb(27 31 75 / 8%);
+  --editor-bg: #e9ebff;
+  --preview-canvas: #e2e5fb;
+}
+:root[data-look='space'].dark {
+  --background: #070a1c;
+  --foreground: #e7e9ff;
+  --card: #0e1330;
+  --card-foreground: #e7e9ff;
+  --popover: #111739;
+  --popover-foreground: #e7e9ff;
+  --primary: #a193ff;
+  --primary-foreground: #120d33;
+  --secondary: #171d45;
+  --secondary-foreground: #e7e9ff;
+  --muted: #151b40;
+  --muted-foreground: #9aa0d6;
+  --accent: #1d2454;
+  --accent-foreground: #e7e9ff;
+  --destructive: #ff6b7a;
+  --border: rgb(160 170 255 / 16%);
+  --input: rgb(160 170 255 / 20%);
+  --ring: #8b7bff;
+  --sidebar: #0b1029;
+  --sidebar-foreground: #e7e9ff;
+  --sidebar-primary: #a193ff;
+  --sidebar-primary-foreground: #120d33;
+  --sidebar-accent: #1d2454;
+  --sidebar-accent-foreground: #e7e9ff;
+  --sidebar-border: rgb(160 170 255 / 16%);
+  --sidebar-ring: #8b7bff;
+  --hairline: rgb(160 170 255 / 10%);
+  --editor-bg: #050716;
+  --preview-canvas: #0a0e26;
+}
+
+/* Custom: its tokens come from the user's three colours, set on <html> (src/lib/palette.ts). */
+:root[data-look='custom'] {
+  --radius: 0.75rem;
+}
+
+/* ---------------------------- the scenes ---------------------------- */
+
+:root[data-look='sakura'] .scene {
+  background: linear-gradient(115deg, #f1bfca 0%, #f6d4db 38%, #f9e2e6 70%, #f7dbe1 100%);
+}
+:root[data-look='sakura'].dark .scene {
+  background: linear-gradient(115deg, #170c13 0%, #22111b 45%, #2a1521 100%);
+}
+.sakura-branch {
+  top: -3vh;
+  height: min(82vh, 860px);
+  width: auto;
+  transform-origin: 50% 0;
+  animation: sakura-sway 9s ease-in-out infinite alternate;
+}
+/* The right 12 % of the picture was cut flat: it hangs past the window's edge. */
+.sakura-branch-right {
+  right: max(-8vw, -110px);
+}
+.sakura-branch-left {
+  left: max(-8vw, -120px);
+  top: -17vh;
+  height: min(58vh, 600px);
+  opacity: 0.6;
+  scale: -1 1;
+  animation-duration: 11s;
+  animation-delay: -4s;
+}
+:root.dark .sakura-branch {
+  opacity: 0.74;
+  filter: brightness(0.92) drop-shadow(0 0 18px rgb(255 160 195 / 28%));
+}
+:root.dark .sakura-branch-left {
+  opacity: 0.5;
+}
+@keyframes sakura-sway {
+  from {
+    rotate: -0.9deg;
+  }
+  to {
+    rotate: 1.1deg;
+  }
+}
+/* A soft moon behind the night branches. */
+.sakura-moon {
+  left: 14%;
+  top: 7%;
+  width: 220px;
+  height: 220px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(255 236 242 / 22%) 0%, rgb(255 200 220 / 8%) 45%, transparent 70%);
+}
+
+/* Sakura: a sprig of blossom opens on the corner of a top bar button under the pointer (not over its label), and
+   stays half open on the page you are on. The petals it drops come from src/components/Effects.tsx. */
+:root[data-look='sakura'] [data-topbar] :is(button, a) {
+  position: relative;
+}
+:root[data-look='sakura'] [data-topbar] :is(button, a)::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  right: -11px;
+  width: 36px;
+  height: 29px;
+  background: url('/themes/sakura/sprig-1.webp') center / contain no-repeat;
+  transform-origin: 80% 10%;
+  transform: scale(0.2) rotate(-28deg);
+  opacity: 0;
+  transition:
+    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease-out;
+  pointer-events: none;
+  z-index: 2;
+}
+:root[data-look='sakura'] [data-topbar] :is(button, a):nth-of-type(3n + 2)::after {
+  background-image: url('/themes/sakura/sprig-2.webp');
+}
+:root[data-look='sakura'] [data-topbar] :is(button, a):nth-of-type(3n)::after {
+  background-image: url('/themes/sakura/sprig-3.webp');
+}
+:root[data-look='sakura'] [data-topbar] :is(button, a):hover::after,
+:root[data-look='sakura'] [data-topbar] :is(button, a):focus-visible::after {
+  transform: scale(1) rotate(0deg);
+  opacity: 1;
+}
+:root[data-look='sakura'] [data-topbar] [aria-current='page']::after {
+  transform: scale(0.72) rotate(-8deg);
+  opacity: 0.9;
+}
+:root[data-look='sakura'] ::selection {
+  background: rgb(244 166 186 / 45%);
+}
+
+:root[data-look='terminal'] .scene {
+  background:
+    linear-gradient(var(--term-grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, var(--term-grid) 1px, transparent 1px) 0 0 / 28px 28px,
+    var(--background);
+}
+/* Scanlines and a vignette, behind the app so the CV page stays clean. */
+:root[data-look='terminal'] .scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(to bottom, var(--term-scan) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 22%) 100%);
+}
+:root[data-look='terminal']:not(.dark) .scene::after {
+  background: repeating-linear-gradient(to bottom, var(--term-scan) 0 1px, transparent 1px 3px);
+}
+:root[data-look='terminal'] {
+  font-family: 'Twemoji Country Flags', ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}
+:root[data-look='terminal'] .font-sans {
+  font-family: inherit;
+}
+:root[data-look='terminal'].dark :is(h1, h2, h3) {
+  text-shadow: 0 0 8px var(--term-glow);
+}
+/* A block cursor after the page you are on. */
+:root[data-look='terminal'] [data-topbar] [aria-current='page'] > span::after {
+  content: '▋';
+  margin-left: 2px;
+  animation: term-blink 1.1s steps(1) infinite;
+}
+@keyframes term-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+:root[data-look='space'] .scene {
+  background:
+    radial-gradient(ellipse 55% 45% at 18% 22%, rgb(150 120 255 / 16%), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 85% 78%, rgb(80 220 255 / 13%), transparent 70%),
+    linear-gradient(160deg, #f4f2ff 0%, #e9ecff 55%, #f6efff 100%);
+}
+:root[data-look='space'].dark .scene {
+  background:
+    radial-gradient(ellipse 50% 40% at 20% 25%, rgb(120 90 255 / 22%), transparent 70%),
+    radial-gradient(ellipse 45% 38% at 82% 75%, rgb(40 190 255 / 16%), transparent 70%),
+    radial-gradient(ellipse 30% 25% at 60% 15%, rgb(255 120 200 / 8%), transparent 70%),
+    linear-gradient(160deg, #04061a 0%, #070b22 50%, #0a0820 100%);
+}
+
+:root[data-look='custom'] .scene {
+  background:
+    radial-gradient(ellipse 60% 50% at 15% 20%, var(--scene-2), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 85% 80%, var(--scene-3), transparent 70%),
+    var(--scene-1);
+}
+
+/* Motion effects off (or reduced motion): everything stands still. */
+:root[data-motion='off'] .sakura-branch,
+:root[data-motion='off'] [data-topbar] [aria-current='page'] > span::after {
+  animation: none;
+}

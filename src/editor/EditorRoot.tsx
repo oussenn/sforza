@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Backdrop } from '@/components/Backdrop'
+import { AppearanceDialog } from '@/components/AppearanceDialog'
+import { Effects } from '@/components/Effects'
+import { ThemeScene } from '@/components/ThemeScene'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { api, type DemoSession } from '@/lib/api'
@@ -72,12 +74,14 @@ export default function EditorRoot() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      {auth === 'checking' ? <div className="min-h-dvh bg-[var(--preview-canvas)]" /> : <Backdrop blurred={inEditor} animate={animate} />}
+      {auth === 'checking' ? <div className="min-h-dvh bg-[var(--preview-canvas)]" /> : <ThemeScene blurred={inEditor} animate={animate} />}
       {/* A new account from an invitation replaces any session in this browser. */}
       {auth !== 'checking' && joinCode !== null && <Login mode={{ kind: 'join', code: joinCode }} onSuccess={joined} />}
       {auth === 'out' && joinCode === null && <Login mode={mode} onSuccess={signedIn} demoAvailable={demoAvailable} />}
       {inEditor && <Editor onLogout={signedOut} user={user} demo={demo} />}
       <Toaster position="bottom-center" richColors closeButton />
+      <AppearanceDialog />
+      <Effects />
       <span className="text-foreground pointer-events-none fixed right-2 bottom-1 z-50 text-[10px] tabular-nums opacity-35 select-none print:hidden" aria-hidden>
         v{VERSION}
       </span>

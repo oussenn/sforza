@@ -1,9 +1,23 @@
-// Applies the saved theme before the first paint (see src/lib/theme.ts). The PDF page stays light.
+// Applies the saved appearance before the first paint (see src/lib/theme.ts): the contrast (dark class), the theme
+// (data-look) and, for the custom theme, its stored colour tokens. The PDF page stays standard and light.
 // A file, not an inline script, so the Content-Security-Policy in _headers can forbid inline scripts.
 try {
-  var t = localStorage.getItem('theme')
-  if (location.pathname !== '/print' && (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches))) {
-    document.documentElement.classList.add('dark')
-    document.documentElement.style.colorScheme = 'dark'
+  var root = document.documentElement
+  if (location.pathname !== '/print') {
+    var t = localStorage.getItem('theme')
+    var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+    if (dark) {
+      root.classList.add('dark')
+      root.style.colorScheme = 'dark'
+    }
+    var look = localStorage.getItem('look')
+    if (look === 'sakura' || look === 'terminal' || look === 'space' || look === 'custom') {
+      root.setAttribute('data-look', look)
+      if (look === 'custom') {
+        var vars = JSON.parse(localStorage.getItem('palette-vars') || 'null')
+        var set = vars && vars[dark ? 'dark' : 'light']
+        for (var k in set) if (/^--[a-z0-9-]+$/.test(k) && typeof set[k] === 'string') root.style.setProperty(k, set[k])
+      }
+    }
   }
 } catch (e) {}

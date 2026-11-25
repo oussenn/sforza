@@ -12,6 +12,7 @@ import {
   Monitor,
   Moon,
   MoreVertical,
+  Palette,
   PencilLine,
   SquareKanban,
   Star,
@@ -23,6 +24,7 @@ import { toast } from 'sonner'
 import { faGithub } from '@fortawesome/free-brands-svg-icons'
 import { LANG_LABELS, LANGS, type Application, type Lang } from '@shared/types'
 import { CompanyLogo } from '@/components/CompanyLogo'
+import { LOOK_INFO, openAppearance } from '@/components/AppearanceDialog'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { api } from '@/lib/api'
-import { useTheme, type ThemeChoice } from '@/lib/theme'
+import { useAppearance, useTheme, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 import { downloadLetterPdf } from '@/resume/download'
 import { FaIcon } from '@/templates/shared'
@@ -96,6 +98,7 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
   const saveState = useEditor((s) => s.saveState)
   const apps = useApplications((s) => s.items)
   const { theme, setTheme } = useTheme()
+  const { look } = useAppearance()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [account, setAccount] = useState(false)
@@ -116,7 +119,7 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
 
   // Phones and tablets: two rows. The pages and the menu on top; a CV's tabs and the page's tools (CV, letters) below.
   return (
-    <header className="bg-background/70 border-hairline flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b px-2 py-2 backdrop-blur-xl sm:gap-x-2 sm:px-4 lg:h-16 lg:flex-nowrap lg:py-0">
+    <header data-topbar className="bg-background/70 border-hairline flex shrink-0 flex-wrap items-center gap-x-1 gap-y-1.5 border-b px-2 py-2 backdrop-blur-xl sm:gap-x-2 sm:px-4 lg:h-16 lg:flex-nowrap lg:py-0">
       <button
         type="button"
         onClick={() => navigate({ page: 'applications', appId: null })}
@@ -220,6 +223,9 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+            <DropdownMenuItem onClick={openAppearance}>
+              <Palette /> Theme: {LOOK_INFO[look].name}…
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <a href={SOURCE_URL} target="_blank" rel="noreferrer">

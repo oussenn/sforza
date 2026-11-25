@@ -81,7 +81,7 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
 
 ![AI panel: three API keys, the model choice and the backup order](.github/readme/ai-models.gif)
 
-## Command palette and dark mode
+## Themes, command palette and dark mode
 
 <table>
   <tr>
@@ -89,6 +89,18 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
     <td width="50%"><img src=".github/readme/dark.gif" alt="Dark mode"><br><sub>Light and dark on every page, spreading from the theme button</sub></td>
   </tr>
 </table>
+
+Light and dark are contrasts, and every theme has both. Pick a theme under Theme in the menu (or "Appearance" in Ctrl+K); it is kept for this browser:
+
+- **Standard**: the painting and plain greys.
+- **Sakura**: blush pink with rose accents and cherry branches hanging from the top corners. Petals fall from them, tumbling like real ones, and the pointer blows them aside. A click on a button bursts petals from it, and a blossom opens on the corner of a top bar button under the pointer. A dragged card sheds petals from behind it, and a card dropped on Interview or Offer brings a shower over its column. At night (dark) the branches glow under a soft moon.
+- **Terminal**: phosphor green on black (a pale green screen in light), monospace type, scanlines, a faint glyph rain and a blinking cursor on the page you are on.
+- **Space**: a twinkling starfield that shifts with the pointer, shooting stars and nebulae (a dawn sky in light); clicks scatter little stars.
+- **Your colours**: three colours of your own (page, primary, accent), turned into a light and a dark contrast.
+
+Motion effects can be switched off in the same window, and stay off when the system asks for reduced motion. The CV and letter pages keep their own colours in every theme.
+
+![Sakura in light and dark, Terminal and Space](.github/readme/themes.jpg)
 
 ## Features
 
@@ -105,7 +117,8 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
 - Your own AI for each account: Anthropic, OpenAI and Google Gemini API keys (any of them), the model picked automatically or by you, and the next key as backup when a call fails. Keys are stored encrypted and never shown again
 - Board with your own columns, form answers and AI-text checks; a built-in column can be hidden, e.g. Draft for one Drafts column per language
 - MCP server that can do everything the editor can
-- Command palette (Ctrl+K), light and dark mode
+- Themes: Standard, Sakura, Terminal, Space and your own three colours, each in light and dark, with motion effects (falling petals, stars, glyphs, bursts on clicks and moved cards) that can be switched off
+- Command palette (Ctrl+K)
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, CV preview on a button
 - Accounts made in the app: invitation links, password change, locking, separate data
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
@@ -131,8 +144,8 @@ worker/    API, auth, AI calls, job readers, PDF rendering, MCP server
 shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
-scripts/   optional account generator for the AUTH_USERS secret
-design/    full-size source images of the logo and the background (public/ has the sized copies)
+scripts/   optional account generator for the AUTH_USERS secret, and the sakura theme's image builder
+design/    full-size source images of the logo, the background and the sakura pictures (public/ has the sized copies)
 ```
 
 ## Run locally
@@ -317,6 +330,8 @@ See [SECURITY.md](SECURITY.md) for what is in place and how to report a problem.
 ## License
 
 [MIT](LICENSE)
+
+The sakura theme's petals and cherry branch are cut from two transparent PNGs in design/sakura (the branch is "cherry blossoms png 4" by augt30 on DeviantArt); they are not covered by the MIT license, so check their own terms before reusing them.
 
 Country flags are drawn with the Twemoji Country Flags font from [country-flag-emoji-polyfill](https://github.com/talkjs/country-flag-emoji-polyfill), flag art by [Twemoji](https://github.com/twitter/twemoji) (Twitter, Inc and other contributors), [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 

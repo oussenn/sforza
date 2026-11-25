@@ -224,6 +224,7 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
           return (
             <section
               key={stage}
+              data-stage={stage}
               aria-label={label(stage)}
               onDragOver={dragOver(stage)}
               onDragLeave={(e) => {

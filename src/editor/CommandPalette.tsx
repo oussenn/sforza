@@ -10,6 +10,7 @@ import {
   Moon,
   PanelLeft,
   Paintbrush,
+  Palette,
   Plus,
   Sparkles,
   SquareKanban,
@@ -30,7 +31,8 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { api } from '@/lib/api'
-import { setTheme } from '@/lib/theme'
+import { LOOK_INFO, openAppearance } from '@/components/AppearanceDialog'
+import { LOOKS, setLook, setTheme } from '@/lib/theme'
 import { useStageLabel } from './applications/stages'
 import { logoFor, useApplications } from './applications/store'
 import { PANELS } from './profile/ProfilePage'
@@ -175,9 +177,17 @@ export default function CommandPalette({ onLogout }: { onLogout: () => void }) {
             <CommandItem value="theme dark mode" onSelect={run(() => setTheme('dark'))}>
               <Moon /> Dark mode
             </CommandItem>
-            <CommandItem value="theme system mode" onSelect={run(() => setTheme('system'))}>
-              <Monitor /> Theme: follow the system
+            <CommandItem value="theme system mode contrast" onSelect={run(() => setTheme('system'))}>
+              <Monitor /> Light or dark: follow the system
             </CommandItem>
+            <CommandItem value="appearance themes colours palette" onSelect={run(openAppearance)}>
+              <Palette /> Appearance and themes…
+            </CommandItem>
+            {LOOKS.map((id) => (
+              <CommandItem key={id} value={`theme ${id} ${LOOK_INFO[id].name}`} onSelect={run(() => setLook(id))}>
+                <Palette /> Theme: {LOOK_INFO[id].name}
+              </CommandItem>
+            ))}
             <CommandItem
               onSelect={run(async () => {
                 await useEditor.getState().flush()
