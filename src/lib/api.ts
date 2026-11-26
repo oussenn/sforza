@@ -9,6 +9,7 @@ import type {
   ChangeStamps,
   CoverLetter,
   InviteInfo,
+  AccessRequest,
   JobAnalysis,
   JobInfo,
   Lang,
@@ -71,7 +72,15 @@ export const api = {
       demo?: DemoSession
       /** signed out, and this site has the public demo */
       demoAvailable?: boolean
+      /** signed in: the welcome tour was finished or skipped */
+      tourSeen?: boolean
+      /** the admin account, and how many access requests wait */
+      admin?: boolean
+      pendingRequests?: number
     }>('/api/auth/me'),
+  requestAccess: (input: { email: string; name: string; note: string; website: string }) =>
+    request<{ ok: true }>('/api/auth/request-access', json('POST', input)),
+  setTourSeen: (seen: boolean) => request<{ ok: true }>('/api/onboarding', json('PUT', { seen })),
   login: (username: string, password: string) =>
     request<{ ok: true; user: string; demo?: DemoSession }>('/api/auth/login', json('POST', { username, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', json('POST', {})),
@@ -80,7 +89,13 @@ export const api = {
   join: (code: string, username: string, password: string) =>
     request<{ ok: true; user: string }>('/api/auth/join', json('POST', { code, username, password })),
   changePassword: (current: string, password: string) => request<{ ok: true }>('/api/auth/password', json('POST', { current, password })),
-  accounts: () => request<{ accounts: AccountInfo[]; invites: InviteInfo[] }>('/api/accounts'),
+  accounts: () => request<{ accounts: AccountInfo[]; invites: InviteInfo[]; requests: AccessRequest[]; mail: boolean }>('/api/accounts'),
+  inviteRequest: (id: string) =>
+    request<{ url: string; expiresAt: number; email: string; sent: boolean; mail: { subject: string; text: string } }>(
+      `/api/accounts/requests/${encodeURIComponent(id)}/invite`,
+      json('POST', {}),
+    ),
+  declineRequest: (id: string) => request<{ ok: true }>(`/api/accounts/requests/${encodeURIComponent(id)}`, json('DELETE')),
   createInvite: () => request<{ url: string; expiresAt: number }>('/api/accounts/invites', json('POST', {})),
   revokeInvite: (id: string) => request<{ ok: true }>(`/api/accounts/invites/${encodeURIComponent(id)}`, json('DELETE')),
   setLocked: (username: string, disabled: boolean) =>

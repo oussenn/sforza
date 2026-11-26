@@ -75,7 +75,7 @@ describe('first-run setup', () => {
     const res = await call(`${SITE}/api/auth/setup`, { method: 'POST', json: { username: 'Owner', password: OWNER_PW, setupToken: SETUP_TOKEN }, env: withSecret })
     expect(res.status).toBe(200)
     owner = cookieOf(res)
-    expect(await (await call(`${SITE}/api/auth/me`, { cookie: owner })).json()).toEqual({ authenticated: true, user: 'owner' })
+    expect(await (await call(`${SITE}/api/auth/me`, { cookie: owner })).json()).toEqual({ authenticated: true, user: 'owner', tourSeen: false, admin: true, pendingRequests: 0 })
   })
 
   it('closes once an account exists', async () => {
@@ -94,7 +94,7 @@ describe('first-run setup', () => {
 describe('invitations', () => {
   it('only the admin lists accounts and invites', async () => {
     const res = await call(`${SITE}/api/accounts`, { cookie: owner })
-    expect(await res.json()).toEqual({ accounts: [{ username: 'owner', source: 'app', disabled: false, admin: true }], invites: [] })
+    expect(await res.json()).toEqual({ accounts: [{ username: 'owner', source: 'app', disabled: false, admin: true }], invites: [], requests: [], mail: false })
   })
 
   it('make an account once, with the code in the fragment only', async () => {

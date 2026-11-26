@@ -236,16 +236,17 @@ export async function listAccounts(env: AccountEnv): Promise<AccountInfo[]> {
 /* ------------------------------- invitations ------------------------------ */
 
 // The table keeps a hash of each code, never the code: a leaked database cannot be used to join.
-const inviteId = async (code: string) => b64url(await sha256(`invite:${code}`))
+export const inviteId = async (code: string) => b64url(await sha256(`invite:${code}`))
 
-/** A one-time invitation code, valid for INVITE_DAYS. Only its hash is stored. */
-export async function createInvite(env: AccountEnv, by: string): Promise<{ code: string; expiresAt: number }> {
+/** A one-time invitation code, valid for INVITE_DAYS. Only its hash is stored (`id`). */
+export async function createInvite(env: AccountEnv, by: string): Promise<{ code: string; expiresAt: number; id: string }> {
   const code = b64url(crypto.getRandomValues(new Uint8Array(32)))
   const expiresAt = Math.floor(Date.now() / 1000) + INVITE_DAYS * 86_400
+  const id = await inviteId(code)
   await env.DB.prepare('INSERT INTO invites (id, created_by, created_at, expires_at) VALUES (?, ?, ?, ?)')
-    .bind(await inviteId(code), by, new Date().toISOString(), expiresAt)
+    .bind(id, by, new Date().toISOString(), expiresAt)
     .run()
-  return { code, expiresAt }
+  return { code, expiresAt, id }
 }
 
 /** Invitations not used yet; expired ones are dropped on the way. */

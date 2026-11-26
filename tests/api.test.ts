@@ -60,15 +60,17 @@ beforeAll(async () => {
 describe('sign-in and sessions', () => {
   it('signs in and reports the account', async () => {
     expect(cookies.alice).toMatch(/^rs_session=alice\./)
-    expect(await (await call('/api/auth/me', { as: 'alice' })).json()).toEqual({ authenticated: true, user: 'alice' })
+    expect(await (await call('/api/auth/me', { as: 'alice' })).json()).toMatchObject({ authenticated: true, user: 'alice', tourSeen: false })
   })
 
   it('moves visitors on an old address to CANONICAL_HOST, never local ones', async () => {
     const moved = { ...env, CANONICAL_HOST: 'cv.example.com' } as Env
     const get = (url: string) => app.request(url, { headers: { Cookie: cookies.alice } }, moved, ctx).then((r) => r.json())
-    expect(await get('https://old.example.com/api/auth/me')).toEqual({ authenticated: true, user: 'alice', moveTo: 'https://cv.example.com' })
-    expect(await get('https://cv.example.com/api/auth/me')).toEqual({ authenticated: true, user: 'alice' })
-    expect(await get('http://localhost:5173/api/auth/me')).toEqual({ authenticated: true, user: 'alice' })
+    expect(await get('https://old.example.com/api/auth/me')).toMatchObject({ authenticated: true, user: 'alice', moveTo: 'https://cv.example.com' })
+    expect(await get('https://cv.example.com/api/auth/me')).toMatchObject({ authenticated: true, user: 'alice' })
+    expect(await get('https://cv.example.com/api/auth/me')).not.toHaveProperty('moveTo')
+    expect(await get('http://localhost:5173/api/auth/me')).toMatchObject({ authenticated: true, user: 'alice' })
+    expect(await get('http://localhost:5173/api/auth/me')).not.toHaveProperty('moveTo')
     expect(((await get('https://old.example.com/api/connector')) as { url: string }).url).toMatch(/^https:\/\/cv\.example\.com\/mcp\//)
   })
 

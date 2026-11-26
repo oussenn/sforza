@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Library as LibraryData } from '@shared/types'
 import { newItem } from '@shared/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -5,6 +6,7 @@ import type { ItemType } from '../content/fields'
 import { ItemList } from '../content/ItemList'
 import { RichTextarea } from '../content/RichTextarea'
 import { moveInArray, reorder, useEditor } from '../store'
+import { KnowledgeStrength } from './KnowledgeStrength'
 
 type ListKey = 'projects' | 'skills' | 'experience' | 'certifications'
 
@@ -54,9 +56,17 @@ function LibraryList({ listKey, type }: { listKey: ListKey; type: ItemType }) {
 export default function KnowledgeBase() {
   const library = useEditor((s) => s.library)
   const { updateLibrary } = useEditor.getState()
+  const [tab, setTab] = useState('projects')
   if (!library) return null
   return (
-    <Tabs defaultValue="projects">
+    <>
+    <KnowledgeStrength
+      onTab={(t) => {
+        setTab(t)
+        document.getElementById('kb-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }}
+    />
+    <Tabs value={tab} onValueChange={setTab} id="kb-tabs" className="scroll-mt-4">
       {/* Wraps on phones: the bar grows with its rows instead of keeping one row's height. */}
       <TabsList className="mb-4 h-auto! max-w-full flex-wrap justify-start">
         {LIBRARY_TABS.map((t) => (
@@ -86,5 +96,6 @@ export default function KnowledgeBase() {
         />
       </TabsContent>
     </Tabs>
+    </>
   )
 }

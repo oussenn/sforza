@@ -1,7 +1,8 @@
 import { blankMaster } from '@shared/seed'
 import type { Application, Board, BoardColumn, ChangeStamps, Library, Resume, SearchProfile, Stage } from '@shared/types'
-import { applicationWithoutEmDashes, baseStage, cleanBoard, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, isCustomStage, placeStage, uid } from '@shared/utils'
+import { applicationWithoutEmDashes, baseStage, cleanBoard, cleanLibrary, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, isCustomStage, placeStage, uid } from '@shared/utils'
 import { primaryUser } from './auth'
+import { ACCESS_SCHEMA } from './access'
 import { DEMO_SCHEMA, isDemoOwner } from './demo'
 
 /**
@@ -79,6 +80,8 @@ const SCHEMA = [
   )`,
   // Demo sandboxes: one per demo sign-in, deleted after two hours (see demo.ts)
   ...DEMO_SCHEMA,
+  // Requests for access from the sign-in page (see access.ts)
+  ...ACCESS_SCHEMA,
 ]
 
 // Rows from before accounts existed belong to the primary account.
@@ -231,18 +234,11 @@ async function putSetting(s: Store, name: string, value: string): Promise<void> 
 
 export async function getLibrary(s: Store): Promise<Library> {
   const raw = await getSetting(s, 'library')
-  const lib = raw ? (JSON.parse(raw) as Partial<Library>) : {}
-  return {
-    projects: lib.projects ?? [],
-    skills: lib.skills ?? [],
-    experience: lib.experience ?? [],
-    certifications: lib.certifications ?? [],
-    notes: lib.notes ?? '',
-  }
+  return cleanLibrary(raw ? JSON.parse(raw) : null)
 }
 
 export async function saveLibrary(s: Store, lib: Library): Promise<void> {
-  await putSetting(s, 'library', JSON.stringify(lib))
+  await putSetting(s, 'library', JSON.stringify(cleanLibrary(lib)))
 }
 
 export async function getSearchProfile(s: Store): Promise<SearchProfile> {
@@ -388,4 +384,19 @@ export async function deleteApplication(s: Store, id: string, { keepCv = false }
   if (!resume || resume.kind === 'master' || (await listApplications(s)).some((a) => a.resumeId === resume.id)) return null
   await deleteResume(s, resume.id)
   return resume.id
+}
+
+/** When this account finished or skipped the welcome tour (ISO time), or null: the app shows it once per account. */
+export async function getTourSeen(s: Store): Promise<string | null> {
+  const raw = await getSetting(s, 'onboarding')
+  try {
+    const at = raw ? (JSON.parse(raw) as { tour?: unknown }).tour : null
+    return typeof at === 'string' ? at : null
+  } catch {
+    return null
+  }
+}
+
+export async function setTourSeen(s: Store, at: string | null): Promise<void> {
+  await putSetting(s, 'onboarding', JSON.stringify({ tour: at }))
 }

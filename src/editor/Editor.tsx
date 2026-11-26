@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo } from 'react'
+import { Suspense, lazy, useDeferredValue, useEffect, useMemo } from 'react'
 import { toast } from 'sonner'
 import { pdfFileName } from '@shared/utils'
 import { ApiError } from '@/lib/api'
@@ -7,16 +7,26 @@ import type { DocProps } from '@/resume/ResumeDocument'
 import ApplicationsPage from './applications/ApplicationsPage'
 import { useApplications } from './applications/store'
 import CommandPalette from './CommandPalette'
-import CvsPage from './cvs/CvsPage'
-import LettersPage from './letters/LettersPage'
-import ProfilePage, { PANELS } from './profile/ProfilePage'
-import { navigate, useRoute } from './router'
+import { PANELS } from './profile/panels'
+import { navigate, useRoute, type PanelPage } from './router'
+import { useSession } from './session'
 import { useSidebarShortcut } from './sidebar'
 import { useEditor } from './store'
 import DemoBanner from './DemoBanner'
 import type { DemoSession } from '@/lib/api'
 import { checkForChanges, startSync } from './sync'
 import TopBar from './TopBar'
+
+// The board opens first and comes with the editor; the other pages load on their first visit, and in the background
+// once the board is up, so switching to them stays instant.
+const loadCvs = () => import('./cvs/CvsPage')
+const loadLetters = () => import('./letters/LettersPage')
+const loadProfile = () => import('./profile/ProfilePage')
+const loadTour = () => import('./Tour')
+const CvsPage = lazy(loadCvs)
+const LettersPage = lazy(loadLetters)
+const ProfilePage = lazy(loadProfile)
+const Tour = lazy(loadTour)
 
 const Spinner = () => (
   <div className="grid flex-1 place-items-center">
@@ -42,6 +52,22 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
       .load()
       .catch((err: Error) => toast.error(`Could not load applications: ${err.message}`))
   }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    const prefetch = () => void Promise.all([loadCvs(), loadLetters(), loadProfile(), loadTour()]).catch(() => undefined)
+    const idle = window.requestIdleCallback?.(prefetch, { timeout: 4000 }) ?? window.setTimeout(prefetch, 2500)
+    return () => (window.cancelIdleCallback ? window.cancelIdleCallback(idle) : clearTimeout(idle))
+  }, [ready])
+
+  // The welcome tour, once per account (new accounts and members who joined before it existed alike).
+  const touring = useSession((s) => s.touring)
+  const tourSeen = useSession((s) => s.tourSeen)
+  useEffect(() => {
+    if (!ready || tourSeen) return
+    const t = setTimeout(() => useSession.setState({ touring: true }), 900)
+    return () => clearTimeout(t)
+  }, [ready, tourSeen])
 
   // Changes made elsewhere (the connector, another tab) show up without a reload, also on every page change.
   useEffect(() => (ready ? startSync() : undefined), [ready])
@@ -111,10 +137,17 @@ export default function Editor({ onLogout, user, demo = null }: { onLogout: () =
     <div className="flex h-dvh flex-col">
       {demo && <DemoBanner expiresAt={demo.expiresAt} />}
       <TopBar onLogout={onLogout} user={user} demo={!!demo} />
-      {route.page in PANELS && <ProfilePage panel={route.page as keyof typeof PANELS} />}
       {route.page === 'applications' && <ApplicationsPage appId={route.appId} />}
-      {route.page === 'letters' && <LettersPage appId={route.appId} />}
-      {(route.page === 'cv' || route.page === 'cvs') && <CvsPage cv={cv} preview={previewDoc} />}
+      <Suspense fallback={<Spinner />}>
+        {route.page in PANELS && <ProfilePage panel={route.page as PanelPage} />}
+        {route.page === 'letters' && <LettersPage appId={route.appId} />}
+        {(route.page === 'cv' || route.page === 'cvs') && <CvsPage cv={cv} preview={previewDoc} />}
+      </Suspense>
+      {touring && (
+        <Suspense fallback={null}>
+          <Tour />
+        </Suspense>
+      )}
 
       <PrintPortal doc={doc} fileName={fileName} />
       <CommandPalette onLogout={onLogout} />

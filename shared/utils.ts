@@ -9,6 +9,7 @@ import type {
   CoverLetter,
   ItemSection,
   Lang,
+  Library,
   LetterLayout,
   LetterStyle,
   Personal,
@@ -30,6 +31,29 @@ export function uid(prefix = ''): string {
   const bytes = crypto.getRandomValues(new Uint8Array(8))
   const id = Array.from(bytes, (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 12)
   return prefix ? `${prefix}_${id}` : id
+}
+
+/** An id nobody can guess (128 random bits), for things reachable by their link alone: uploaded photos, signatures. */
+export function secretId(prefix: string): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  return `${prefix}_${b64}`
+}
+
+/**
+ * A knowledge base as sent by a client or agent, made safe to store: the four lists hold only objects (at most 500
+ * each), the notes are text (at most 100,000 characters). Anything else is dropped.
+ */
+export function cleanLibrary(raw: unknown): Library {
+  const r = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? v.filter((x) => !!x && typeof x === 'object' && !Array.isArray(x)).slice(0, 500) : []) as T[]
+  return {
+    projects: list(r.projects),
+    skills: list(r.skills),
+    experience: list(r.experience),
+    certifications: list(r.certifications),
+    notes: typeof r.notes === 'string' ? r.notes.slice(0, 100_000) : '',
+  }
 }
 
 export function clone<T>(value: T): T {

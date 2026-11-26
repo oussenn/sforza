@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Bot, Check, Copy, Library, Search, Sparkles } from 'lucide-react'
+import { Check, Copy, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { CLAUDE_PROMPTS, type ClaudePrompt, type PromptContext } from '@shared/prompts'
 import type { DocLangs, GermanLimit, SearchProfile } from '@shared/types'
@@ -18,6 +18,7 @@ import { useEditor } from '../store'
 import type { PanelPage } from '../router'
 import AiSettings from './AiSettings'
 import KnowledgeBase from './KnowledgeBase'
+import { PANELS } from './panels'
 
 const MODE_LABELS = { onsite: 'On-site', hybrid: 'Hybrid', remote: 'Remote' } as const
 
@@ -361,13 +362,6 @@ function ClaudeSection({ profile }: { profile: SearchProfile }) {
     </div>
   )
 }
-
-export const PANELS = {
-  jobsearch: { icon: Search, label: 'Job search', heading: 'Job search' },
-  knowledge: { icon: Library, label: 'Knowledge base', heading: 'Knowledge base' },
-  mcp: { icon: Bot, label: 'MCP', heading: 'Connect your agent' },
-  ai: { icon: Sparkles, label: 'AI', heading: 'AI models' },
-} satisfies Record<PanelPage, { icon: typeof Search; label: string; heading: string }>
 
 /** One of the panels about you: job search, knowledge base, MCP or AI models. */
 export default function ProfilePage({ panel }: { panel: PanelPage }) {

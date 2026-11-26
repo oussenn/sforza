@@ -11,6 +11,7 @@ import {
   PanelLeft,
   Paintbrush,
   Palette,
+  Compass,
   Plus,
   Sparkles,
   SquareKanban,
@@ -35,7 +36,8 @@ import { LOOK_INFO, openAppearance } from '@/components/AppearanceDialog'
 import { LOOKS, setLook, setTheme } from '@/lib/theme'
 import { useStageLabel } from './applications/stages'
 import { logoFor, useApplications } from './applications/store'
-import { PANELS } from './profile/ProfilePage'
+import { PANELS } from './profile/panels'
+import { startTour } from './session'
 import { navigate, openCv, setCvTab, useRoute, type PanelPage } from './router'
 import { SIDEBAR_SHORTCUT, toggleSidebar } from './sidebar'
 import { useEditor } from './store'
@@ -188,6 +190,9 @@ export default function CommandPalette({ onLogout }: { onLogout: () => void }) {
                 <Palette /> Theme: {LOOK_INFO[id].name}
               </CommandItem>
             ))}
+            <CommandItem value="tour welcome guide help onboarding" onSelect={run(startTour)}>
+              <Compass /> Take the tour
+            </CommandItem>
             <CommandItem
               onSelect={run(async () => {
                 await useEditor.getState().flush()

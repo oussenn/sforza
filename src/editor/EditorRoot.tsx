@@ -9,6 +9,7 @@ import { VERSION } from '@shared/version'
 import Editor from './Editor'
 import Login, { type LoginMode } from './Login'
 import { navigate } from './router'
+import { useSession } from './session'
 
 /**
  * An invitation link is /join#<code>. The code leaves the address bar at once (it stays in this tab's history
@@ -20,6 +21,9 @@ function readJoinCode(): string | null {
   window.history.replaceState({ joinCode: code }, '', '/join')
   return code
 }
+
+type Me = Awaited<ReturnType<typeof api.me>>
+const applySession = (r: Me) => useSession.setState({ admin: !!r.admin, pendingRequests: r.pendingRequests ?? 0, tourSeen: r.tourSeen ?? true })
 
 export default function EditorRoot() {
   const [auth, setAuth] = useState<'checking' | 'in' | 'out'>('checking')
@@ -39,6 +43,7 @@ export default function EditorRoot() {
         // An old address of this site: continue on the main one, same page.
         if (r.moveTo) return window.location.replace(r.moveTo + window.location.pathname + window.location.search + window.location.hash)
         setUser(r.user)
+        applySession(r)
         setSetup(r.setup ?? null)
         setDemo(r.demo ?? null)
         setDemoAvailable(!!r.demoAvailable)
@@ -55,6 +60,8 @@ export default function EditorRoot() {
   const signedOut = () => window.location.replace('/')
 
   const signedIn = (name: string, demoSession?: DemoSession) => {
+    // What the new session says about the account (tour, admin): asked again, the first answer was signed out.
+    void api.me().then(applySession).catch(() => undefined)
     setUser(name)
     setDemo(demoSession ?? null)
     setSetup(null)

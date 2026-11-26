@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Check,
   CloudOff,
+  Compass,
   Copy,
   Download,
   FileText,
@@ -46,10 +47,13 @@ import { FaIcon } from '@/templates/shared'
 import { AccountDialog } from './AccountDialog'
 import { openCvIn, useApplications } from './applications/store'
 import { ConfirmDialog, PromptDialog } from './dialogs'
-import { PANELS } from './profile/ProfilePage'
+import { PANELS } from './profile/panels'
 import { navigate, openCv, useRoute, type PanelPage } from './router'
 import { useEditor } from './store'
 import { useDownload } from './useDownload'
+import { KnowledgeContour, useLevelUps } from './profile/KnowledgeStrength'
+import { useKnowledgeScore } from './profile/useKnowledgeScore'
+import { startTour, useSession } from './session'
 
 /** The public repository of this app. */
 const SOURCE_URL = 'https://github.com/oussenn/sforza'
@@ -66,6 +70,9 @@ function NavButton({
   label,
   onClick,
   tools,
+  tour,
+  progress,
+  hint,
 }: {
   active: boolean
   icon: typeof FileText
@@ -73,19 +80,26 @@ function NavButton({
   onClick: () => void
   /** The page's own buttons share the bar (My CVs, My Cover Letters): labels from 1536 px. Otherwise from 1280 px. */
   tools: boolean
+  /** where the welcome tour points (data-tour) */
+  tour: string
+  /** 0..100: a contour along the button's edge, red to green (the knowledge base's fullness) */
+  progress?: number | null
+  hint?: string
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
-      aria-label={label}
-      title={label}
+      aria-label={hint ? `${label}: ${hint}` : label}
+      title={hint ? `${label} · ${hint}` : label}
+      data-tour={tour}
       className={cn(
-        'text-muted-foreground hover:bg-muted hover:text-foreground flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:px-3',
+        'text-muted-foreground hover:bg-muted hover:text-foreground relative flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:px-3',
         active && 'bg-muted text-foreground',
       )}
     >
+      {progress != null && <KnowledgeContour score={progress} />}
       <Icon className="size-4" />
       <span className={tools ? 'hidden 2xl:inline' : 'hidden xl:inline'}>{label}</span>
     </button>
@@ -104,6 +118,9 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
   const [deleting, setDeleting] = useState(false)
   const [account, setAccount] = useState(false)
   const download = useDownload()
+  const pending = useSession((s) => s.pendingRequests)
+  const kb = useKnowledgeScore()
+  useLevelUps(kb, (k) => toast.success(`Knowledge base: ${k.level.label}`, { description: `${k.score} of 100. ${k.level.says}` }))
 
   // Controls for one CV only show while that CV is open.
   const cv = route.page === 'cv' && resume?.id === route.id ? resume : null
@@ -136,10 +153,18 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
           active={route.page === 'applications'}
           icon={SquareKanban}
           label="Applications"
+          tour="nav-applications"
           onClick={() => navigate({ page: 'applications', appId: null })}
         />
-        <NavButton tools={tools} active={route.page === 'cvs' || inCv} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
-        <NavButton tools={tools} active={route.page === 'letters'} icon={Mail} label="My Cover Letters" onClick={() => navigate({ page: 'letters', appId: null })} />
+        <NavButton tools={tools} tour="nav-cvs" active={route.page === 'cvs' || inCv} icon={Files} label="My CVs" onClick={() => navigate({ page: 'cvs' })} />
+        <NavButton
+          tools={tools}
+          tour="nav-letters"
+          active={route.page === 'letters'}
+          icon={Mail}
+          label="My Cover Letters"
+          onClick={() => navigate({ page: 'letters', appId: null })}
+        />
       </nav>
       <div className="bg-border mx-0.5 h-6 w-px sm:mx-1.5" aria-hidden />
       <nav className="flex items-center gap-0.5 sm:gap-1" aria-label="About you">
@@ -150,7 +175,9 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
             active={route.page === p}
             icon={PANELS[p].icon}
             label={PANELS[p].label}
+            tour={`nav-${p}`}
             onClick={() => navigate({ page: p })}
+            {...(p === 'knowledge' && kb && { progress: kb.score, hint: `${kb.score} of 100, ${kb.level.label.toLowerCase()}` })}
           />
         ))}
       </nav>
@@ -177,8 +204,16 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="size-9 max-lg:order-1 max-lg:ml-auto" aria-label="Menu" data-theme-menu>
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative size-9 max-lg:order-1 max-lg:ml-auto"
+              aria-label={pending ? `Menu: ${pending} waiting for access` : 'Menu'}
+              data-theme-menu
+              data-tour="menu"
+            >
               <MoreVertical className="size-4" />
+              {pending > 0 && <span className="bg-primary ring-background absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2" />}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -228,6 +263,9 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
               <Palette /> Theme: {LOOK_INFO[look].name}…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={startTour}>
+              <Compass /> Take the tour
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <a href={SOURCE_URL} target="_blank" rel="noreferrer">
                 <FaIcon icon={faGithub} /> Source code on GitHub
@@ -238,6 +276,9 @@ export default function TopBar({ onLogout, user, demo = false }: { onLogout: () 
             {!demo && (
               <DropdownMenuItem onClick={() => setAccount(true)}>
                 <UserRound /> Account
+                {pending > 0 && (
+                  <span className="bg-primary text-primary-foreground ml-auto rounded-full px-1.5 text-[10px] leading-4 font-semibold tabular-nums">{pending}</span>
+                )}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => void logout()}>

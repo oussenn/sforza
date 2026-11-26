@@ -2,12 +2,13 @@ import { Hono } from 'hono'
 import type { Context } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
-import type { AiCheck, AiEvent, AiProviderId, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Library, Resume, ScrapedJob } from '@shared/types'
+import type { AiCheck, AiEvent, AiProviderId, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Resume, ScrapedJob } from '@shared/types'
 import { AI_PROVIDERS, LANGS, LETTER_LAYOUTS } from '@shared/types'
 import { formAnswersField } from './forms'
 import {
   cleanBoard,
   cleanBoardColumns,
+  cleanLibrary,
   cleanLetterStyle,
   cleanSearchProfile,
   clone,
@@ -18,6 +19,7 @@ import {
   letterStyleOf,
   newApplication,
   passwordProblem,
+  secretId,
   toMeta,
   uid,
   usernameProblem,
@@ -40,6 +42,7 @@ import {
   createFirstAccount,
   createInvite,
   hasAccounts,
+  inviteId,
   isLocalRequest,
   issueDemoSession,
   issueSession,
@@ -59,6 +62,21 @@ import {
   verifyLogin,
 } from './auth'
 import { PdfError, renderLetterPdf, renderPdf } from './pdf'
+import {
+  cleanRequest,
+  deleteAccessRequest,
+  getAccessRequest,
+  inviteEmails,
+  inviteOf,
+  listAccessRequests,
+  markInvited,
+  markJoined,
+  pendingRequestCount,
+  requestAccess,
+  unmarkInvite,
+  withinLimit,
+} from './access'
+import { canSendMail, invitationMail, sendMail } from './mail'
 import { handleMcp } from './mcp'
 import { DEMO_USER, NOT_IN_DEMO, demoEnabled, demoRoomFor, demoRouteAllowed, demoWrite, endDemo, isDemoOwner, purgeExpired, startDemo } from './demo'
 import {
@@ -89,6 +107,7 @@ const PUBLIC_API = new Set([
   '/api/auth/me',
   '/api/auth/setup',
   '/api/auth/join',
+  '/api/auth/request-access',
   '/api/print-data',
   '/api/print-letter',
 ])
@@ -214,13 +233,45 @@ app.get('/api/auth/me', async (c) => {
   const setup = !user && !(await hasAccounts(c.env)) ? { setup: { needsToken: !isLocalRequest(c.req.url) } } : {}
   // A demo sandbox shows as "demo", with the time its data is deleted; the sign-in page mentions the demo when it is on.
   const demo = isDemoOwner(user) ? { demo: { expiresAt: sessionExpiry(c) } } : !user && demoEnabled(c.env) ? { demoAvailable: true } : {}
+  // Signed in: whether the welcome tour was seen; for the admin, how many people wait for access.
+  const account = user ? await accountState(c, user) : {}
   return c.json({
     authenticated: !!user,
     user: isDemoOwner(user) ? DEMO_USER : user,
     ...setup,
     ...demo,
+    ...account,
     ...(site !== new URL(c.req.url).origin && { moveTo: site }),
   })
+})
+
+async function accountState(c: Ctx, user: string) {
+  const tourSeen = !!(await db.getTourSeen(db.forOwner(c.env, user)))
+  if (isDemoOwner(user) || (await adminUser(c.env)) !== user) return { tourSeen }
+  return { tourSeen, admin: true, pendingRequests: await pendingRequestCount(c.env) }
+}
+
+/**
+ * Asking for access from the sign-in page: an email address, a name and a few words, kept for the admin. The answer
+ * is the same whether the address asked before or not. Three requests per address an hour; a hidden field that
+ * people leave empty (and form-filling bots do not) is accepted and dropped.
+ */
+app.post('/api/auth/request-access', async (c) => {
+  const body = await c.req.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>)
+  if (!(await withinLimit(c.env.DB, `req:${clientIp(c)}`, 3, 3600))) return c.json({ error: 'Too many requests from this network. Try again in an hour.' }, 429)
+  if (typeof body.website === 'string' && body.website) return c.json({ ok: true })
+  const request = cleanRequest(body)
+  if ('problem' in request) return c.json({ error: request.problem }, 400)
+  if ((await requestAccess(c.env, request)) === 'full') return c.json({ error: 'Requests are closed for now. Try again later.' }, 503)
+  return c.json({ ok: true })
+})
+
+/** The welcome tour was finished or skipped (seen: true), or should show again (seen: false). */
+app.put('/api/onboarding', async (c) => {
+  const body = await c.req.json<{ seen?: unknown }>().catch(() => ({}) as { seen?: unknown })
+  if (typeof body.seen !== 'boolean') return c.json({ error: 'Send { "seen": true } or false' }, 400)
+  await db.setTourSeen(c.env, body.seen ? new Date().toISOString() : null)
+  return c.json({ ok: true })
 })
 
 /**
@@ -267,6 +318,7 @@ app.post('/api/auth/join', async (c) => {
     return c.json({ error: 'This invitation is not valid. It may have expired or been used already.' }, 403)
   }
   if (result === 'taken') return c.json({ error: 'That username is taken. Pick another one.' }, 409)
+  await markJoined(c.env, await inviteId(code), username)
   await issueSession(c, username)
   return c.json({ ok: true, user: username })
 })
@@ -299,7 +351,13 @@ const isAdmin = async (c: Ctx) => (await adminUser(c.env)) === db.ownerOf(c.env)
 
 app.get('/api/accounts', async (c) => {
   if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
-  return c.json({ accounts: await listAccounts(c.env), invites: await listInvites(c.env) })
+  const [accounts, invites, requests, emails] = await Promise.all([listAccounts(c.env), listInvites(c.env), listAccessRequests(c.env), inviteEmails(c.env)])
+  return c.json({
+    accounts,
+    invites: invites.map((i) => ({ ...i, ...(emails.has(i.id) && { email: emails.get(i.id) }) })),
+    requests,
+    mail: canSendMail(c.env),
+  })
 })
 
 /** A one-time invitation link, valid for 7 days. The code is in the #fragment, which browsers never send to a server. */
@@ -311,7 +369,35 @@ app.post('/api/accounts/invites', async (c) => {
 
 app.delete('/api/accounts/invites/:id', async (c) => {
   if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
-  return (await revokeInvite(c.env, c.req.param('id'))) ? c.json({ ok: true }) : c.json({ error: 'Not found' }, 404)
+  const id = c.req.param('id')
+  if (!(await revokeInvite(c.env, id))) return c.json({ error: 'Not found' }, 404)
+  await unmarkInvite(c.env, id)
+  return c.json({ ok: true })
+})
+
+/**
+ * Answers an access request with a one-time invitation for that address. The server mails it when mail is set up
+ * (mail.ts); otherwise the app opens the admin's mail app with this email written. Asking again makes a new link.
+ */
+app.post('/api/accounts/requests/:id/invite', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  const request = await getAccessRequest(c.env, c.req.param('id'))
+  if (!request || request.status === 'joined') return c.json({ error: 'Not found' }, 404)
+  const admin = db.ownerOf(c.env)
+  // Sending again replaces the earlier link: only the newest one works.
+  const earlier = await inviteOf(c.env, request.id)
+  if (earlier) await revokeInvite(c.env, earlier)
+  const { code, expiresAt, id } = await createInvite(c.env, admin)
+  await markInvited(c.env, request.id, id)
+  const url = `${siteOrigin(c.env, c.req.url)}/join#${code}`
+  const mail = invitationMail({ name: request.name, url, expiresAt, from: `${admin} (Sforza)` })
+  const sent = await sendMail(c.env, { to: request.email, ...mail })
+  return c.json({ url, expiresAt, email: request.email, sent, mail })
+})
+
+app.delete('/api/accounts/requests/:id', async (c) => {
+  if (!(await isAdmin(c))) return c.json({ error: ADMIN_ONLY }, 403)
+  return (await deleteAccessRequest(c.env, c.req.param('id'))) ? c.json({ ok: true }) : c.json({ error: 'Not found' }, 404)
 })
 
 /** Locks or unlocks another account. Its data stays, and so does its username. */
@@ -377,7 +463,8 @@ app.post('/api/assets', async (c) => {
   let bin = ''
   const bytes = new Uint8Array(buf)
   for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
-  const id = uid('img')
+  // Reachable by its link alone (photos, signatures): an id nobody can guess.
+  const id = secretId('img')
   await db.putAsset(c.env, id, mime, btoa(bin))
   return c.json({ url: `/api/assets/${id}` })
 })
@@ -467,7 +554,7 @@ app.get('/api/changes', async (c) => c.json(await db.changeStamps(c.env)))
 app.get('/api/library', async (c) => c.json(await db.getLibrary(c.env)))
 
 app.put('/api/library', async (c) => {
-  const lib = await c.req.json<Library>()
+  const lib = cleanLibrary(await c.req.json().catch(() => null))
   await db.saveLibrary(c.env, lib)
   return c.json({ ok: true })
 })

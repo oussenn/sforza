@@ -62,6 +62,19 @@ Your own columns between the stages, for your account only. Drag a card to move 
 
 Tailored CVs and letters pick from the knowledge base. The MCP prompts are built from the job search profile.
 
+The knowledge score shows how much tailoring has to work with. It counts the master CV and the knowledge base together, from 0 to 100, against a minimum for each part:
+
+| Part | Minimum | Points |
+|---|---|---|
+| Work experience | 3 roles with at least 3 points each | 25 |
+| Projects | 6 projects with what you built and how | 25 |
+| Skills | 20 tools, languages and methods | 15 |
+| Results with numbers | 8 points with a figure (time saved, users, accuracy, scale) | 15 |
+| Education, certificates, languages | a degree, 2 certificates or courses, 2 languages | 10 |
+| Notes and context | 150 words | 10 |
+
+A line around the Knowledge base button in the top bar runs as far round as the score, from red to green. On the page, a card shows the level (Just started, Taking shape, Good, Strong, Excellent), each part's progress and the next steps that add the most. Reaching a new level while you fill it in gets a short note. Below 60, the tailoring panel says so. Connected agents get the same score and next steps in `get_profile`.
+
 <table>
   <tr>
     <td width="50%"><img src=".github/readme/knowledge.gif" alt="Knowledge base"></td>
@@ -122,7 +135,8 @@ Motion effects can be switched off in the same window, and stay off when the sys
 - Themes: Standard, Sakura, Terminal, Space and your own three colours, each in light and dark, with motion effects (falling petals, stars, glyphs, bursts on clicks and moved cards) that can be switched off
 - Command palette (Ctrl+K)
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, cards moved with a finger, and the CV and letter pages in a bottom sheet that peeks at the top of the page and opens with a drag or a tap
-- Accounts made in the app: invitation links, password change, locking, separate data
+- Accounts made in the app: invitation links, requests for access answered by mail, password change, locking, separate data
+- A one-time welcome tour, and a knowledge score from red to green with the next steps
 - Optional public demo: each visitor gets a private copy of sample data that deletes itself
 - Version number at the bottom right of every page: 0.19, then 0.20, 0.21 and so on, with one more digit for a small change (0.191, 0.201)
 
@@ -192,6 +206,7 @@ The editor, board and job readers work without any API key. For the AI features,
 | `AIORNOT_API_KEY` | no | Server-side AI-text detection |
 | `DEMO_PASSWORD` | no | Turns on the public demo: `demo` with this password (8+ characters) opens a private two-hour copy of the sample data. Remove it to end the demo and every demo session |
 | `CANONICAL_HOST` | no | Main host name in production. Visitors on another address of the Worker move there, and links and connector addresses use it |
+| `MAIL_FROM` | no | Sender address for invitations sent by the server, on a domain set up for Cloudflare Email Sending. Needs a `send_email` binding named `EMAIL` in `wrangler.jsonc`. Without it, the admin's own mail app sends them |
 
 The site's models and its daily and monthly AI budget are set in `wrangler.jsonc` (`AI_MODEL`, `OPENAI_MODEL`, `GEMINI_MODEL`, `WORKERS_AI_MODEL`, `AI_DAILY_BUDGET_USD`, `AI_MONTHLY_BUDGET_USD`). Calls on an account's own key are billed to that key and don't count against the budget.
 
@@ -210,7 +225,11 @@ Every AI button keeps the same rules an agent follows. After tailoring or transl
 
 ## Accounts
 
-The first account is created on the first visit and is the admin. Under Account in the menu, the admin invites people with one-time links that expire after 7 days, and each person picks their own username and password. Everyone can change their password there, which signs out their other devices. A locked account is signed out everywhere, its connector stops, and its data stays.
+The first account is created on the first visit and is the admin. Under Account in the menu, the admin invites people with one-time links that expire after 7 days, and each person picks their own username and password.
+
+People without an account can ask for one with "Request access" on the sign-in page: an email address, and optionally a name and a few words. Their requests wait under Account, and a dot on the menu shows the admin that someone is waiting. "Invite by mail" makes a one-time link for that address. With `MAIL_FROM` set, the server sends it. Otherwise the admin's mail app opens with the invitation written and addressed. Sending again replaces the earlier link, revoking an invitation puts the request back to waiting, and the list shows who joined under which username. The sign-in page gives the same answer whether an address asked before or not. It takes three requests per network an hour, and drops what a hidden field marks as a bot.
+
+Every account gets a short welcome tour once, new and existing ones alike: a card for each part of the app, next to it, while the rest of the page is blurred, with Back, Next and Skip (also the arrow keys and Escape). It starts with the knowledge base, since a full and structured one makes every tailored CV and letter better. Finishing or skipping it is stored with the account, and "Take the tour" in the menu or Ctrl+K brings it back. Everyone can change their password there, which signs out their other devices. A locked account is signed out everywhere, its connector stops, and its data stays.
 
 <p align="center"><img src=".github/readme/account.png" width="520" alt="Account: password, people and an invitation link"></p>
 
@@ -224,8 +243,8 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 
 | Area | Routes |
 |---|---|
-| Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `GET /api/auth/me` |
-| Accounts (admin) | `GET /api/accounts`, `POST /api/accounts/invites`, `DELETE /api/accounts/invites/:id`, `PUT /api/accounts/:username/access` |
+| Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `/request-access`, `GET /api/auth/me`, `PUT /api/onboarding` |
+| Accounts (admin) | `GET /api/accounts`, `POST /api/accounts/invites`, `DELETE /api/accounts/invites/:id`, `PUT /api/accounts/:username/access`, `POST /api/accounts/requests/:id/invite`, `DELETE /api/accounts/requests/:id` |
 | CVs | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id`, `POST /api/resumes/:id/main`, `GET /api/pdf/:id` |
 | Knowledge base | `GET/PUT /api/library` |
 | Job search profile | `GET/PUT /api/search-profile` |

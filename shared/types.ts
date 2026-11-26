@@ -317,6 +317,21 @@ export interface InviteInfo {
   createdAt: string
   /** Unix seconds */
   expiresAt: number
+  /** the address of the access request it answered, if any */
+  email?: string
+}
+
+/** Someone who asked for access on the sign-in page (pending), was sent an invitation (invited) or joined. */
+export interface AccessRequest {
+  id: string
+  email: string
+  name: string
+  note: string
+  status: 'pending' | 'invited' | 'joined'
+  /** the account they made, once joined */
+  username?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ResumeMeta {

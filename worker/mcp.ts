@@ -34,8 +34,10 @@ import {
   stageLabel,
   titleKey,
   toMeta,
+  secretId,
   uid,
 } from '@shared/utils'
+import { knowledgeScore } from '@shared/kbscore'
 import { AiError, aiStatus, list, text, translatableFields, translationProblem, type AiEnv } from './ai'
 import { accountAi } from './aikeys'
 import { connectorUser, signShare, siteOrigin } from './auth'
@@ -723,6 +725,14 @@ const TOOLS: Tool[] = [
         ...(setup_needed && { setup_needed }),
         master_cv: { id: master.id, language: master.sourceLang, languages: Object.keys(master.content), markdown: cvMarkdown(content) },
         knowledge_base: libraryText(library),
+        // How well stocked the master CV and knowledge base are for tailoring (shared/kbscore.ts), with what to add.
+        knowledge_score: (({ score, level, parts, next }) => ({
+          score,
+          level: `${level.label}: ${level.says}`,
+          parts: parts.map((p) => `${p.label}: ${p.have} of ${p.target} ${p.unit} (${p.rule})`),
+          next_steps: next.slice(0, 4).map((n) => `${n.text} (+${n.gain})`),
+          note: 'Below 75, offer the user to fill the weakest parts (prompt "build_knowledge_base") before tailoring: a fuller, structured knowledge base gives better CVs and letters.',
+        }))(knowledgeScore(content, library)),
         search_profile: profile,
         cvs: resumes.map((r) => {
           const m = toMeta(r)
@@ -1951,7 +1961,7 @@ const TOOLS: Tool[] = [
       } else throw new ToolError('Pass image_url or image_base64 (or remove: true).')
       if (!IMAGE_TYPES.test(mime)) throw new ToolError('Only PNG, JPEG or WebP images.')
       if ((base64.length * 3) / 4 > 1_500_000) throw new ToolError('Image too large (max 1.5 MB).')
-      const id = uid('img')
+      const id = secretId('img')
       await db.putAsset(env, id, mime, base64)
       await db.saveSearchProfile(env, { ...profile, signature: `/api/assets/${id}`, updatedAt: new Date().toISOString() })
       return { saved: true, signature: `/api/assets/${id}`, next: 'Every letter in the signed template now carries it (design_letter template "signed"). Check a letter with check_draft: the signature takes about four lines.' }

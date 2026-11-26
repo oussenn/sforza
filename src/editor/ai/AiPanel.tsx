@@ -37,6 +37,7 @@ import { navigate, openCv } from '../router'
 import { useEditor } from '../store'
 import { Disclosure, RequirementList, ScoreCard } from './ScoreCard'
 import { useTranslate } from './useTranslate'
+import { KnowledgeHint } from '../profile/KnowledgeStrength'
 
 function Card({
   icon,
@@ -308,9 +309,10 @@ function TailorCard() {
     <Card
       icon={<Target className="size-4.5" />}
       title="Tailor to a job"
-      subtitle="Paste a job link or the posting. The AI builds a dedicated CV from your master CV and library, scores the match and translates the result."
+      subtitle="Paste a job link or the posting. The AI builds a dedicated CV from your master CV and knowledge base, scores the match and translates the result."
     >
       <div className="grid gap-3">
+        <KnowledgeHint />
         <div className="grid gap-1.5">
           <Label className="text-muted-foreground text-xs">Job link</Label>
           <div className="flex gap-2">
