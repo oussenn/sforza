@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/local.mjs prepare",
     "dev": "vite",
+    "local:password": "node scripts/local.mjs password",
+    "local:reset": "node scripts/local.mjs reset",
     "build": "tsc -b && vite build",
     "preview": "npm run build && vite preview",
     "deploy": "npm test && npm run build && wrangler deploy",

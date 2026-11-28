@@ -36,7 +36,7 @@ Both pages show the list, the editor and the A4 page side by side. Ctrl+B (⌘B 
 
 ## Cover letters
 
-Five designs. Fonts, colours and spacing follow the CV until you change them.
+Six designs. Fonts, colours and spacing follow the CV until you change them.
 
 ![Cover letter designs and colours](.github/readme/letters.gif)
 
@@ -160,42 +160,90 @@ worker/    API, auth, AI calls, job readers, PDF rendering, MCP server
 shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
-scripts/   optional account generator for the AUTH_USERS secret, and the builders of the theme logos, the sakura images and the theme sounds (scripts/sounds.py)
+scripts/   local.mjs (local setup, passwords, reset), the account generator for the AUTH_USERS secret, and the builders of the theme logos, the sakura images and the theme sounds
 design/    full-size source images per theme: the logos, the background and the sakura pictures (public/ has the sized copies)
 ```
 
-## Run locally
+## Run it on your computer
 
-Requires Node 24.
+You need Node 24 (`node -v` shows the version). Nothing else: no Cloudflare account and no API key.
 
 ```bash
+git clone https://github.com/oussenn/sforza
+cd sforza
 npm install
-cp .env.example .env
-```
-
-In `.env`, set `SESSION_SECRET` to a random string of 32 or more characters. To make one:
-
-```bash
-node -e "console.log(crypto.randomBytes(32).toString('base64url'))"
-```
-
-Then:
-
-```bash
 npm run dev
 ```
 
-Open http://localhost:5173 and create your account. The local database is created on the first request.
+Open http://localhost:5173 and create your account. The first account is the admin.
 
 <p align="center"><img src=".github/readme/create-account.png" width="420" alt="Create your account"></p>
 
-The editor, board and job readers work without any API key. For the AI features, add your own Anthropic, OpenAI or Google Gemini key under AI in the top bar. You can also give the whole site a key in `.env` for accounts without one, or run `npx wrangler login` for Workers AI. PDF download uses Cloudflare Browser Rendering and falls back to the browser print dialog.
+The first `npm run dev` makes `.env` from `.env.example` and fills in a random `SESSION_SECRET`. That secret signs your local sign-ins and encrypts the API keys you save, so keep it. Each start also lists the accounts this copy has. Everything stays on your computer: the database lives in `.wrangler/state`, apart from any site you deploy. When a `.dev.vars` file exists, it is read instead of `.env`.
+
+| To | Run |
+|---|---|
+| Get a new password for a local account, or make one | `npm run local:password -- <username>` |
+| Start over with an empty database | stop `npm run dev`, then `npm run local:reset -- --yes` |
+| Turn on the free Workers AI model | `npx wrangler login`, then start `npm run dev` again |
+
+Changes show up as you save: the page updates in place (hot reload), and the server restarts by itself after a change in `worker/` or `shared/`.
+
+What needs more than `npm run dev`:
+
+- **AI**: add your own Anthropic, OpenAI or Google Gemini key under AI in the top bar, or give the whole local site a key in `.env`. With `npx wrangler login`, accounts without a key use the free Workers AI model.
+- **PDF download and the one-page fit**: they run in a local Chrome that wrangler downloads the first time you download a PDF, so that first one takes longer.
+- **MCP connector**: set `MCP_TOKEN` in `.env` (24 or more random characters) and restart. The address is `http://localhost:5173/mcp/<token>`. Only agents running on this computer can reach it, for example Claude Desktop through `mcp-remote` (below), not a web app such as claude.ai.
+
+npm may say it skipped the install script of `workerd`. That is fine: the app runs without it.
+
+## Put it online
+
+Sforza runs on Cloudflare: one Worker (the server, which also serves the app), one D1 database (SQLite) and Browser Rendering for the PDFs. A free Cloudflare account is enough to start. Browser Rendering and Workers AI have limits per plan: see Cloudflare's pricing pages.
+
+1. Sign in to Cloudflare from the project folder. It opens the browser once:
+
+   ```bash
+   npx wrangler login
+   ```
+
+2. Make the database, then copy the `database_id` it prints into `wrangler.jsonc`, in place of the zeros. The app creates its tables by itself on the first request:
+
+   ```bash
+   npx wrangler d1 create sforza-db
+   ```
+
+3. Give the server its two secrets. Each command asks you to paste the value, and Cloudflare keeps it (never in the code):
+
+   ```bash
+   npx wrangler secret put SESSION_SECRET   # 32+ random characters; changing it later signs everyone out
+   npx wrangler secret put SETUP_TOKEN      # 16+ random characters; the site asks for it once, for the first account
+   ```
+
+   `node -e "console.log(crypto.randomBytes(32).toString('base64url'))"` makes a random value.
+
+4. Deploy. This runs the tests, builds the app and uploads it, then prints the address (`https://sforza.<your-subdomain>.workers.dev`):
+
+   ```bash
+   npm run deploy
+   ```
+
+5. Open the address and create your account with the setup token. You are the admin; invite others under Account.
+
+To update the site later, get the new code and run `npm run deploy` again. Your data stays in the database. `npx wrangler tail` shows the server's logs live.
+
+Optional:
+
+- **AI for every account**: `npx wrangler secret put ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`, `GEMINI_API_KEY`). Accounts can also add their own keys under AI. The other secrets in the table under Environment are set the same way.
+- **MCP connector**: `npx wrangler secret put MCP_TOKEN` with 24+ random characters.
+- **Your own domain**: the domain has to be on Cloudflare. In `wrangler.jsonc`, add `"routes": [{ "pattern": "cv.example.com", "custom_domain": true }]`, set `"workers_dev": false` if the workers.dev address should stop working, and deploy. To move to a new domain later, add it as a second route, keep the old one and set `CANONICAL_HOST` to the new host name: visitors move to the new address, and connectors set up on the old one keep working.
+- **Invitations sent by the server**: set up Cloudflare Email Sending for your domain, add `"send_email": [{ "name": "EMAIL" }]` to `wrangler.jsonc` and set `MAIL_FROM` to an address on that domain. Without it, the admin's own mail app sends them.
 
 ## Environment
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `SESSION_SECRET` | yes | Signs sessions and download links, and encrypts the API keys saved under AI. At least 16 characters, 32 or more recommended |
+| `SESSION_SECRET` | yes | Signs sessions and download links, and encrypts the API keys saved under AI. At least 16 characters, 32 or more recommended. `npm run dev` makes one for your computer |
 | `SETUP_TOKEN` | deploy | Asked once to create the first account on a public address, so nobody else can claim a new site. Not needed locally |
 | `AUTH_USERS` | no | Accounts kept in a secret instead: `{ "username": "pbkdf2-sha256$..." }`, made by `scripts/new-logins.mjs` |
 | `PRIMARY_USER` | no | Account whose connector token is `MCP_TOKEN` itself. Default: first account in `AUTH_USERS` |
@@ -245,16 +293,18 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 |---|---|
 | Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `/request-access`, `GET /api/auth/me`, `PUT /api/onboarding`, `PUT /api/appearance` |
 | Accounts (admin) | `GET /api/accounts`, `POST /api/accounts/invites`, `DELETE /api/accounts/invites/:id`, `PUT /api/accounts/:username/access`, `POST /api/accounts/requests/:id/invite`, `DELETE /api/accounts/requests/:id` |
-| CVs | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id`, `POST /api/resumes/:id/main`, `GET /api/pdf/:id` |
+| CVs | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id`, `POST /api/resumes/:id/main`, `GET /api/pdf/:id` (`GET /api/pdf`: the main CV) |
 | Knowledge base | `GET/PUT /api/library` |
 | Job search profile | `GET/PUT /api/search-profile` |
 | AI | `POST /api/ai/job-from-url`, `/match`, `/rescore`, `/tailor`, `/translate`, `/letter`, `GET /api/ai/status` |
 | AI models | `GET/PUT /api/ai/settings`, `POST /api/ai/settings/check` |
-| Board | `GET/POST /api/applications`, `PUT/DELETE /api/applications/:id`, `POST /api/applications/read-link`, `GET/PUT /api/board-columns`, `GET/PUT /api/board` |
+| Board | `GET/POST /api/applications`, `PUT/DELETE /api/applications/:id`, `POST /api/applications/read-link`, `/import`, `POST /api/applications/:id/ai-check`, `/logo`, `GET/PUT /api/board-columns`, `GET/PUT /api/board` |
 | Letters | `GET /api/applications/:id/letter.pdf` |
+| Files and links | `POST /api/assets` (photo, logo or signature), `GET /api/assets/:id`, `GET /api/share/:kind/:id` (signed download links) |
+| Sync | `GET /api/changes`: one stamp per area, so open pages reload what changed elsewhere |
 | Connector | `GET /api/connector` returns the signed-in account's MCP address |
 
-AI routes stream progress as NDJSON. `PUT /api/ai/settings` takes `{ "keys": { "anthropic": "<key>" or null, "openai": "<key>" or null }, "mode": "auto" or "manual", "provider", "model" }` and answers without the keys.
+AI routes stream progress as NDJSON. `PUT /api/ai/settings` takes `{ "keys": { "anthropic": "<key>" or null, "openai": "<key>" or null, "gemini": "<key>" or null }, "mode": "auto" or "manual", "provider", "model" }` and answers without the keys.
 
 ## Connect an MCP client
 
@@ -277,7 +327,7 @@ Other clients can call `https://<host>/mcp` with `Authorization: Bearer <token>`
 }
 ```
 
-Locally the address is `http://localhost:5173/mcp/<token>`.
+On your computer the address is `http://localhost:5173/mcp/<token>`, for agents running on the same computer.
 
 Tools:
 
@@ -320,22 +370,6 @@ The tools also check the writing rules as they save:
 The App's AI tools let the app write instead of the agent. They run on the account's own key when it has one (otherwise the site's AI) and keep the rules of the AI buttons: the CV fitted on one page, with its layout in the answer, and the letter written again when it breaks a rule. Agents never see the keys.
 
 Every CV follows the same common-sense rules (adapt it to the posting, only facts from your CV and knowledge base, titles and dates as stated, one full page). Add your own under "My rules for CVs and letters" in the job search profile.
-
-## Deploy
-
-```bash
-npx wrangler login
-npx wrangler d1 create sforza-db         # put the printed id in wrangler.jsonc
-npx wrangler secret put SESSION_SECRET
-npx wrangler secret put SETUP_TOKEN      # any random string, asked once for the first account
-npm run deploy                           # runs the tests, builds and deploys
-```
-
-Open the site and create your account with the setup token.
-
-Add the optional secrets the same way. The app is served on `workers.dev` unless you add a route in `wrangler.jsonc`.
-
-To move to a new domain, add it as a second route, keep the old one and set `CANONICAL_HOST` to the new host name. Visitors move to the new address, and connectors set up on the old one keep working.
 
 ## Tests
 

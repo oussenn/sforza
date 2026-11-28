@@ -36,3 +36,4 @@ Sforza is self-hosted for one person or a small group. There is no open sign-up:
 - The AI budget in `wrangler.jsonc` is shared by all accounts that use the site's keys. Calls on an account's own key are not counted.
 - Changing `SESSION_SECRET` also makes the saved API keys unreadable: the AI page then asks for them again.
 - The demo password is public on purpose; the limits above are what protect the site. Changing or removing `DEMO_PASSWORD` ends every demo session at once, and a cron trigger deletes sandboxes that ran out every 30 minutes.
+- On your own computer (`npm run dev`), the first account needs no setup token, and `npm run local:password` sets a password straight in the local database. Neither reaches a deployed site. On Windows the local Chrome that makes PDFs runs without its sandbox (with it, that Chrome cannot print there); it only opens the app's own print page.

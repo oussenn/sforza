@@ -19,7 +19,8 @@
   ],
   // The site's AI, for accounts without their own key: Claude if ANTHROPIC_API_KEY, then OpenAI (OPENAI_API_KEY), then
   // Google Gemini (GEMINI_API_KEY, model GEMINI_MODEL or Gemini 4 Hydrogen), then the free Workers AI
-  "ai": { "binding": "AI" },
+  // (remote: it always runs on Cloudflare, also in local development; without a Cloudflare login npm run dev leaves it out)
+  "ai": { "binding": "AI", "remote": true },
   // Headless Chrome that renders the downloadable PDF (real text, embedded fonts, clickable links)
   "browser": { "binding": "BROWSER" },
   // Deployment id: invalidates cached PDFs whenever new template code ships

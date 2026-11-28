@@ -152,7 +152,7 @@ app.use('/api/*', async (c, next) => {
 
 /* ---------------------------------- auth --------------------------------- */
 
-const NO_SECRET = 'Set the SESSION_SECRET secret (16+ characters) on the Worker.'
+const NO_SECRET = 'SESSION_SECRET is not set (16+ characters). On your computer, npm run dev adds one to .env; on Cloudflare, add it with npx wrangler secret put SESSION_SECRET.'
 
 /** The sign-in fields of a request body; anything that is not a string counts as empty. */
 async function credentials(c: Ctx) {

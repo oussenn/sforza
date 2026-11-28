@@ -25,6 +25,7 @@ const TEXT: Record<LoginMode['kind'], { subtitle: string; button: string; intro?
 }
 
 const README_DEMO = 'https://github.com/oussenn/sforza#try-the-demo'
+const LOCAL = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)
 
 export default function Login({
   mode,
@@ -162,6 +163,14 @@ export default function Login({
             <button type="button" onClick={() => setAsking(true)} className="text-foreground font-medium underline underline-offset-2">
               Request access
             </button>
+          </p>
+        )}
+        {mode.kind === 'signin' && LOCAL && (
+          // Running on this computer (npm run dev): scripts/local.mjs makes or resets a local account.
+          <p className="text-muted-foreground mt-5 border-t pt-4 text-xs">
+            Running on this computer. No account, or forgot the password? In the project folder run{' '}
+            <code className="text-foreground bg-muted rounded px-1 py-0.5 font-mono whitespace-nowrap">npm run local:password -- yourname</code> and sign in with what it
+            prints.
           </p>
         )}
         {mode.kind === 'signin' && demoAvailable && (
