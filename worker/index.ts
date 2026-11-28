@@ -4,6 +4,7 @@ import { bodyLimit } from 'hono/body-limit'
 import { HTTPException } from 'hono/http-exception'
 import type { AiCheck, AiEvent, AiProviderId, AiStatus, Application, CoverLetter, JobAnalysis, Lang, LetterLayout, Resume, ScrapedJob } from '@shared/types'
 import { AI_PROVIDERS, LANGS, LETTER_LAYOUTS } from '@shared/types'
+import { cleanAppearance } from '@shared/appearance'
 import { formAnswersField } from './forms'
 import {
   cleanBoard,
@@ -233,7 +234,7 @@ app.get('/api/auth/me', async (c) => {
   const setup = !user && !(await hasAccounts(c.env)) ? { setup: { needsToken: !isLocalRequest(c.req.url) } } : {}
   // A demo sandbox shows as "demo", with the time its data is deleted; the sign-in page mentions the demo when it is on.
   const demo = isDemoOwner(user) ? { demo: { expiresAt: sessionExpiry(c) } } : !user && demoEnabled(c.env) ? { demoAvailable: true } : {}
-  // Signed in: whether the welcome tour was seen; for the admin, how many people wait for access.
+  // Signed in: whether the welcome tour was seen and the account's appearance; for the admin, how many people wait for access.
   const account = user ? await accountState(c, user) : {}
   return c.json({
     authenticated: !!user,
@@ -246,9 +247,11 @@ app.get('/api/auth/me', async (c) => {
 })
 
 async function accountState(c: Ctx, user: string) {
-  const tourSeen = !!(await db.getTourSeen(db.forOwner(c.env, user)))
-  if (isDemoOwner(user) || (await adminUser(c.env)) !== user) return { tourSeen }
-  return { tourSeen, admin: true, pendingRequests: await pendingRequestCount(c.env) }
+  const store = db.forOwner(c.env, user)
+  const [tour, appearance] = await Promise.all([db.getTourSeen(store), db.getAppearance(store)])
+  const state = { tourSeen: !!tour, appearance }
+  if (isDemoOwner(user) || (await adminUser(c.env)) !== user) return state
+  return { ...state, admin: true, pendingRequests: await pendingRequestCount(c.env) }
 }
 
 /**
@@ -272,6 +275,14 @@ app.put('/api/onboarding', async (c) => {
   if (typeof body.seen !== 'boolean') return c.json({ error: 'Send { "seen": true } or false' }, 400)
   await db.setTourSeen(c.env, body.seen ? new Date().toISOString() : null)
   return c.json({ ok: true })
+})
+
+/** The account's appearance (theme, contrast, colours, effects, sounds), so it follows the account to every device. */
+app.put('/api/appearance', async (c) => {
+  const appearance = cleanAppearance(await c.req.json<unknown>().catch(() => null))
+  if (!appearance) return c.json({ error: 'Send the appearance as an object' }, 400)
+  await db.setAppearance(c.env, appearance)
+  return c.json(appearance)
 })
 
 /**

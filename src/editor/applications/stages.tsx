@@ -17,10 +17,11 @@ export function stageDot(stage: Stage): string {
   return isCustomStage(stage) ? 'bg-teal-500' : STAGE_DOT[stage]
 }
 
-/** Label of a stage, including the board's own columns. */
+/** Label of a stage on this board: its own columns and the names it gave built-in stages. */
 export function useStageLabel(): (stage: Stage) => string {
   const columns = useApplications((s) => s.columns)
-  return (stage) => stageLabel(stage, columns)
+  const labels = useApplications((s) => s.labels)
+  return (stage) => stageLabel(stage, { columns, labels })
 }
 
 export function StageBadge({ stage, className }: { stage: Stage; className?: string }) {

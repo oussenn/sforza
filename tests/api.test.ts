@@ -553,9 +553,9 @@ describe('a board of its own', () => {
     expect((await (await call('/api/board', { as: 'bob' })).json()).hidden).toEqual([])
     expect(Object.keys((await asUser('bob', 'get_profile')).board)).toContain('Draft')
 
-    // Hiding needs a column of its own after the stage.
+    // Deleting needs a place for the cards: a column of its own after the stage, or a move_to column.
     const refused = await rpc(`/mcp/${(await connectorToken(env, 'bob'))!}`, tool('edit_board', { hidden: ['draft'] }))
-    expect(((await refused.json()) as { result: { content: { text: string }[] } }).result.content[0].text).toContain('add a column after it first')
+    expect(((await refused.json()) as { result: { content: { text: string }[] } }).result.content[0].text).toContain('say where its cards go')
 
     // Showing Draft again keeps the columns and the cards where they are; removing the columns brings the cards back.
     await asUser('alice', 'edit_board', { hidden: [] })
@@ -563,6 +563,27 @@ describe('a board of its own', () => {
     const back = await asUser('alice', 'edit_board', { columns: kept })
     expect(back.moved.length).toBeGreaterThanOrEqual(3)
     expect(await label('alice', de.id)).toBe('Draft')
+  })
+
+  it('renames built-in columns and deletes them, the cards moving to the column picked', async () => {
+    const rejected = await asUser('bob', 'save_application', { title: 'Analyst', company: 'Over GmbH', stage: 'rejected' })
+    const put = (board: unknown) => call('/api/board', { as: 'bob', method: 'PUT', json: board })
+    const saved = (await (await put({ columns: [], hidden: ['rejected'], moveTo: { rejected: 'applied' }, labels: { saved: 'Wishlist' } })).json()) as {
+      hidden: string[]
+      labels: Record<string, string>
+      moved: number
+    }
+    expect(saved).toMatchObject({ hidden: ['rejected'], labels: { saved: 'Wishlist' }, moved: 1 })
+    expect((await asUser('bob', 'get_application', { id: rejected.id })).stage).toBe('applied')
+    // A card saved in the deleted stage later lands in its column too; the new names reach the agent.
+    expect((await asUser('bob', 'save_application', { title: 'Later', company: 'Late AG', stage: 'rejected' })).stage).toBe('applied')
+    const profile = await asUser('bob', 'get_profile')
+    expect(profile.board_labels).toEqual({ saved: 'Wishlist' })
+    expect(profile.board_move_to).toEqual({ rejected: 'applied' })
+    expect(Object.keys(profile.board)).toEqual(['Wishlist', 'Draft', 'Applied', 'Interview', 'Offer'])
+    // The agent can do the same: rename back, bring Rejected back.
+    const edited = await asUser('bob', 'edit_board', { hidden: [], labels: { saved: '' } })
+    expect(Object.values(edited.stages)).toEqual(['Saved', 'Draft', 'Applied', 'Interview', 'Offer', 'Rejected'])
   })
 })
 

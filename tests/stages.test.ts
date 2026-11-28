@@ -80,3 +80,37 @@ describe('a board that hides a built-in column', () => {
     expect(placeStage('applied', 'de', board)).toBe('applied')
   })
 })
+
+describe('a board that renames and deletes built-in columns', () => {
+  it('names a built-in stage its own way, and drops names equal to the built-in one', () => {
+    const board = cleanBoard({ columns: [screen], hidden: [], labels: { saved: ' Wishlist ', draft: 'Draft', offer: '', nope: 'x' } })
+    expect(board).toEqual({ columns: [screen], hidden: [], labels: { saved: 'Wishlist' } })
+    expect(stageLabel('saved', board)).toBe('Wishlist')
+    expect(stageLabel('draft', board)).toBe('Draft')
+    expect(stageLabel(screen.id, board)).toBe('Phone screen')
+    // A removed column shows under the name of its stage.
+    expect(stageLabel('col_saved_gone11', board)).toBe('Wishlist')
+  })
+
+  it('deletes a stage without columns of its own when its cards have a column to go to', () => {
+    expect(cleanBoard({ columns: [], hidden: ['rejected'], moveTo: { rejected: 'applied' } })).toEqual({ columns: [], hidden: ['rejected'], moveTo: { rejected: 'applied' } })
+    expect(cleanBoard({ columns: [screen], hidden: ['rejected'], moveTo: { rejected: screen.id } }).hidden).toEqual(['rejected'])
+    // No place, a deleted stage, or a column that is not on the board: the stage stays.
+    expect(cleanBoard({ columns: [], hidden: ['rejected'] }).hidden).toEqual([])
+    expect(cleanBoard({ columns: [], hidden: ['rejected', 'offer'], moveTo: { rejected: 'offer', offer: 'interview' } })).toEqual({ columns: [], hidden: ['offer'], moveTo: { offer: 'interview' } })
+    expect(cleanBoard({ columns: [], hidden: ['rejected'], moveTo: { rejected: 'col_applied_none11' } }).hidden).toEqual([])
+  })
+
+  it('never deletes the last column', () => {
+    const all = cleanBoard({ columns: [], hidden: ['saved', 'draft', 'applied', 'interview', 'offer', 'rejected'], moveTo: { saved: 'draft', draft: 'saved' } })
+    expect(boardStages(all.columns, all.hidden).length).toBeGreaterThan(0)
+  })
+
+  it('sends cards of a deleted stage to its column, else to the nearest one before it', () => {
+    const board: Board = { columns: [], hidden: ['rejected', 'saved'], moveTo: { rejected: 'applied', saved: 'draft' } }
+    expect(placeStage('rejected', null, board)).toBe('applied')
+    expect(placeStage('saved', 'en', board)).toBe('draft')
+    // A moveTo column that left the board: the nearest column before the stage.
+    expect(placeStage('offer', null, { columns: [], hidden: ['offer'], moveTo: { offer: 'col_applied_gone11' } })).toBe('interview')
+  })
+})

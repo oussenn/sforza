@@ -75,7 +75,7 @@ describe('first-run setup', () => {
     const res = await call(`${SITE}/api/auth/setup`, { method: 'POST', json: { username: 'Owner', password: OWNER_PW, setupToken: SETUP_TOKEN }, env: withSecret })
     expect(res.status).toBe(200)
     owner = cookieOf(res)
-    expect(await (await call(`${SITE}/api/auth/me`, { cookie: owner })).json()).toEqual({ authenticated: true, user: 'owner', tourSeen: false, admin: true, pendingRequests: 0 })
+    expect(await (await call(`${SITE}/api/auth/me`, { cookie: owner })).json()).toEqual({ authenticated: true, user: 'owner', tourSeen: false, appearance: null, admin: true, pendingRequests: 0 })
   })
 
   it('closes once an account exists', async () => {

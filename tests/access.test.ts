@@ -140,3 +140,21 @@ describe('the welcome tour', () => {
     expect((await call('/api/onboarding', { method: 'PUT', json: { seen: true } })).status).toBe(401)
   })
 })
+
+describe('the appearance of an account', () => {
+  it('follows the account, checked field by field', async () => {
+    const mine = async (cookie?: string) => ((await (await call('/api/auth/me', { cookie: cookie ?? owner })).json()) as { appearance: unknown }).appearance
+    expect(await mine()).toBeNull()
+    const sakura = { theme: 'dark', look: 'sakura', palette: { base: '#112233', primary: '#445566', accent: '#778899' }, effects: false, sounds: true }
+    expect((await call('/api/appearance', { method: 'PUT', json: sakura, cookie: owner })).status).toBe(200)
+    expect(await mine()).toEqual(sakura)
+    // Unknown values fall back to the defaults; nothing else is stored.
+    await call('/api/appearance', { method: 'PUT', json: { look: 'neon', theme: 'dim', palette: { base: 'red' }, sounds: false, extra: 1 }, cookie: owner })
+    expect(await mine()).toEqual({ theme: 'system', look: 'standard', palette: { base: '#e8eef7', primary: '#2f6fde', accent: '#f2a541' }, effects: true, sounds: false })
+    expect((await call('/api/appearance', { method: 'PUT', json: [1], cookie: owner })).status).toBe(400)
+    expect((await call('/api/appearance', { method: 'PUT', json: sakura })).status).toBe(401)
+    // Another account keeps its own.
+    const ada = cookieOf(await call('/api/auth/login', { method: 'POST', json: { username: 'ada', password: 'copper willow garden 8' } }))
+    expect(await mine(ada)).toBeNull()
+  })
+})

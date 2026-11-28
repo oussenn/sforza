@@ -192,9 +192,13 @@ export function newColumnId(after: BuiltinStage): BoardColumn['id'] {
   return uid(`col_${after}`) as BoardColumn['id']
 }
 
-export function stageLabel(stage: Stage, columns: readonly BoardColumn[] = []): string {
-  if (!isCustomStage(stage)) return STAGE_LABELS[stage]
-  return columns.find((c) => c.id === stage)?.label ?? STAGE_LABELS[baseStage(stage)]
+/** A stage's name on this board: a column's own label, a built-in stage's new name, else the built-in name. */
+export function stageLabel(stage: Stage, board: readonly BoardColumn[] | Pick<Board, 'columns' | 'labels'> = []): string {
+  const columns = Array.isArray(board) ? board : (board as Pick<Board, 'columns'>).columns
+  const labels = Array.isArray(board) ? undefined : (board as Pick<Board, 'labels'>).labels
+  const builtin = (s: BuiltinStage) => labels?.[s] ?? STAGE_LABELS[s]
+  if (!isCustomStage(stage)) return builtin(stage)
+  return columns.find((c) => c.id === stage)?.label ?? builtin(baseStage(stage))
 }
 
 /**
@@ -221,22 +225,39 @@ export function cleanBoardColumns(raw: unknown): BoardColumn[] {
 }
 
 /**
- * A board from untrusted input or storage: the old plain list of columns, or { columns, hidden }. A stage stays
- * hidden only while a column of its own follows it, so no card is ever left without a column.
+ * A board from untrusted input or storage: the old plain list of columns, or { columns, hidden, labels, moveTo }. A
+ * stage stays deleted (hidden) only while its cards have a place: a column of its own after it, or a `moveTo`
+ * column that is on the board. At least one column always stays. Names equal to the built-in one are dropped, and
+ * `labels` and `moveTo` are left out when empty, so a plain board stays { columns, hidden }.
  */
 export function cleanBoard(raw: unknown): Board {
-  const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as { columns?: unknown; hidden?: unknown }) : null
+  const obj = raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : null
   const columns = cleanBoardColumns(obj ? obj.columns : raw)
-  const hidden = Array.isArray(obj?.hidden)
-    ? STAGES.filter((s) => (obj.hidden as unknown[]).includes(s) && columns.some((c) => baseStage(c.id) === s))
-    : []
-  return { columns, hidden }
+  const asked = Array.isArray(obj?.hidden) ? STAGES.filter((s) => (obj.hidden as unknown[]).includes(s)) : []
+  const rawMove = (obj?.moveTo && typeof obj.moveTo === 'object' ? obj.moveTo : {}) as Record<string, unknown>
+  // A target is a column that stays on the board: one the account added, or a built-in stage it keeps.
+  const shown = (t: unknown): t is Stage => (isCustomStage(t) ? columns.some((c) => c.id === t) : (STAGES as readonly unknown[]).includes(t) && !asked.includes(t as BuiltinStage))
+  const moveTo: Partial<Record<BuiltinStage, Stage>> = {}
+  const hidden = asked.filter((s) => {
+    if (shown(rawMove[s])) moveTo[s] = rawMove[s] as Stage
+    return columns.some((c) => baseStage(c.id) === s) || !!moveTo[s]
+  })
+  // (A moveTo target is always a column that stays, so the board never ends up empty.)
+  for (const s of Object.keys(moveTo) as BuiltinStage[]) if (!hidden.includes(s)) delete moveTo[s]
+  const rawLabels = (obj?.labels && typeof obj.labels === 'object' ? obj.labels : {}) as Record<string, unknown>
+  const labels: Partial<Record<BuiltinStage, string>> = {}
+  for (const s of STAGES) {
+    const label = typeof rawLabels[s] === 'string' ? (rawLabels[s] as string).trim().slice(0, 40) : ''
+    if (label && label !== STAGE_LABELS[s]) labels[s] = label
+  }
+  return { columns, hidden, ...(Object.keys(labels).length && { labels }), ...(Object.keys(moveTo).length && { moveTo }) }
 }
 
 /**
- * Where a card in `stage` goes on this board: the stage itself, unless it is hidden. Then the column after it that
- * takes the card's language, else the first one without a language, else the first one. While Draft is hidden, a
- * draft in the column of another language moves to the column of its own (its cv_language changed).
+ * Where a card in `stage` goes on this board: the stage itself, unless it is deleted (hidden). Then the column after
+ * it that takes the card's language, else the first one without a language, else the first one; without a column
+ * of its own, the board's `moveTo` column for it, else the nearest column before it (or after it). While Draft is
+ * hidden, a draft in the column of another language moves to the column of its own (its cv_language changed).
  */
 export function placeStage(stage: Stage, lang: Lang | null | undefined, board: Board): Stage {
   if (isCustomStage(stage)) {
@@ -247,7 +268,14 @@ export function placeStage(stage: Stage, lang: Lang | null | undefined, board: B
   }
   if (!board.hidden.includes(stage)) return stage
   const after = board.columns.filter((c) => baseStage(c.id) === stage)
-  return (after.find((c) => lang && c.lang === lang) ?? after.find((c) => !c.lang) ?? after[0])?.id ?? stage
+  const own = (after.find((c) => lang && c.lang === lang) ?? after.find((c) => !c.lang) ?? after[0])?.id
+  if (own) return own
+  const shown = boardStages(board.columns, board.hidden)
+  const target = board.moveTo?.[stage]
+  if (target && shown.includes(target)) return target
+  const at = STAGES.indexOf(stage)
+  const before = shown.filter((s) => STAGES.indexOf(baseStage(s)) < at)
+  return before[before.length - 1] ?? shown.find((s) => STAGES.indexOf(baseStage(s)) > at) ?? stage
 }
 
 /** Stages before the application is sent (custom columns count as the stage they follow). */

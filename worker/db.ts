@@ -1,4 +1,5 @@
 import { blankMaster } from '@shared/seed'
+import { cleanAppearance, type AccountAppearance } from '@shared/appearance'
 import type { Application, Board, BoardColumn, ChangeStamps, Library, Resume, SearchProfile, Stage } from '@shared/types'
 import { applicationWithoutEmDashes, baseStage, cleanBoard, cleanLibrary, cleanSearchProfile, cvWithoutEmDashes, defaultSearchProfile, isCustomStage, placeStage, uid } from '@shared/utils'
 import { primaryUser } from './auth'
@@ -264,12 +265,13 @@ export async function getBoardColumns(s: Store): Promise<BoardColumn[]> {
 
 /**
  * Saves the board and moves the cards it leaves without a column: those of a removed column to the stage it
- * followed, those of a hidden stage to the column that replaces it (by language after Draft). A board that hides
- * nothing is stored as the plain list of columns it always was. Returns the board and the cards moved.
+ * followed, those of a deleted stage to the column that replaces it (by language after Draft) or to its moveTo
+ * column. A board that deletes and renames nothing is stored as the plain list of columns it always was. Returns
+ * the board and the cards moved.
  */
 export async function saveBoard(s: Store, input: Board): Promise<{ board: Board; moved: { id: string; from: Stage; to: Stage }[] }> {
   const board = cleanBoard(input)
-  await putSetting(s, 'board_columns', JSON.stringify(board.hidden.length ? board : board.columns))
+  await putSetting(s, 'board_columns', JSON.stringify(board.hidden.length || board.labels ? board : board.columns))
   const ids = new Set(board.columns.map((c) => c.id as Stage))
   const moved: { id: string; from: Stage; to: Stage }[] = []
   for (const app of await listApplications(s)) {
@@ -284,9 +286,9 @@ export async function saveBoard(s: Store, input: Board): Promise<{ board: Board;
   return { board, moved }
 }
 
-/** Saves the columns and keeps the stages the board hides. */
+/** Saves the columns and keeps the rest of the board (deleted stages, names). */
 export async function saveBoardColumns(s: Store, columns: BoardColumn[]): Promise<void> {
-  await saveBoard(s, { columns, hidden: (await getBoard(s)).hidden })
+  await saveBoard(s, { ...(await getBoard(s)), columns })
 }
 
 /** The account's own AI settings with its API keys encrypted (aikeys.ts); null when never set. */
@@ -399,4 +401,18 @@ export async function getTourSeen(s: Store): Promise<string | null> {
 
 export async function setTourSeen(s: Store, at: string | null): Promise<void> {
   await putSetting(s, 'onboarding', JSON.stringify({ tour: at }))
+}
+
+/** This account's theme, contrast, colours, effects and sounds (shared/appearance.ts); null until it saves one. */
+export async function getAppearance(s: Store): Promise<AccountAppearance | null> {
+  const raw = await getSetting(s, 'appearance')
+  try {
+    return raw ? cleanAppearance(JSON.parse(raw)) : null
+  } catch {
+    return null
+  }
+}
+
+export async function setAppearance(s: Store, appearance: AccountAppearance): Promise<void> {
+  await putSetting(s, 'appearance', JSON.stringify(appearance))
 }

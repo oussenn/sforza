@@ -23,6 +23,7 @@ import type {
   SearchProfile,
   Stage,
 } from '@shared/types'
+import type { AccountAppearance } from '@shared/appearance'
 
 export class ApiError extends Error {
   status: number
@@ -74,6 +75,8 @@ export const api = {
       demoAvailable?: boolean
       /** signed in: the welcome tour was finished or skipped */
       tourSeen?: boolean
+      /** signed in: the account's appearance, null until it saves one */
+      appearance?: AccountAppearance | null
       /** the admin account, and how many access requests wait */
       admin?: boolean
       pendingRequests?: number
@@ -81,6 +84,7 @@ export const api = {
   requestAccess: (input: { email: string; name: string; note: string; website: string }) =>
     request<{ ok: true }>('/api/auth/request-access', json('POST', input)),
   setTourSeen: (seen: boolean) => request<{ ok: true }>('/api/onboarding', json('PUT', { seen })),
+  saveAppearance: (appearance: AccountAppearance) => request<AccountAppearance>('/api/appearance', json('PUT', appearance)),
   login: (username: string, password: string) =>
     request<{ ok: true; user: string; demo?: DemoSession }>('/api/auth/login', json('POST', { username, password })),
   logout: () => request<{ ok: true }>('/api/auth/logout', json('POST', {})),

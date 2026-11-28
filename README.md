@@ -54,7 +54,7 @@ Each CV can have all three.
 
 ## Board
 
-Your own columns between the stages, for your account only. Drag a card to move it; on a phone or tablet, hold it until it lifts, then drag it (near the edge the board scrolls along). A built-in column can make way for your own: hide Draft behind one Drafts column per language, and each new draft lands in the column of its language. A new account starts with the six stages. Flags in column names (Drafts 🇬🇧, Drafts 🇩🇪) show in every browser, also Chrome, Edge and Brave on Windows, which have no flag emoji of their own.
+Your own columns between the stages, for your account only. Drag a card to move it; on a phone or tablet, hold it until it lifts, then drag it (near the edge the board scrolls along). Every column can be renamed and deleted from its menu (…), the built-in ones too: Saved can become Wishlist and still counts as Saved. A deleted built-in column sends its cards to a column of its own after it (delete Draft behind one Drafts column per language, and each new draft lands in the column of its language), else to the column you pick; cards saved in it later, by you or your agent, land there too. "Add column" brings a deleted one back, and the last column always stays. A new account starts with the six stages. Flags in column names (Drafts 🇬🇧, Drafts 🇩🇪) show in every browser, also Chrome, Edge and Brave on Windows, which have no flag emoji of their own.
 
 ![Cards dragged between board columns](.github/readme/board.gif)
 
@@ -103,7 +103,7 @@ Each account adds its own API keys under AI in the top bar: Anthropic, OpenAI, G
   </tr>
 </table>
 
-Light and dark are contrasts, and every theme has both. Pick a theme under Theme in the menu (or "Appearance" in Ctrl+K); it is kept for this browser:
+Light and dark are contrasts, and every theme has both. Pick a theme under Theme in the menu (or "Appearance" in Ctrl+K). It is kept with your account, so it follows you to every device, and two accounts in one browser each keep their own:
 
 - **Standard**: the painting and plain greys.
 - **Sakura**: blush pink with rose accents and cherry branches hanging from the top corners. Petals fall from them, tumbling like real ones, and the pointer blows them aside. A click on a button bursts petals from it, and a blossom opens on the corner of a top bar button under the pointer. A dragged card sheds petals from behind it, and a card dropped on Interview or Offer brings a shower over its column. At night (dark) the branches glow under a soft moon.
@@ -111,7 +111,7 @@ Light and dark are contrasts, and every theme has both. Pick a theme under Theme
 - **Space**: a twinkling starfield that shifts with the pointer, shooting stars and nebulae (a dawn sky in light); clicks scatter little stars.
 - **Your colours**: three colours of your own (page, primary, accent), turned into a light and a dark contrast.
 
-Sakura, Terminal and Space each bring their own Sforza portrait to the top bar, the sign-in page and the browser tab: an oni mask, a hood with sunglasses, a space helmet. It changes with the rest of the page as the new theme spreads.
+Sakura, Terminal and Space each bring their own Sforza portrait to the top bar, the sign-in page and the browser tab: an oni mask, a hood with sunglasses, a space helmet. It changes with the rest of the page as the new theme spreads, and each of the three plays a short sound of its own while it does (only on a theme change, not on light or dark; "Theme sounds" in the same window turns them off). The theme takes 1.2 to 1.4 seconds to cover the page, as long as the body of its sound; light and dark take 1 second. The sounds are 32 KB each and stream from one small audio element per theme, loaded when the window opens.
 
 Motion effects can be switched off in the same window, and stay off when the system asks for reduced motion. They stay light on the machine: a few petals and stars at a time, the scenes behind the app drawn at 30 to 40 frames a second at no more than 1.5 times the screen resolution, the steady stars drawn once, nothing at all while the tab is hidden. The CV and letter pages keep their own colours in every theme.
 
@@ -130,9 +130,9 @@ Motion effects can be switched off in the same window, and stay off when the sys
 - Logo & signature letters: the company's logo beside the date (the card's logo, found from the posting) and your handwritten signature, uploaded once in the letter's Design panel and kept for all your letters; either can be turned off per card
 - One-page fit: tailored CVs fill one page and letters fit on one, from the AI buttons and the MCP tools alike
 - Your own AI for each account: Anthropic, OpenAI and Google Gemini API keys (any of them), the model picked automatically or by you, and the next key as backup when a call fails. Keys are stored encrypted and never shown again
-- Board with your own columns, form answers and AI-text checks; a built-in column can be hidden, e.g. Draft for one Drafts column per language
+- Board with your own columns, form answers and AI-text checks; every column can be renamed or deleted, the built-in ones too (e.g. Draft for one Drafts column per language)
 - MCP server that can do everything the editor can
-- Themes: Standard, Sakura, Terminal, Space and your own three colours, each in light and dark, with motion effects (falling petals, stars, glyphs, bursts on clicks and moved cards) that can be switched off
+- Themes: Standard, Sakura, Terminal, Space and your own three colours, each in light and dark, kept per account, with their own sounds and motion effects (falling petals, stars, glyphs, bursts on clicks and moved cards) that can be switched off
 - Command palette (Ctrl+K)
 - Works on phones and tablets: two-row top bar, one-column forms, board columns that snap, the list above the page, cards moved with a finger, and the CV and letter pages in a bottom sheet that peeks at the top of the page and opens with a drag or a tap
 - Accounts made in the app: invitation links, requests for access answered by mail, password change, locking, separate data
@@ -160,7 +160,7 @@ worker/    API, auth, AI calls, job readers, PDF rendering, MCP server
 shared/    types, helpers, prompts and template metadata used by both sides
 tests/     unit tests
 bench/     model benchmark for matching and tailoring (local only)
-scripts/   optional account generator for the AUTH_USERS secret, and the image builders of the theme logos and the sakura theme
+scripts/   optional account generator for the AUTH_USERS secret, and the builders of the theme logos, the sakura images and the theme sounds (scripts/sounds.py)
 design/    full-size source images per theme: the logos, the background and the sakura pictures (public/ has the sized copies)
 ```
 
@@ -243,7 +243,7 @@ JSON over HTTP under `/api`. Sign in with `POST /api/auth/login` (`{ "username",
 
 | Area | Routes |
 |---|---|
-| Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `/request-access`, `GET /api/auth/me`, `PUT /api/onboarding` |
+| Auth | `POST /api/auth/login`, `/logout`, `/setup`, `/join`, `/password`, `/request-access`, `GET /api/auth/me`, `PUT /api/onboarding`, `PUT /api/appearance` |
 | Accounts (admin) | `GET /api/accounts`, `POST /api/accounts/invites`, `DELETE /api/accounts/invites/:id`, `PUT /api/accounts/:username/access`, `POST /api/accounts/requests/:id/invite`, `DELETE /api/accounts/requests/:id` |
 | CVs | `GET/POST /api/resumes`, `GET/PUT/DELETE /api/resumes/:id`, `POST /api/resumes/:id/main`, `GET /api/pdf/:id` |
 | Knowledge base | `GET/PUT /api/library` |

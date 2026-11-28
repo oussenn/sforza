@@ -1,15 +1,18 @@
 import { useSyncExternalStore } from 'react'
 import { flushSync } from 'react-dom'
+import { cleanAppearance, type AccountAppearance } from '@shared/appearance'
 import { paletteVars, parsePalette, PALETTE_KEYS, type Palette } from './palette'
 
 /**
- * Appearance, remembered in localStorage (per browser) and applied to <html>:
+ * Appearance, applied to <html>:
  *  - the theme (`data-look`): standard, sakura, terminal, space or custom (three colours of the user's own);
  *  - its contrast: light, dark or the system's (the `dark` class). Every theme has both contrasts;
  *  - motion effects (falling petals, stars, glyphs, bursts on clicks), on unless switched off or the system asks
- *    for reduced motion.
- * public/theme.js applies all of it before the first paint; the /print page (PDF rendering) always stays standard
- * and light.
+ *    for reduced motion;
+ *  - theme sounds: Sakura, Terminal and Space each play a short sound as they spread over the page.
+ * Each account keeps its own on the server (shared/appearance.ts): EditorRoot adopts it on sign-in and saves every
+ * change through setAppearanceSaver. localStorage caches the last one for public/theme.js, which applies it before
+ * the first paint. The /print page (PDF rendering) always stays standard and light.
  */
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
@@ -27,6 +30,9 @@ const PALETTE_KEY = 'palette'
 /** The custom theme's tokens for both contrasts, for public/theme.js (which cannot compute them). */
 const PALETTE_VARS_KEY = 'palette-vars'
 const EFFECTS_KEY = 'effects'
+const SOUNDS_KEY = 'sounds'
+/** The account whose appearance the cache holds: another account signing in here does not inherit it. */
+const OWNER_KEY = 'appearance-user'
 
 const media = window.matchMedia('(prefers-color-scheme: dark)')
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -68,6 +74,7 @@ let choice = storedChoice()
 let look = parseLook(read(LOOK_KEY))
 let palette = storedPalette()
 let effects = read(EFFECTS_KEY) !== 'off'
+let sounds = read(SOUNDS_KEY) !== 'off'
 
 function resolved(): 'light' | 'dark' {
   if (printing()) return 'light'
@@ -86,10 +93,12 @@ export interface Appearance {
   effects: boolean
   /** effects are on and the system does not ask for reduced motion */
   motion: boolean
+  /** the theme sounds play */
+  sounds: boolean
 }
 let snapshot: Appearance = build()
 function build(): Appearance {
-  return { theme: choice, resolved: resolved(), look: resolvedLook(), palette, effects, motion: motion() }
+  return { theme: choice, resolved: resolved(), look: resolvedLook(), palette, effects, motion: motion(), sounds }
 }
 
 function apply() {
@@ -121,6 +130,61 @@ function changed() {
   listeners.forEach((l) => l())
 }
 
+/* ------------------------- the account's own appearance ------------------------- */
+
+let saver: ((a: AccountAppearance) => void) | null = null
+let saveTimer: ReturnType<typeof setTimeout> | undefined
+const current = (): AccountAppearance => ({ theme: choice, look, palette, effects, sounds })
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** A change the user made: saved to the account a moment later (colour pickers send many changes in a row). */
+function persist() {
+  if (!saver) return
+  clearTimeout(saveTimer)
+  saveTimer = setTimeout(() => saver?.(current()), 500)
+}
+
+/** Where changes go while an account is signed in (null when signed out): the server's copy of its appearance. */
+export function setAppearanceSaver(save: ((a: AccountAppearance) => void) | null) {
+  saver = save
+}
+
+/**
+ * The appearance of the account that signed in (`user`), as the server keeps it. An account without one yet takes
+ * what this browser shows, unless the cache belongs to another account (then the standard look); either way it is
+ * saved to the account. `animate` spreads it over the page like a theme change, without a sound.
+ */
+export function adoptAppearance(user: string, stored: unknown, animate: boolean) {
+  const owner = read(OWNER_KEY)
+  const own = cleanAppearance(stored)
+  const next = own ?? (owner === null || owner === user ? current() : cleanAppearance({})!)
+  write(OWNER_KEY, user)
+  const differs =
+    next.look !== look || resolvedFor(next.theme) !== resolved() || (next.look === 'custom' && JSON.stringify(next.palette) !== JSON.stringify(palette))
+  const change = () => {
+    choice = next.theme
+    look = next.look
+    palette = parsePalette(next.palette)
+    effects = next.effects
+    sounds = next.sounds
+    writeCache()
+    changed()
+  }
+  if (animate && differs) void Promise.race([preloadLogo(next.look), wait(400)]).then(() => reveal(change, true, REVEAL_MS[next.look]))
+  else change()
+  if (!own) saver?.(next)
+}
+
+/** Every setting into the cache that public/theme.js reads before the first paint. */
+function writeCache() {
+  write(KEY, choice === 'system' ? null : choice)
+  write(LOOK_KEY, look === 'standard' ? null : look)
+  write(PALETTE_KEY, JSON.stringify(palette))
+  storePaletteVars()
+  write(EFFECTS_KEY, effects ? null : 'off')
+  write(SOUNDS_KEY, sounds ? null : 'off')
+}
+
 /** The theme button on screen (the menu button when the bar hides it), else the top right corner. */
 function themeButton(): { x: number; y: number } {
   const visible = (el: Element | null) => (el && (el as HTMLElement).offsetParent !== null ? el.getBoundingClientRect() : null)
@@ -138,8 +202,8 @@ function amoebaFrames(x: number, y: number): string[] {
   const h = window.innerHeight
   const far = Math.max(Math.hypot(x, y), Math.hypot(w - x, y), Math.hypot(x, h - y), Math.hypot(w - x, h - y))
   const seed = Math.random() * Math.PI * 2
-  const POINTS = 200
-  const STEPS = 20
+  const POINTS = 160
+  const STEPS = 32
   const frames: string[] = []
   for (let s = 0; s <= STEPS; s++) {
     const t = s / STEPS
@@ -160,7 +224,7 @@ function amoebaFrames(x: number, y: number): string[] {
  * `from` (the theme button by default), through a view transition. Without that browser feature, or with reduced
  * motion asked for, it switches at once.
  */
-function reveal(change: () => void, differs: boolean, from?: { x: number; y: number }) {
+function reveal(change: () => void, differs: boolean, duration: number, from?: { x: number; y: number }) {
   const animate = differs && typeof document.startViewTransition === 'function' && !reduceMotion.matches
   if (!animate) {
     change()
@@ -172,13 +236,22 @@ function reveal(change: () => void, differs: boolean, from?: { x: number; y: num
   const transition = document.startViewTransition(() => flushSync(change))
   transition.ready
     .then(() =>
-      root.animate({ clipPath: amoebaFrames(x, y) }, { duration: 950, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }),
+      root.animate({ clipPath: amoebaFrames(x, y) }, { duration, easing: 'cubic-bezier(0.45, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }),
     )
     .catch(() => undefined)
   void transition.finished.finally(() => root.classList.remove('theme-reveal'))
 }
 
-const resolvedFor = (next: ThemeChoice): 'light' | 'dark' => (printing() ? 'light' : next === 'system' ? (media.matches ? 'dark' : 'light') : next)
+function resolvedFor(next: ThemeChoice): 'light' | 'dark' {
+  return printing() ? 'light' : next === 'system' ? (media.matches ? 'dark' : 'light') : next
+}
+
+/**
+ * How long the new theme takes to cover the page: as long as the body of its sound (public/themes/<theme>/switch.mp3,
+ * loud for about 1.2 to 1.4 s before its tail fades), so the two end together. A contrast change takes 1 s.
+ */
+const REVEAL_MS: Record<Look, number> = { standard: 1200, sakura: 1400, terminal: 1300, space: 1200, custom: 1200 }
+const CONTRAST_MS = 1000
 
 /** The contrast: light, dark or the system's. */
 export function setTheme(next: ThemeChoice, from?: { x: number; y: number }) {
@@ -187,10 +260,51 @@ export function setTheme(next: ThemeChoice, from?: { x: number; y: number }) {
       choice = next
       write(KEY, next === 'system' ? null : next)
       changed()
+      persist()
     },
     resolvedFor(next) !== resolved(),
+    CONTRAST_MS,
     from,
   )
+}
+
+/**
+ * The switch sound of each theme that has one (built by scripts/sounds.py). One small audio element per theme, made
+ * on first use and reused: it streams a 32 KB file instead of holding decoded audio in memory. Only a theme change
+ * plays it (not a contrast change, not adopting an account's theme), and only while sounds are on.
+ */
+const OWN_SOUND: Look[] = ['sakura', 'terminal', 'space']
+const players = new Map<Look, HTMLAudioElement>()
+function player(l: Look): HTMLAudioElement | null {
+  if (!OWN_SOUND.includes(l)) return null
+  let audio = players.get(l)
+  if (!audio) {
+    audio = new Audio(`/themes/${l}/switch.mp3`)
+    audio.preload = 'auto'
+    audio.volume = 0.55
+    players.set(l, audio)
+  }
+  return audio
+}
+/** Starts loading the theme sounds (the appearance dialog opened), so the first one plays without a delay. */
+export function warmSounds() {
+  if (sounds) OWN_SOUND.forEach(player)
+}
+/** Resolves once `l`'s sound can play through, or at once without one. */
+function soundReady(l: Look): Promise<void> {
+  const audio = sounds ? player(l) : null
+  if (!audio || audio.readyState >= 4) return Promise.resolve()
+  return new Promise((r) => {
+    audio.addEventListener('canplaythrough', () => r(), { once: true })
+    audio.addEventListener('error', () => r(), { once: true })
+  })
+}
+function playSound(l: Look) {
+  const audio = sounds ? player(l) : null
+  if (!audio) return
+  players.forEach((other) => other !== audio && !other.paused && other.pause())
+  audio.currentTime = 0
+  void audio.play().catch(() => undefined)
 }
 
 /** A theme's logo, fetched and decoded once, so it is already painted when the amoeba reveals the new theme. */
@@ -207,8 +321,11 @@ function preloadLogo(l: Look): Promise<void> {
   return ready
 }
 
-/** The theme (standard, sakura, terminal, space or custom); each keeps the current contrast. Waits (at most 0.4 s)
- * for the theme's logo, so the logo changes with the rest of the page under the amoeba. */
+/**
+ * The theme (standard, sakura, terminal, space or custom); each keeps the current contrast. Waits (at most 0.4 s)
+ * for the theme's logo and sound, so the logo changes with the rest of the page under the amoeba and the sound
+ * starts with it.
+ */
 export function setLook(next: Look, from?: { x: number; y: number }) {
   const go = () =>
     reveal(
@@ -217,12 +334,17 @@ export function setLook(next: Look, from?: { x: number; y: number }) {
         write(LOOK_KEY, next === 'standard' ? null : next)
         if (next === 'custom') storePaletteVars()
         changed()
+        persist()
       },
       next !== look,
+      REVEAL_MS[next],
       from,
     )
   if (next === look) return go()
-  void Promise.race([preloadLogo(next), new Promise((r) => setTimeout(r, 400))]).then(go)
+  void Promise.race([Promise.all([preloadLogo(next), soundReady(next)]), wait(400)]).then(() => {
+    playSound(next)
+    go()
+  })
 }
 
 /** The custom theme's three colours; stored with the tokens they make, for the first paint of the next visit. */
@@ -231,6 +353,7 @@ export function setPalette(next: Palette) {
   write(PALETTE_KEY, JSON.stringify(palette))
   storePaletteVars()
   changed()
+  persist()
 }
 const storePaletteVars = () => write(PALETTE_VARS_KEY, JSON.stringify({ light: paletteVars(palette, 'light'), dark: paletteVars(palette, 'dark') }))
 
@@ -238,16 +361,26 @@ export function setEffects(on: boolean) {
   effects = on
   write(EFFECTS_KEY, on ? null : 'off')
   changed()
+  persist()
+}
+
+export function setSounds(on: boolean) {
+  sounds = on
+  write(SOUNDS_KEY, on ? null : 'off')
+  if (!on) players.forEach((a) => a.pause())
+  changed()
+  persist()
 }
 
 media.addEventListener('change', () => choice === 'system' && changed())
 reduceMotion.addEventListener('change', changed)
 window.addEventListener('storage', (e) => {
-  if (![KEY, LOOK_KEY, PALETTE_KEY, EFFECTS_KEY].includes(e.key ?? '')) return
+  if (![KEY, LOOK_KEY, PALETTE_KEY, EFFECTS_KEY, SOUNDS_KEY].includes(e.key ?? '')) return
   choice = storedChoice()
   look = parseLook(read(LOOK_KEY))
   palette = storedPalette()
   effects = read(EFFECTS_KEY) !== 'off'
+  sounds = read(SOUNDS_KEY) !== 'off'
   changed()
 })
 apply()

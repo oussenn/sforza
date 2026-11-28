@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type DragEvent, type TouchEvent } from 'react'
-import { ArrowUpRight, CalendarClock, Download, Ellipsis, Eye, EyeOff, FileText, Import, Languages, Loader2, Mail, MapPin, Pencil, Plus, Search, Send, ShieldCheck, SquareKanban, Trash2 } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, Download, Ellipsis, FileText, Import, Languages, Loader2, Mail, MapPin, Pencil, Plus, Search, Send, ShieldCheck, SquareKanban, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Application, BoardColumn, BuiltinStage, Lang, ResumeMeta, Stage } from '@shared/types'
 import { LANG_LABELS, LANGS, STAGE_LABELS } from '@shared/types'
@@ -24,6 +24,7 @@ import { navigate } from '../router'
 import { useEditor } from '../store'
 import AddApplicationDialog from './AddApplicationDialog'
 import AddColumnDialog from './AddColumnDialog'
+import DeleteStageDialog from './DeleteStageDialog'
 import ApplicationSheet from './ApplicationSheet'
 import { daysUntil, shortDate, stageDot, useStageLabel } from './stages'
 import { byOrder, latestAiChecks, openCvIn, openLetter, useApplications } from './store'
@@ -179,20 +180,19 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
   const move = useApplications((s) => s.move)
   const columns = useApplications((s) => s.columns)
   const hidden = useApplications((s) => s.hidden)
-  const { renameColumn, removeColumn, setHidden } = useApplications.getState()
-  // A hidden stage still shows while a card is in it (saved there before the page noticed), so no card is lost.
+  const labels = useApplications((s) => s.labels)
+  const moveTo = useApplications((s) => s.moveTo)
+  const { renameStage, removeColumn } = useApplications.getState()
+  // A deleted stage still shows while a card is in it (saved there before the page noticed), so no card is lost.
   const stages = boardStages(columns, hidden.filter((s) => !items.some((a) => a.stage === s)))
   const label = useStageLabel()
   const [adding, setAdding] = useState(false)
-  const [renaming, setRenaming] = useState<BoardColumn | null>(null)
+  const [renaming, setRenaming] = useState<Stage | null>(null)
   const [removing, setRemoving] = useState<BoardColumn | null>(null)
+  const [deleting, setDeleting] = useState<BuiltinStage | null>(null)
   // A card whose column was removed shows in the stage that column followed, or in what replaces that stage.
   const placed = (a: Application): Stage =>
-    stages.includes(a.stage) ? a.stage : stages.includes(baseStage(a.stage)) ? baseStage(a.stage) : placeStage(baseStage(a.stage), a.lang, { columns, hidden })
-  const hide = async (stage: BuiltinStage) => {
-    await setHidden(stage, true)
-    toast.success(`${STAGE_LABELS[stage]} is hidden. Its cards are in the columns after it.`)
-  }
+    stages.includes(a.stage) ? a.stage : stages.includes(baseStage(a.stage)) ? baseStage(a.stage) : placeStage(baseStage(a.stage), a.lang, { columns, hidden, moveTo })
 
   /** The card a dragged card would land above at height y of a column; null = the end of the column. */
   const beforeIn = (column: Element, y: number, id: string) =>
@@ -272,43 +272,31 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
                 <span className={cn('size-2 shrink-0 rounded-full', stageDot(stage))} />
                 <h2 className="truncate text-sm font-semibold">{label(stage)}</h2>
                 <span className="text-muted-foreground text-xs tabular-nums">{cards.length}</span>
-                {column && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label={`Column ${column.label}`} className={cn(LINK, '-my-1 ml-auto size-6')}>
-                        <Ellipsis className="size-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {column.lang && (
-                        <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
-                          {LANG_LABELS[column.lang].flag} {LANG_LABELS[column.lang].name} drafts land here
-                        </DropdownMenuLabel>
-                      )}
-                      <DropdownMenuItem onSelect={() => setRenaming(column)}>
-                        <Pencil /> Rename
-                      </DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onSelect={() => setRemoving(column)}>
-                        <Trash2 /> Delete column
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {!isCustomStage(stage) && isUnsent(stage) && columns.some((c) => baseStage(c.id) === stage) && (
-                  // A built-in stage can make way for the columns after it, e.g. Draft for one Drafts column per language.
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button type="button" aria-label={`Column ${label(stage)}`} className={cn(LINK, '-my-1 ml-auto size-6')}>
-                        <Ellipsis className="size-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => void hide(stage)}>
-                        <EyeOff /> Hide column
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" aria-label={`Column ${label(stage)}`} className={cn(LINK, '-my-1 ml-auto size-6')}>
+                      <Ellipsis className="size-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {column?.lang && (
+                      <DropdownMenuLabel className="text-muted-foreground text-xs font-normal">
+                        {LANG_LABELS[column.lang].flag} {LANG_LABELS[column.lang].name} drafts land here
+                      </DropdownMenuLabel>
+                    )}
+                    <DropdownMenuItem onSelect={() => setRenaming(stage)}>
+                      <Pencil /> Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      // The last column stays: cards always need one.
+                      disabled={stages.length < 2}
+                      onSelect={() => (column ? setRemoving(column) : setDeleting(stage as BuiltinStage))}
+                    >
+                      <Trash2 /> Delete column
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </header>
               <div
                 className={cn(
@@ -354,17 +342,6 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
           >
             <Plus className="size-4" /> Add column
           </button>
-          {hidden.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => void setHidden(s, false)}
-              title={`${STAGE_LABELS[s]} is hidden: show it again`}
-              className="text-muted-foreground hover:text-foreground hover:bg-foreground/[0.035] flex h-8 items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition-colors"
-            >
-              <Eye className="size-3.5" /> Show {STAGE_LABELS[s]}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -374,9 +351,14 @@ function Board({ items, cvs }: { items: Application[]; cvs: Map<string, ResumeMe
         onOpenChange={(o) => !o && setRenaming(null)}
         title="Rename column"
         label="Name"
-        initial={renaming?.label ?? ''}
-        onSubmit={(name) => renaming && void renameColumn(renaming.id, name)}
+        maxLength={40}
+        initial={renaming ? label(renaming) : ''}
+        // A built-in stage keeps what it means (sent or not, where agents save cards); only its name changes.
+        hint={renaming && !isCustomStage(renaming) ? `Still counts as ${STAGE_LABELS[renaming]}${labels[renaming] ? '. Leave it empty for that name again' : ''}.` : undefined}
+        allowEmpty={!!renaming && !isCustomStage(renaming)}
+        onSubmit={(name) => renaming && void renameStage(renaming, name)}
       />
+      <DeleteStageDialog stage={deleting} cards={deleting ? items.filter((a) => placed(a) === deleting).length : 0} onClose={() => setDeleting(null)} />
       <ConfirmDialog
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}

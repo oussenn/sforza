@@ -160,7 +160,7 @@ const DEMO_ROUTES: Record<string, RegExp[]> = {
     /^\/api\/(resumes|library|search-profile|applications|board-columns|board|changes|ai\/status)$/,
     new RegExp(`^/api/resumes/${ID}$`),
   ],
-  PUT: [/^\/api\/(library|search-profile|board-columns|board|onboarding)$/, new RegExp(`^/api/(resumes|applications)/${ID}$`)],
+  PUT: [/^\/api\/(library|search-profile|board-columns|board|onboarding|appearance)$/, new RegExp(`^/api/(resumes|applications)/${ID}$`)],
   POST: [/^\/api\/(resumes|applications|applications\/import)$/, new RegExp(`^/api/resumes/${ID}/main$`)],
   DELETE: [new RegExp(`^/api/(resumes|applications)/${ID}$`)],
 }

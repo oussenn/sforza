@@ -454,12 +454,17 @@ export interface BoardColumn {
 }
 
 /**
- * The board of one account: the columns it added and the built-in ones it hides. A new account has neither, so it
- * sees the six stages. A hidden stage needs a column of its own after it: cards saved in the hidden stage go there.
+ * The board of one account: the columns it added, the built-in ones it deleted and the names it gave them. A new
+ * account has none of these, so it sees the six stages. A deleted (hidden) stage needs somewhere for its cards: a
+ * column of its own after it, else the column in `moveTo`. Cards saved in that stage later go there too.
  */
 export interface Board {
   columns: BoardColumn[]
   hidden: BuiltinStage[]
+  /** names this board gives built-in stages, e.g. { saved: 'Wishlist' } */
+  labels?: Partial<Record<BuiltinStage, string>>
+  /** where the cards of a deleted stage go when no column of its own follows it */
+  moveTo?: Partial<Record<BuiltinStage, Stage>>
 }
 
 export const STAGE_LABELS: Record<BuiltinStage, string> = {

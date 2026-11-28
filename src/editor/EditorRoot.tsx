@@ -5,6 +5,7 @@ import { ThemeScene } from '@/components/ThemeScene'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { api, type DemoSession } from '@/lib/api'
+import { adoptAppearance, setAppearanceSaver } from '@/lib/theme'
 import { VERSION } from '@shared/version'
 import Editor from './Editor'
 import Login, { type LoginMode } from './Login'
@@ -25,6 +26,16 @@ function readJoinCode(): string | null {
 type Me = Awaited<ReturnType<typeof api.me>>
 const applySession = (r: Me) => useSession.setState({ admin: !!r.admin, pendingRequests: r.pendingRequests ?? 0, tourSeen: r.tourSeen ?? true })
 
+/**
+ * The signed-in account's own appearance (shared/appearance.ts): adopted from the server, and every change saved
+ * back. `animate`: just signed in, so the account's theme spreads over the sign-in page's.
+ */
+function adoptAccount(r: Me, animate: boolean) {
+  if (!r.authenticated || !r.user) return
+  setAppearanceSaver((a) => void api.saveAppearance(a).catch(() => undefined))
+  adoptAppearance(r.user, r.appearance, animate)
+}
+
 export default function EditorRoot() {
   const [auth, setAuth] = useState<'checking' | 'in' | 'out'>('checking')
   const [user, setUser] = useState<string | null>(null)
@@ -44,6 +55,7 @@ export default function EditorRoot() {
         if (r.moveTo) return window.location.replace(r.moveTo + window.location.pathname + window.location.search + window.location.hash)
         setUser(r.user)
         applySession(r)
+        adoptAccount(r, false)
         setSetup(r.setup ?? null)
         setDemo(r.demo ?? null)
         setDemoAvailable(!!r.demoAvailable)
@@ -57,11 +69,20 @@ export default function EditorRoot() {
   }, [])
 
   // A full reload drops everything the previous account had loaded into memory.
-  const signedOut = () => window.location.replace('/')
+  const signedOut = () => {
+    setAppearanceSaver(null)
+    window.location.replace('/')
+  }
 
   const signedIn = (name: string, demoSession?: DemoSession) => {
     // What the new session says about the account (tour, admin): asked again, the first answer was signed out.
-    void api.me().then(applySession).catch(() => undefined)
+    void api
+      .me()
+      .then((r) => {
+        applySession(r)
+        adoptAccount(r, true)
+      })
+      .catch(() => undefined)
     setUser(name)
     setDemo(demoSession ?? null)
     setSetup(null)

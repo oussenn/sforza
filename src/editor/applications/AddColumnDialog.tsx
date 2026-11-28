@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { BuiltinStage, Lang } from '@shared/types'
-import { LANG_LABELS, LANGS, STAGE_LABELS, STAGES } from '@shared/types'
+import { LANG_LABELS, LANGS, STAGES } from '@shared/types'
+import { RotateCcw } from 'lucide-react'
 import { InfoTip } from '@/components/InfoTip'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,12 +9,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import { stageDot } from './stages'
+import { stageDot, useStageLabel } from './stages'
 import { useApplications } from './store'
 
-/** Adds a column to the board, placed after one of the built-in stages. */
+/** Adds a column to the board, placed after one of the built-in stages, or brings back a built-in stage it deleted. */
 export default function AddColumnDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const addColumn = useApplications((s) => s.addColumn)
+  const hidden = useApplications((s) => s.hidden)
+  const restoreStage = useApplications((s) => s.restoreStage)
+  const stageName = useStageLabel()
   const [label, setLabel] = useState('')
   const [after, setAfter] = useState<BuiltinStage>('applied')
   const [lang, setLang] = useState<Lang | 'any'>('any')
@@ -61,7 +65,7 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
                 {STAGES.map((s) => (
                   <SelectItem key={s} value={s}>
                     <span className={cn('size-2 rounded-full', stageDot(s))} />
-                    {STAGE_LABELS[s]}
+                    {stageName(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -72,7 +76,7 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
               <div className="flex items-center gap-1">
                 <Label className="text-muted-foreground text-xs">Drafts in</Label>
                 <InfoTip label="About drafts by language">
-                  With Draft hidden (its menu on the board), each new draft lands in the column of its language: one column for English drafts, one for German ones.
+                  With Draft deleted (its menu on the board), each new draft lands in the column of its language: one column for English drafts, one for German ones.
                 </InfoTip>
               </div>
               <Select value={lang} onValueChange={(v) => setLang(v as Lang | 'any')}>
@@ -88,6 +92,28 @@ export default function AddColumnDialog({ open, onOpenChange }: { open: boolean;
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+          {hidden.length > 0 && (
+            <div className="grid gap-1.5 border-t pt-3">
+              <Label className="text-muted-foreground text-xs">Deleted columns</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {hidden.map((s) => (
+                  <Button
+                    key={s}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      onOpenChange(false)
+                      void restoreStage(s)
+                    }}
+                  >
+                    <RotateCcw /> Bring back {stageName(s)}
+                  </Button>
+                ))}
+              </div>
             </div>
           )}
           <DialogFooter>

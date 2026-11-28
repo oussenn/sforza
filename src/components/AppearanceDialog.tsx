@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { normalHex, type Palette } from '@/lib/palette'
-import { logoFor, LOOKS, setEffects, setLook, setPalette, setTheme, useAppearance, type Look, type ThemeChoice } from '@/lib/theme'
+import { logoFor, LOOKS, setEffects, setLook, setPalette, setSounds, setTheme, useAppearance, warmSounds, type Look, type ThemeChoice } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 /** Opens from the top bar menu and the command palette. */
@@ -47,13 +47,16 @@ const center = (el: HTMLElement) => {
 
 export function AppearanceDialog() {
   const isOpen = useSyncExternalStore(subscribe, () => open)
-  const { theme, resolved, look, palette, effects } = useAppearance()
+  const { theme, resolved, look, palette, effects, sounds } = useAppearance()
+  useEffect(() => {
+    if (isOpen) warmSounds()
+  }, [isOpen])
   return (
     <Dialog open={isOpen} onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Appearance</DialogTitle>
-          <DialogDescription>A theme and its contrast, for this browser. Every theme comes in light and dark.</DialogDescription>
+          <DialogDescription>A theme and its contrast, kept with your account on every device. Every theme comes in light and dark.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-2">
@@ -86,6 +89,14 @@ export function AppearanceDialog() {
             </p>
           </div>
           <Switch id="fx" checked={effects} onCheckedChange={setEffects} />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-3">
+          <div className="grid gap-0.5">
+            <Label htmlFor="sfx">Theme sounds</Label>
+            <p className="text-muted-foreground text-xs">A short sound as Sakura, Terminal or Space spreads over the page. Only when you change the theme.</p>
+          </div>
+          <Switch id="sfx" checked={sounds} onCheckedChange={setSounds} />
         </div>
       </DialogContent>
     </Dialog>

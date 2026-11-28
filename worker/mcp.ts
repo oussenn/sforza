@@ -1,6 +1,6 @@
 import type { Context } from 'hono'
 import type { AiCheck, Application, BoardColumn, ContactType, CoverLetter, FormAnswer, SearchProfile, Lang, LetterLayout, LetterStyle, Library, Resume, ResumeContent, ResumeStyle, SectionItem, SectionType, Stage } from '@shared/types'
-import { LANG_LABELS, LANGS, LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUTS, LETTER_LOGO_LAYOUTS, STAGE_LABELS, STAGES } from '@shared/types'
+import { LANG_LABELS, LANGS, LETTER_LAYOUT_DESCRIPTIONS, LETTER_LAYOUTS, LETTER_LOGO_LAYOUTS, STAGES } from '@shared/types'
 import { CLAUDE_PROMPTS, type PromptContext } from '@shared/prompts'
 import { FONTS, TEMPLATE_MAP, TEMPLATES } from '@shared/templates'
 import {
@@ -18,6 +18,7 @@ import {
   ENCLOSURES,
   isItemSection,
   isSentStage,
+  isCustomStage,
   isStage,
   isUnsent,
   itemHead,
@@ -80,7 +81,7 @@ type Json = Record<string, unknown>
 
 const PROTOCOL = '2025-06-18'
 
-const INSTRUCTIONS = `Sforza, the user's resume builder: their CVs (EN/FR/DE), a knowledge base (library) of extra projects, skills and facts, a job-search profile, and an applications board (kanban: Saved → Draft → Applied → Interview → Offer → Rejected, plus any columns the user added; a board may hide a built-in column behind columns of its own, get_profile board_hidden: a card saved in a hidden stage goes to the column that replaces it, a draft to the Drafts column of its cv_language).
+const INSTRUCTIONS = `Sforza, the user's resume builder: their CVs (EN/FR/DE), a knowledge base (library) of extra projects, skills and facts, a job-search profile, and an applications board (kanban: Saved → Draft → Applied → Interview → Offer → Rejected, plus any columns the user added; a board may rename built-in columns (get_profile board_labels) and delete them (board_hidden): a card saved in a deleted stage goes to the column that replaces it, a draft to the Drafts column of its cv_language, else to board_move_to).
 
 Job-search workflow (the prompts "job_hunt" and "draft_application" of this connector spell it out). When the user just pastes a job link (LinkedIn or any other), that means: prepare a complete draft for it, as in "draft_application": read it, check_jobs, judge the fit, then CV, letter, AI check, card fields and the application form's answers, all left in "Draft"; never apply.
 When the user asks to find jobs or for a list of jobs (without asking for drafts): search_jobs with several keyword variants of the profile's roles (German and English), triage_jobs on its candidates and checks (it reads each ad in full and its application form), then report every listing as a table: company, role, place, posted, language and German asked, verdict with the reason, your fit (0–100) for the candidates, and what each candidate's form asks (number of questions, account needed or not, the form link). The dropped listings follow in short with their reasons. Offer to prepare drafts for the best ones.
@@ -349,11 +350,11 @@ function latestChecks(a: Application): string[] {
   return [...latest.values()].map((c) => `${c.doc} ${c.lang.toUpperCase()} ${c.aiPercent}% (${c.tool})`)
 }
 
-function applicationSummary(a: Application, origin: string, columns: BoardColumn[] = []) {
+function applicationSummary(a: Application, origin: string, board: Parameters<typeof stageLabel>[1] = []) {
   return {
     id: a.id,
     stage: a.stage,
-    stage_label: stageLabel(a.stage, columns),
+    stage_label: stageLabel(a.stage, board),
     title: a.title,
     company: a.company,
     // the company logo (board icon, and the signed letter template); '' when none was found
@@ -690,7 +691,7 @@ const TOOLS: Tool[] = [
       'The candidate: master CV (readable), knowledge base (library of extra projects, skills, experience, certificates and notes), job-search profile, all CVs, the board by stage, and the AI budget and detector. Call once at the start.',
     inputSchema: obj({}),
     run: async (env, _args, origin) => {
-      const [master, library, profile, resumes, apps, spend, { columns, hidden }] = await Promise.all([
+      const [master, library, profile, resumes, apps, spend, board] = await Promise.all([
         masterResume(env),
         db.getLibrary(env),
         db.getSearchProfile(env),
@@ -738,9 +739,11 @@ const TOOLS: Tool[] = [
           const m = toMeta(r)
           return { id: m.id, name: m.name, kind: m.kind, languages: m.langs, job: m.job ? `${m.job.title} – ${m.job.company}` : null, match_score: m.job?.matchScore ?? null }
         }),
-        board: Object.fromEntries(boardStages(columns, hidden).map((s) => [stageLabel(s, columns), apps.filter((a) => a.stage === s).length])),
-        board_columns: columns,
-        board_hidden: hidden,
+        board: Object.fromEntries(boardStages(board.columns, board.hidden).map((s) => [stageLabel(s, board), apps.filter((a) => a.stage === s).length])),
+        board_columns: board.columns,
+        board_hidden: board.hidden,
+        ...(board.labels && { board_labels: board.labels }),
+        ...(board.moveTo && { board_move_to: board.moveTo }),
         site_ai: { ...aiStatus(env), spend, detector: detectorName(env) },
         editor: `${origin}/`,
       }
@@ -2191,10 +2194,10 @@ const TOOLS: Tool[] = [
       const apps = (await db.listApplications(env)).filter(
         (a) => inStage(a) && (!q || `${a.title} ${a.company} ${a.url} ${a.applyUrl ?? ''}`.toLowerCase().includes(q)),
       )
-      const { columns, hidden } = await db.getBoard(env)
+      const board = await db.getBoard(env)
       return {
-        stages: Object.fromEntries(boardStages(columns, hidden).map((s) => [s, stageLabel(s, columns)])),
-        applications: apps.slice(0, 100).map((a) => applicationSummary(a, origin, columns)),
+        stages: Object.fromEntries(boardStages(board.columns, board.hidden).map((s) => [s, stageLabel(s, board)])),
+        applications: apps.slice(0, 100).map((a) => applicationSummary(a, origin, board)),
       }
     },
   },
@@ -2206,7 +2209,7 @@ const TOOLS: Tool[] = [
       const app = await needApplication(env, args.id)
       const cv = app.resumeId ? await db.getResume(env, app.resumeId) : null
       return {
-        ...applicationSummary(app, origin, await db.getBoardColumns(env)),
+        ...applicationSummary(app, origin, await db.getBoard(env)),
         notes: app.notes,
         description: app.description.slice(0, 15_000),
         cv: cv ? { id: cv.id, name: cv.name, languages: Object.keys(cv.content), match_score: cv.job?.matchScore ?? null } : null,
@@ -2256,10 +2259,10 @@ const TOOLS: Tool[] = [
         app.resumeId = resume.id
         app.lang = isLang(args.cv_language) && resume.content[args.cv_language] ? args.cv_language : (app.lang ?? resume.sourceLang)
       } else if (isLang(args.cv_language)) app.lang = args.cv_language
-      const columns = await db.getBoardColumns(env)
+      const board = await db.getBoard(env)
       if (args.stage !== undefined) {
-        if (!isStage(args.stage) || !boardStages(columns).includes(args.stage)) {
-          throw new ToolError(`stage must be one of ${boardStages(columns).join(', ')}`)
+        if (!isStage(args.stage) || !boardStages(board.columns).includes(args.stage)) {
+          throw new ToolError(`stage must be one of ${boardStages(board.columns).join(', ')}`)
         }
         enterStage(app, args.stage, isDate(args.applied_on) ? str(args.applied_on) : undefined)
       } else if (isDate(args.applied_on)) app.appliedOn = str(args.applied_on)
@@ -2268,7 +2271,7 @@ const TOOLS: Tool[] = [
       await db.putApplication(env, app)
       const other = app.resumeId ? cvAtCompany(await db.listApplications(env), app.company, app.department, app.id) : undefined
       return {
-        ...applicationSummary(app, origin, columns),
+        ...applicationSummary(app, origin, board),
         ...sevenDayRule(app),
         warning:
           other && other.resumeId !== app.resumeId
@@ -2292,7 +2295,7 @@ const TOOLS: Tool[] = [
   {
     name: 'edit_board',
     description:
-      "The account's own board columns, as in the editor. columns: the full list of columns this account adds (leave it out to keep them); each sits after a built-in stage and counts as it; keep a column's id to keep it and its cards; a column after Draft can take the drafts of one language (lang). hidden: the built-in stages this board does not show (leave it out to keep them); each needs a column of its own after it, and its cards move there (after Draft: by the card's cv_language). A removed column's cards go back to the stage it followed. A new account has neither: the six stages. Only for this account's board; change it only when the user asks.",
+      "The account's own board columns, as in the editor. columns: the full list of columns this account adds (leave it out to keep them); each sits after a built-in stage and counts as it; keep a column's id to keep it and its cards; a column after Draft can take the drafts of one language (lang). hidden: the built-in stages deleted from this board (leave it out to keep them; [] brings them all back); the cards of a deleted stage move to a column of its own after it (after Draft: by the card's cv_language), else to its move_to column. labels: new names for built-in stages, e.g. { \"saved\": \"Wishlist\" } (\"\" gives back the built-in name; leave it out to keep them). A removed column's cards go back to the stage it followed. A new account has none of these: the six stages. Only for this account's board; change it only when the user asks.",
     inputSchema: obj({
       columns: {
         type: 'array',
@@ -2301,12 +2304,18 @@ const TOOLS: Tool[] = [
             id: { type: 'string', description: 'id of an existing column (get_profile board_columns); leave out for a new one' },
             label: { type: 'string', description: 'name shown on the board, up to 40 characters' },
             after: { type: 'string', enum: [...STAGES], description: 'built-in stage a new column follows' },
-            lang: { type: 'string', enum: [...LANGS], description: 'after draft only: drafts in this language land here while Draft is hidden' },
+            lang: { type: 'string', enum: [...LANGS], description: 'after draft only: drafts in this language land here while Draft is deleted' },
           },
           ['label'],
         ),
       },
-      hidden: { type: 'array', items: { type: 'string', enum: [...STAGES] }, description: 'built-in stages not shown, e.g. ["draft"]; [] shows them all again' },
+      hidden: { type: 'array', items: { type: 'string', enum: [...STAGES] }, description: 'built-in stages deleted from the board, e.g. ["draft"]; [] brings them all back' },
+      move_to: {
+        type: 'object',
+        description: 'for a deleted stage without a column of its own after it: the stage or column id its cards go to, e.g. { "rejected": "applied" }',
+        additionalProperties: { type: 'string' },
+      },
+      labels: { type: 'object', description: 'new names of built-in stages, up to 40 characters, e.g. { "saved": "Wishlist" }', additionalProperties: { type: 'string' } },
     }),
     run: async (env, args) => {
       const current = await db.getBoard(env)
@@ -2327,15 +2336,21 @@ const TOOLS: Tool[] = [
         })
       }
       const hidden = Array.isArray(args.hidden) ? STAGES.filter((s) => (args.hidden as unknown[]).includes(s)) : current.hidden
+      const moveTo = { ...current.moveTo, ...(args.move_to && typeof args.move_to === 'object' ? (args.move_to as Record<string, Stage>) : {}) }
+      const labels = { ...current.labels, ...(args.labels && typeof args.labels === 'object' ? (args.labels as Record<string, string>) : {}) }
+      const shown = (t: unknown) => (isCustomStage(t) ? columns.some((c) => c.id === t) : (STAGES as readonly unknown[]).includes(t) && !hidden.includes(t as (typeof STAGES)[number]))
       for (const s of hidden) {
-        if (!columns.some((c) => baseStage(c.id) === s)) throw new ToolError(`To hide ${STAGE_LABELS[s]}, add a column after it first: its cards need a place.`)
+        if (!columns.some((c) => baseStage(c.id) === s) && !shown(moveTo[s]))
+          throw new ToolError(`To delete ${stageLabel(s, current)}, say where its cards go: move_to { "${s}": a stage or column that stays }, or add a column after it.`)
       }
-      const { board, moved } = await db.saveBoard(env, { columns, hidden })
+      const { board, moved } = await db.saveBoard(env, { columns, hidden, labels, moveTo })
       return {
-        stages: Object.fromEntries(boardStages(board.columns, board.hidden).map((s) => [s, stageLabel(s, board.columns)])),
+        stages: Object.fromEntries(boardStages(board.columns, board.hidden).map((s) => [s, stageLabel(s, board)])),
         board_columns: board.columns,
         board_hidden: board.hidden,
-        moved: moved.map((m) => ({ id: m.id, from: stageLabel(m.from, current.columns), to: stageLabel(m.to, board.columns) })),
+        ...(board.labels && { board_labels: board.labels }),
+        ...(board.moveTo && { board_move_to: board.moveTo }),
+        moved: moved.map((m) => ({ id: m.id, from: stageLabel(m.from, current), to: stageLabel(m.to, board) })),
       }
     },
   },

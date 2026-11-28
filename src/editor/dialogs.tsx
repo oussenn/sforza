@@ -51,6 +51,11 @@ export function PromptDialog(props: {
   label: string
   initial: string
   onSubmit: (value: string) => void
+  maxLength?: number
+  /** a line under the field */
+  hint?: string
+  /** an empty field is a valid answer (e.g. "back to the built-in name") */
+  allowEmpty?: boolean
 }) {
   const [value, setValue] = useState(props.initial)
   useEffect(() => {
@@ -59,7 +64,7 @@ export function PromptDialog(props: {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (!value.trim()) return
+    if (!value.trim() && !props.allowEmpty) return
     props.onSubmit(value.trim())
     props.onOpenChange(false)
   }
@@ -73,7 +78,8 @@ export function PromptDialog(props: {
           </DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor="prompt-input">{props.label}</Label>
-            <Input id="prompt-input" autoFocus value={value} onChange={(e) => setValue(e.target.value)} />
+            <Input id="prompt-input" autoFocus maxLength={props.maxLength} value={value} onChange={(e) => setValue(e.target.value)} />
+            {props.hint && <p className="text-muted-foreground text-xs">{props.hint}</p>}
           </div>
           <DialogFooter>
             <Button type="submit">Save</Button>
