@@ -3,12 +3,15 @@
 //                                               has none, then says which accounts this local copy has
 //   npm run local:password -- <username>        a new password for a local account (an account of AUTH_USERS too), or
 //                                               a new local account with that name; prints the password once
+//   npm run local:password -- <username> --ask  the same with a password you type or paste (hidden, never printed),
+//                                               e.g. to sign in locally with the same password as on your site
 //   npm run local:reset -- --yes                deletes the local database: the next visit asks for the first account
 // Only the local copy: nothing here reaches a deployed site.
 import { spawnSync } from 'node:child_process'
 import { webcrypto as crypto } from 'node:crypto'
 import { copyFileSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
@@ -116,14 +119,35 @@ function wrangler(args) {
   return spawnSync(process.execPath, [bin, ...args], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, CI: '1' } })
 }
 
-async function password(username) {
+/** A password typed or pasted without showing it (or the first line piped in). */
+function askHidden(question) {
+  return new Promise((resolve) => {
+    const tty = !!process.stdin.isTTY
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: tty })
+    if (tty) {
+      process.stdout.write(question)
+      rl._writeToOutput = () => {} // nothing of what is typed reaches the screen
+    }
+    rl.question(tty ? '' : question, (answer) => {
+      rl.close()
+      if (tty) process.stdout.write('\n')
+      resolve(answer.trim())
+    })
+  })
+}
+
+async function password(username, ask) {
   const user = (username ?? '').trim().toLowerCase()
   if (!USERNAME.test(user)) {
-    console.error('Usage: npm run local:password -- <username>   (2 to 32 of a-z, 0-9, _ and -)')
+    console.error('Usage: npm run local:password -- <username> [--ask]   (2 to 32 of a-z, 0-9, _ and -)')
     process.exit(1)
   }
   const known = [...secretUsers(existsSync(at(envFile())) ? readFileSync(at(envFile()), 'utf8') : ''), ...(await appUsers()).map((u) => u.replace(/ \(locked\)$/, ''))]
-  const pass = randomPassword()
+  const pass = ask ? await askHidden(`Password for ${user} (hidden): `) : randomPassword()
+  if (pass.length < 15) {
+    console.error('A password needs 15 or more characters. Nothing changed.')
+    process.exit(1)
+  }
   const now = new Date().toISOString()
   // The same statement as setPassword in worker/auth.ts: a row in the accounts table wins over AUTH_USERS.
   const sql = `INSERT INTO accounts (username, hash, disabled, created_at, updated_at) VALUES ('${user}', '${await hash(pass)}', 0, '${now}', '${now}') ON CONFLICT(username) DO UPDATE SET hash = excluded.hash, updated_at = excluded.updated_at`
@@ -132,6 +156,10 @@ async function password(username) {
     const why = `${run.stderr}${run.stdout}`
     console.error(/no such table/i.test(why) ? 'The local database is not set up yet: run npm run dev and open the site once, then try again.' : why.trim())
     process.exit(1)
+  }
+  if (ask) {
+    console.log(known.includes(user) ? `${user} now signs in on this computer with the password you typed.` : `Made the local account ${user} with the password you typed.`)
+    return
   }
   console.log(known.includes(user) ? `New password for ${user} on this computer:` : `Made the local account ${user}:`)
   console.log(`\n  ${user}  ${pass}\n`)
@@ -160,7 +188,7 @@ function reset(confirmed) {
 
 const [command, arg] = process.argv.slice(2)
 if (command === 'prepare') await prepare()
-else if (command === 'password') await password(arg)
+else if (command === 'password') await password(arg, process.argv.includes('--ask'))
 else if (command === 'reset') reset(arg === '--yes' || process.argv.includes('--yes'))
 else {
   console.error('Usage: node scripts/local.mjs prepare | password <username> | reset --yes')

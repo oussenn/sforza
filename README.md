@@ -184,6 +184,7 @@ The first `npm run dev` makes `.env` from `.env.example` and fills in a random `
 | To | Run |
 |---|---|
 | Get a new password for a local account, or make one | `npm run local:password -- <username>` |
+| Use a password of your own for it, e.g. the one of your deployed site | `npm run local:password -- <username> --ask` (type or paste it; nothing shows) |
 | Start over with an empty database | stop `npm run dev`, then `npm run local:reset -- --yes` |
 | Turn on the free Workers AI model | `npx wrangler login`, then start `npm run dev` again |
 
